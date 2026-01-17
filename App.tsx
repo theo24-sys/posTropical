@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
 import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, INITIAL_KITCHEN_INVENTORY } from './constants'; 
@@ -18,24 +18,19 @@ import {
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  // --- Global State ---
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // App Data State
   const [users, setUsers] = useState<User[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleTransaction[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  
-  // Auth State
   const [posUser, setPosUser] = useState<User | null>(null);
 
-  // POS State
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,10 +62,12 @@ const App: React.FC = () => {
     try { if (navigator.onLine) await DB.saveAuditLog(log); } catch (e) {}
   }, [posUser]);
 
-  // --- DATA FETCHING ---
+  const sortedSalesHistory = useMemo(() => {
+    return [...salesHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [salesHistory]);
+
   const fetchData = useCallback(async (isInitial = false) => {
       if(isInitial) setIsLoading(true);
-      
       try {
         if (navigator.onLine) {
           const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs] = await Promise.all([
@@ -82,21 +79,17 @@ const App: React.FC = () => {
             DB.getAuditLogs()
           ]);
 
-          const finalUsers = cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS;
-          const finalMenu = cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS;
-          const finalInv = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
-
-          setUsers(finalUsers);
-          setMenuItems(finalMenu);
-          setInventory(finalInv);
+          setUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS);
+          setMenuItems(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS);
+          setInventory(cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY);
           setSalesHistory(cloudSales);
           setExpenses(cloudExpenses);
           setAuditLogs(cloudLogs);
 
           await Promise.all([
-              LocalDB.saveUsers(finalUsers),
-              LocalDB.saveMenu(finalMenu),
-              LocalDB.saveInventory(finalInv),
+              LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
+              LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
+              LocalDB.saveInventory(cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY),
               LocalDB.saveSalesHistory(cloudSales),
               LocalDB.saveExpenses(cloudExpenses)
           ]);
@@ -108,17 +101,14 @@ const App: React.FC = () => {
             LocalDB.getSalesHistory(),
             LocalDB.getExpenses(),
           ]);
-
-          setUsers(localUsers.length > 0 ? localUsers : INITIAL_USERS);
-          setMenuItems(localMenu.length > 0 ? localMenu : MENU_ITEMS);
-          setInventory(localInv.length > 0 ? localInv : INITIAL_KITCHEN_INVENTORY);
+          setUsers(localUsers);
+          setMenuItems(localMenu);
+          setInventory(localInv);
           setSalesHistory(localSales);
           setExpenses(localExpenses);
         }
-        
         const pendingOrders = await LocalDB.getPendingOrders();
         setPendingSyncCount(pendingOrders.length);
-
       } catch (e) {
           console.error("Fetch failed:", e);
       } finally { 
@@ -203,42 +193,36 @@ const App: React.FC = () => {
     const timestamp = getNairobiISO();
 
     const sale: SaleTransaction = {
-        id: orderId, date: timestamp, total: subtotal, paymentMethod,
+        id: orderId, 
+        date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp, 
+        total: subtotal, 
+        paymentMethod,
         status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
-        cashierName: posUser.name, tableNumber, orderType,
-        items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price }))
+        cashierName: posUser.name, 
+        tableNumber, 
+        orderType,
+        items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+        updatedAt: editingTransactionId ? timestamp : undefined,
+        updatedBy: editingTransactionId ? posUser.name : undefined
     };
 
     try {
         const aiMsg = await generateReceiptMessage(cart, posUser.name);
         setReceiptData({
             items: [...cart], subtotal, tax: 0, total: subtotal, amountTendered, change,
-            date: timestamp, orderId, paymentMethod, cashierName: posUser.name,
-            tableNumber, orderType, aiMessage: aiMsg, status: sale.status as 'Paid' | 'Pending'
+            date: sale.date, orderId, paymentMethod, cashierName: posUser.name,
+            tableNumber, orderType, aiMessage: aiMsg, status: sale.status
         });
         setIsModalOpen(true);
 
-        // Inventory deduction (only on new items or paid items logic could be refined here, 
-        // but for now we follow the existing pattern)
-        let currentInv = [...inventory];
-        cart.forEach(item => {
-            const ingredients = KITCHEN_RECIPES[item.id];
-            if (ingredients) {
-                ingredients.forEach(recipeItem => {
-                    const invIdx = currentInv.findIndex(i => i.id === recipeItem.invId);
-                    if (invIdx !== -1) {
-                        currentInv[invIdx] = { ...currentInv[invIdx], quantity: currentInv[invIdx].quantity - (recipeItem.amount * item.quantity) };
-                        if (navigator.onLine) DB.saveInventoryItem(currentInv[invIdx]);
-                    }
-                });
-            }
-        });
-        setInventory(currentInv);
-        await LocalDB.saveInventory(currentInv);
-
         setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
-        await LocalDB.queueOrder(sale);
-        logActivity('SALE', `Order ${orderId} finalized.`, 'low');
+        if (navigator.onLine) {
+            await DB.saveTransaction(sale);
+        } else {
+            await LocalDB.queueOrder(sale);
+        }
+        
+        logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
         setCart([]);
         setEditingTransactionId(null);
     } catch (e) { console.error(e); } finally { setIsProcessing(false); }
@@ -249,7 +233,8 @@ const App: React.FC = () => {
     if (!tx || !posUser) return;
     const updatedTx: SaleTransaction = { ...tx, status: newStatus, paymentMethod, updatedBy: posUser.name, updatedAt: getNairobiISO() };
     setSalesHistory(prev => prev.map(t => t.id === id ? updatedTx : t));
-    if (navigator.onLine) await DB.updateTransactionStatus(id, newStatus, paymentMethod, posUser.name);
+    
+    if (navigator.onLine) await DB.saveTransaction(updatedTx);
     else await LocalDB.queueOrder(updatedTx);
 
     if (newStatus === 'Paid') {
@@ -258,7 +243,12 @@ const App: React.FC = () => {
             return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
         });
         const aiMsg = await generateReceiptMessage(reconstructed, posUser.name);
-        setReceiptData({ items: reconstructed, subtotal: tx.total, tax: 0, total: tx.total, date: tx.date, orderId: id, paymentMethod, status: 'Paid', cashierName: tx.cashierName, aiMessage: aiMsg, tableNumber: tx.tableNumber });
+        setReceiptData({ 
+          items: reconstructed, subtotal: tx.total, tax: 0, total: tx.total, 
+          date: tx.date, orderId: id, paymentMethod, status: 'Paid', 
+          cashierName: tx.cashierName, aiMessage: aiMsg, tableNumber: tx.tableNumber,
+          updatedAt: updatedTx.updatedAt
+        });
         setIsModalOpen(true);
     }
   };
@@ -268,7 +258,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
-      {/* SIDEBAR */}
       <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
          <div className="bg-[#4B3621] p-10 text-center shrink-0 relative">
             <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center p-2 shadow-xl border border-white/20">
@@ -276,7 +265,7 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-white font-serif text-2xl font-bold tracking-tight mb-2 leading-tight">Tropical Dreams</h1>
             <div className="flex justify-center items-center">
-               <span className="bg-[#14b8a6] text-white text-[10px] font-black px-6 py-1.5 rounded-full tracking-widest uppercase shadow-sm">Online</span>
+               <span className="bg-[#14b8a6] text-white text-[10px] font-black px-6 py-1.5 rounded-full tracking-widest uppercase shadow-sm">{isOnline ? 'Online' : 'Offline'}</span>
             </div>
          </div>
 
@@ -320,7 +309,6 @@ const App: React.FC = () => {
          </div>
       </aside>
 
-      {/* MAIN CONTENT Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Routes>
           <Route path="/" element={
@@ -342,11 +330,6 @@ const App: React.FC = () => {
                   {menuItems.filter(i => (activeCategory === 'All' || i.category === activeCategory) && i.name.toLowerCase().includes(searchQuery.toLowerCase())).map(item => (
                     <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
                   ))}
-                  {menuItems.length === 0 && (
-                    <div className="col-span-full py-20 text-center text-gray-400 font-bold">
-                        No menu items found. Please check Admin settings.
-                    </div>
-                  )}
                 </div>
               </main>
 
@@ -364,7 +347,7 @@ const App: React.FC = () => {
                   isProcessing={isProcessing} 
                   userRole={posUser.role} 
                   onLogAction={logActivity}
-                  pendingTransactions={salesHistory.filter(t => t.status === 'Pending')}
+                  pendingTransactions={sortedSalesHistory.filter(t => t.status === 'Pending')}
                   onResumeOrder={onResumeOrder}
                 />
               </div>
@@ -373,60 +356,71 @@ const App: React.FC = () => {
 
           <Route path="/transactions" element={
             <TransactionsPage 
-              transactions={salesHistory} 
+              transactions={sortedSalesHistory} 
               onUpdateStatus={handleUpdateStatus} 
               user={posUser} 
               onEditOrder={onResumeOrder} 
             />
           } />
 
-          <Route path="/inventory" element={
-            <InventoryPage 
-              inventory={inventory} 
-              onUpdateStock={async (id: string, d: number) => {
-                const item = inventory.find(i => i.id === id);
-                if (item) {
-                  const updated = { ...item, quantity: item.quantity + d };
-                  setInventory(prev => prev.map(i => i.id === id ? updated : i));
-                  if (navigator.onLine) await DB.saveInventoryItem(updated);
-                  await LocalDB.updateInventoryItem(updated);
-                }
-              }} 
-              onRefresh={() => fetchData(false)} 
-            />
-          } />
-
           <Route path="/admin" element={
             posUser.role === 'Admin' ? (
               <AdminDashboard 
-                menuItems={menuItems} users={users} salesHistory={salesHistory} expenses={expenses} 
+                menuItems={menuItems} users={users} salesHistory={sortedSalesHistory} expenses={expenses} 
                 auditLogs={auditLogs} inventory={inventory}
                 onUpdateStock={async (id: string, d: number) => {
                   const item = inventory.find(i => i.id === id);
                   if (item) {
                     const updated = { ...item, quantity: item.quantity + d };
+                    setInventory(prev => prev.map(i => i.id === id ? updated : i));
                     if (navigator.onLine) await DB.saveInventoryItem(updated);
                     await LocalDB.updateInventoryItem(updated);
-                    fetchData();
                   }
                 }}
                 onSaveInventoryItem={async (item: InventoryItem) => {
+                  setInventory(prev => {
+                    const exists = prev.find(i => i.id === item.id);
+                    return exists ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev];
+                  });
                   if (navigator.onLine) await DB.saveInventoryItem(item);
                   await LocalDB.updateInventoryItem(item);
-                  fetchData();
                 }}
                 onDeleteInventoryItem={async (id: string) => {
+                   setInventory(prev => prev.filter(i => i.id !== id));
                    if (navigator.onLine) await DB.deleteInventoryItem(id);
                    const db = await LocalDB.getDB();
                    await db.delete('inventory', id);
-                   fetchData();
                 }}
-                onSaveItem={async (i: MenuItem) => { await DB.saveMenuItem(i); fetchData(); }} 
-                onDeleteItem={async (id: string) => { await DB.deleteMenuItem(id); fetchData(); }} 
-                onSaveUser={async (u: User) => { await DB.saveUser(u); fetchData(); }} 
-                onDeleteUser={async (id: string) => { await DB.deleteUser(id); fetchData(); }} 
-                onSaveExpense={async (e: Expense) => { await DB.saveExpense(e); fetchData(); }} 
-                onDeleteExpense={async (id: string) => { await DB.deleteExpense(id); fetchData(); }} 
+                onSaveItem={async (i: MenuItem) => { 
+                  setMenuItems(prev => {
+                    const exists = prev.find(m => m.id === i.id);
+                    return exists ? prev.map(m => m.id === i.id ? i : m) : [i, ...prev];
+                  });
+                  await DB.saveMenuItem(i); 
+                }} 
+                onDeleteItem={async (id: string) => { 
+                  setMenuItems(prev => prev.filter(m => m.id !== id));
+                  await DB.deleteMenuItem(id); 
+                }} 
+                onSaveUser={async (u: User) => { 
+                  setUsers(prev => {
+                    const exists = prev.find(usr => usr.id === u.id);
+                    return exists ? prev.map(usr => usr.id === u.id ? u : usr) : [u, ...prev];
+                  });
+                  await DB.saveUser(u); 
+                }} 
+                onDeleteUser={async (id: string) => { 
+                  setUsers(prev => prev.filter(u => u.id !== id));
+                  await DB.deleteUser(id); 
+                }} 
+                onSaveExpense={async (e: Expense) => { 
+                  setExpenses(prev => [e, ...prev]);
+                  await DB.saveExpense(e); 
+                }} 
+                onDeleteExpense={async (id: string) => { 
+                  setExpenses(prev => prev.filter(e => e.id !== id));
+                  await DB.deleteExpense(id); 
+                }} 
                 onClose={() => navigate('/')} 
                 onRefresh={() => fetchData(false)} 
                 currentUserRole={posUser.role} 
@@ -434,19 +428,10 @@ const App: React.FC = () => {
               />
             ) : <Navigate to="/" replace />
           } />
-          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
         {receiptData && <ReceiptModal data={receiptData} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setReceiptData(null); }} />}
       </div>
-
-      {pendingSyncCount > 0 && (
-          <div className="fixed bottom-4 left-4 z-50 bg-coffee-900 text-white px-4 py-2 rounded-xl shadow-xl flex items-center gap-3 border border-white/10 text-xs font-bold">
-              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-              <span>{pendingSyncCount} Syncing...</span>
-          </div>
-      )}
     </div>
   );
 };
