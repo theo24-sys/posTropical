@@ -70,7 +70,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         {isWaiter && (
           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center gap-3 text-orange-700 font-bold text-sm">
              <AlertCircle size={18} />
-             <span>Waiter Mode: Add items to active bills below.</span>
+             <span>Waiter Mode: Add items to pending bills below.</span>
           </div>
         )}
         
@@ -79,7 +79,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
             <div className="py-12 flex flex-col items-center justify-center opacity-10 space-y-4 text-center">
               <ShoppingBag size={80} />
               <p className="font-black text-xl text-[#4B3621]">Cart is empty</p>
-              <p className="text-xs font-bold uppercase tracking-widest">Select items to begin</p>
             </div>
           ) : (
             cart.map((item) => (
@@ -91,9 +90,9 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                   <h4 className="font-black text-base truncate text-[#4B3621]">{item.name}</h4>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-3">
-                       <button onClick={() => onUpdateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm transition-transform active:scale-90"><Minus size={14}/></button>
+                       <button onClick={() => onUpdateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm"><Minus size={14}/></button>
                        <span className="text-sm font-black w-6 text-center">{item.quantity}</span>
-                       <button onClick={() => onUpdateQuantity(item.id, 1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm transition-transform active:scale-90"><Plus size={14}/></button>
+                       <button onClick={() => onUpdateQuantity(item.id, 1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm"><Plus size={14}/></button>
                     </div>
                     <span className="text-sm font-black text-teal-700">{CURRENCY} {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
@@ -104,12 +103,11 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           )}
         </div>
 
-        {/* Active Bills Section - Essential for adding items while customers are eating */}
         {pendingTransactions.length > 0 && (
           <div className="pt-8 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] flex items-center gap-2">
-                <Clock size={14} className="text-orange-400" /> ACTIVE STATION BILLS
+                <Clock size={14} className="text-orange-400" /> ACTIVE PENDING BILLS
               </p>
               <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-[10px] font-black">{pendingTransactions.length}</span>
             </div>
@@ -126,7 +124,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                     </div>
                     <div>
                       <p className="text-sm font-black text-[#4B3621]">{tx.tableNumber ? `Table ${tx.tableNumber}` : 'Take Away'}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tx.items.length} items • {new Date(tx.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tx.items.length} items • {new Intl.DateTimeFormat('en-GB', { timeStyle: 'short', timeZone: 'Africa/Nairobi' }).format(new Date(tx.date))}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -141,7 +139,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
       </div>
 
       <div className="p-8 bg-white border-t border-gray-100 space-y-8 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
-        {/* Dine-in / Take Away Toggle */}
         <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
            <button onClick={() => setOrderType('Dine-in')} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all ${orderType === 'Dine-in' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}>
               <Utensils size={18} /> Dine-In
@@ -181,7 +178,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                   {method === 'M-Pesa' && <Smartphone size={20} />}
                   {method === 'Card' && <CreditCard size={20} />}
                   {method === 'Pay Later' && <ReceiptText size={20} className={paymentMethod === 'Pay Later' ? 'text-orange-500' : ''} />}
-                  <span className="text-[9px] font-black uppercase tracking-widest">{method === 'Pay Later' ? 'Create Bill' : method}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest">{method === 'Pay Later' ? 'Pending' : method}</span>
                </button>
              ))}
           </div>
@@ -200,7 +197,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
            disabled={cart.length === 0 || isProcessing || isWaiter} 
            className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${isWaiter ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : paymentMethod === 'Pay Later' ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10' : 'bg-[#4B3621] text-white hover:bg-[#3e2d1e]'} hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3`}
         >
-          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Print Guest Bill</> : 'Process Payment'}
+          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Save Pending Order</> : 'Process Payment'}
         </button>
       </div>
     </div>
