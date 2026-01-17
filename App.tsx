@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, HeldOrder, InventoryItem } from './types';
-import { LOGO_URL, KITCHEN_RECIPES } from './constants'; 
+import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, INITIAL_KITCHEN_INVENTORY } from './constants'; 
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -15,7 +15,8 @@ import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
 import { 
   Search, LayoutGrid, LogOut, Coffee, 
-  CheckCircle, Loader2, List, RefreshCw, Package, CloudOff, Cloud
+  CheckCircle, Loader2, List, RefreshCw, Package, CloudOff, Cloud,
+  History, BarChart3, LayoutList, ChevronRight
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -26,7 +27,7 @@ const App: React.FC = () => {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // App Data State (Strictly from DB)
+  // App Data State
   const [users, setUsers] = useState<User[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -36,7 +37,6 @@ const App: React.FC = () => {
   
   // Auth State
   const [posUser, setPosUser] = useState<User | null>(null);
-  const [adminUser, setAdminUser] = useState<User | null>(null);
 
   // POS State
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
@@ -56,56 +56,57 @@ const App: React.FC = () => {
 
   const getNairobiISO = () => new Date().toISOString(); 
 
-  const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low', specificUser?: User) => {
-    const user = specificUser || posUser || adminUser;
-    if (!user) return; 
+  const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
+    if (!posUser) return; 
     const log: AuditLog = {
       id: `log-${Date.now()}-${Math.random()}`,
       date: getNairobiISO(),
-      userId: user.id,
-      userName: user.name,
+      userId: posUser.id,
+      userName: posUser.name,
       action,
       details,
       severity
     };
     setAuditLogs(prev => [log, ...prev]);
     try { if (navigator.onLine) await DB.saveAuditLog(log); } catch (e) {}
-  }, [posUser, adminUser]);
+  }, [posUser]);
 
-  // --- DATA FETCHING (Strictly DB-only) ---
+  // --- DATA FETCHING ---
   const fetchData = useCallback(async (isInitial = false) => {
       if(isInitial) setIsLoading(true);
       
       try {
         if (navigator.onLine) {
-          // 1. ONLINE: Cloud is Authority
-          const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses] = await Promise.all([
+          const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs] = await Promise.all([
             DB.getUsers(),
             DB.getMenuItems(),
             DB.getInventory(),
             DB.getTransactions(),
             DB.getExpenses(),
+            DB.getAuditLogs()
           ]);
 
-          // Sync Cloud -> State
-          setUsers(cloudUsers);
-          setMenuItems(cloudMenu);
-          setInventory(cloudInv);
+          const finalUsers = cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS;
+          const finalMenu = cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS;
+          const finalInv = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
+
+          setUsers(finalUsers);
+          setMenuItems(finalMenu);
+          setInventory(finalInv);
           setSalesHistory(cloudSales);
           setExpenses(cloudExpenses);
+          setAuditLogs(cloudLogs);
 
-          // Sync Cloud -> Local Cache
           await Promise.all([
-              LocalDB.saveUsers(cloudUsers),
-              LocalDB.saveMenu(cloudMenu),
-              LocalDB.saveInventory(cloudInv),
+              LocalDB.saveUsers(finalUsers),
+              LocalDB.saveMenu(finalMenu),
+              LocalDB.saveInventory(finalInv),
               LocalDB.saveSalesHistory(cloudSales),
               LocalDB.saveExpenses(cloudExpenses)
           ]);
 
           setIsSupabaseConnected(true);
         } else {
-          // 2. OFFLINE: Use Local Cache
           const [localUsers, localMenu, localInv, localSales, localExpenses] = await Promise.all([
             LocalDB.getUsers(),
             LocalDB.getMenu(),
@@ -114,9 +115,9 @@ const App: React.FC = () => {
             LocalDB.getExpenses(),
           ]);
 
-          setUsers(localUsers);
-          setMenuItems(localMenu);
-          setInventory(localInv);
+          setUsers(localUsers.length > 0 ? localUsers : INITIAL_USERS);
+          setMenuItems(localMenu.length > 0 ? localMenu : MENU_ITEMS);
+          setInventory(localInv.length > 0 ? localInv : INITIAL_KITCHEN_INVENTORY);
           setSalesHistory(localSales);
           setExpenses(localExpenses);
           setIsSupabaseConnected(false);
@@ -128,11 +129,6 @@ const App: React.FC = () => {
       } catch (e) {
           console.error("Fetch failed:", e);
           setIsSupabaseConnected(false);
-          // Emergency local load if cloud crashed mid-fetch
-          const lUsers = await LocalDB.getUsers();
-          const lMenu = await LocalDB.getMenu();
-          setUsers(lUsers);
-          setMenuItems(lMenu);
       } finally { 
           if(isInitial) setIsLoading(false); 
       }
@@ -161,15 +157,8 @@ const App: React.FC = () => {
   }, [fetchData]);
 
   useEffect(() => {
-    const handleOnline = () => { 
-        setIsOnline(true); 
-        fetchData(); 
-        attemptAutoSync(); 
-    };
-    const handleOffline = () => {
-        setIsOnline(false);
-        setIsSupabaseConnected(false);
-    };
+    const handleOnline = () => { setIsOnline(true); fetchData(); attemptAutoSync(); };
+    const handleOffline = () => { setIsOnline(false); setIsSupabaseConnected(false); };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -178,24 +167,15 @@ const App: React.FC = () => {
     };
   }, [attemptAutoSync, fetchData]);
 
-  useEffect(() => {
-    const interval = setInterval(attemptAutoSync, 60000);
-    return () => clearInterval(interval);
-  }, [attemptAutoSync]);
-
   const handleLogin = (user: User) => {
-    if (user.role === 'Admin') setAdminUser(user);
     setPosUser(user);
-    logActivity('LOGIN', `User ${user.name} logged in`, 'low', user);
-    if (user.role === 'Chef' || user.role === 'Barista') navigate('/inventory');
-    else navigate('/');
+    logActivity('LOGIN', `User ${user.name} logged in`, 'low');
+    navigate('/');
   };
 
   const handleLogout = () => {
-    const user = posUser || adminUser;
-    if (user) logActivity('LOGOUT', `User ${user.name} logged out`, 'low', user);
+    logActivity('LOGOUT', `User ${posUser?.name} logged out`, 'low');
     setPosUser(null);
-    setAdminUser(null);
     navigate('/');
   };
 
@@ -207,13 +187,6 @@ const App: React.FC = () => {
     setLastAddedItem(item.name);
     setTimeout(() => setLastAddedItem(null), 2000);
   }, []);
-
-  const updateQuantity = useCallback((id: string, delta: number) => {
-    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
-  }, []);
-
-  const removeFromCart = useCallback((id: string) => setCart(prev => prev.filter(item => item.id !== id)), []);
-  const clearCart = useCallback(() => { setCart([]); setEditingTransactionId(null); }, []);
 
   const handleCheckout = async (paymentMethod: PaymentMethod, orderType: 'Dine-in' | 'Take Away', amountTendered?: number, change?: number, tableNumber?: number) => {
     if (cart.length === 0 || !posUser) return;
@@ -238,6 +211,7 @@ const App: React.FC = () => {
         });
         setIsModalOpen(true);
 
+        // Inventory deduction
         let currentInv = [...inventory];
         cart.forEach(item => {
             const ingredients = KITCHEN_RECIPES[item.id];
@@ -262,21 +236,6 @@ const App: React.FC = () => {
     } catch (e) { console.error(e); } finally { setIsProcessing(false); }
   };
 
-  const handleUpdateInvStock = async (id: string, delta: number) => {
-    setInventory(prev => {
-        const updated = prev.map(item => {
-            if (item.id === id) {
-                const newItem = { ...item, quantity: item.quantity + delta };
-                if (navigator.onLine) DB.saveInventoryItem(newItem);
-                return newItem;
-            }
-            return item;
-        });
-        LocalDB.saveInventory(updated);
-        return updated;
-    });
-  };
-
   const handleUpdateStatus = async (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: PaymentMethod) => {
     const tx = salesHistory.find(t => t.id === id);
     if (!tx || !posUser) return;
@@ -296,121 +255,193 @@ const App: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="h-screen flex flex-col items-center justify-center bg-beige-50"><Loader2 className="animate-spin text-coffee-800 mb-4" size={48} /><p className="font-serif font-bold text-coffee-900 text-lg">Loading your data...</p></div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-beige-50"><Loader2 className="animate-spin text-coffee-800" size={64} /></div>;
   if (!posUser) return <LoginScreen users={users} onLogin={handleLogin} />;
 
-  const isActive = (path: string) => location.pathname === path;
-
   return (
-    <div className="flex h-screen bg-beige-50 text-coffee-950 overflow-hidden font-sans">
-      <aside className="w-20 md:w-24 bg-coffee-900 flex flex-col items-center py-8 shrink-0 z-40 border-r border-black/10 shadow-2xl">
-         <div className="mb-12 bg-white rounded-2xl p-2 w-12 h-12 md:w-16 md:h-16 shadow-xl border border-white/20">
-            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
-         </div>
-         <nav className="flex-1 space-y-4 w-full px-2">
-            <button onClick={() => navigate('/')} className={`w-full flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isActive('/') ? 'bg-tropical-500 text-white shadow-lg' : 'text-coffee-300 hover:bg-white/10'}`}>
-                <LayoutGrid size={24} /><span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">POS</span>
-            </button>
-            <button onClick={() => navigate('/transactions')} className={`w-full flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isActive('/transactions') ? 'bg-tropical-500 text-white shadow-lg' : 'text-coffee-300 hover:bg-white/10'}`}>
-                <List size={24} /><span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">Orders</span>
-            </button>
-            <button onClick={() => navigate('/inventory')} className={`w-full flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isActive('/inventory') ? 'bg-tropical-500 text-white shadow-lg' : 'text-coffee-300 hover:bg-white/10'}`}>
-                <Package size={24} /><span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">Stock</span>
-            </button>
-            {posUser.role === 'Admin' && (
-                <button onClick={() => navigate('/admin')} className={`w-full flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isActive('/admin') ? 'bg-tropical-500 text-white shadow-lg' : 'text-coffee-300 hover:bg-white/10'}`}>
-                    <RefreshCw size={24} /><span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">Admin</span>
-                </button>
-            )}
-         </nav>
-         
-         <div className="mt-auto flex flex-col items-center gap-4">
-            <div className={`p-2 rounded-full ${isSupabaseConnected ? 'text-green-400' : 'text-red-400'}`} title={isSupabaseConnected ? 'Cloud Connected' : 'Cloud Offline'}>
-                {isSupabaseConnected ? <Cloud size={20} /> : <CloudOff size={20} />}
+    <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
+      {/* SIDEBAR - VERTICAL CATEGORIES (Design from Image 2) */}
+      <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
+         <div className="bg-[#4B3621] p-10 text-center shrink-0 relative">
+            <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center p-2 shadow-xl border border-white/20">
+               <img src={LOGO_URL} alt="Tropical Dreams" className="w-full h-full object-contain" />
             </div>
-            <button onClick={handleLogout} className="p-4 text-red-400 hover:text-red-300 transition-colors"><LogOut size={24} /></button>
+            <h1 className="text-white font-serif text-2xl font-bold tracking-tight mb-2 leading-tight">Tropical Dreams</h1>
+            <div className="flex justify-center items-center">
+               <span className="bg-[#14b8a6] text-white text-[10px] font-black px-6 py-1.5 rounded-full tracking-widest uppercase shadow-sm">Online</span>
+            </div>
+         </div>
+
+         <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+            <div className="flex items-center gap-4">
+               <div className="w-12 h-12 bg-[#e0d4c4] rounded-full flex items-center justify-center font-bold text-[#4B3621] overflow-hidden border border-white shadow-sm">
+                  {posUser.avatar ? <img src={posUser.avatar} className="w-full h-full object-cover" /> : posUser.name.charAt(0)}
+               </div>
+               <span className="font-black text-lg truncate max-w-[140px] text-[#4B3621]">{posUser.name}</span>
+            </div>
+            <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all active:scale-95"><LogOut size={24} /></button>
+         </div>
+
+         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin bg-white">
+            <button 
+              onClick={() => { setActiveCategory('All'); navigate('/'); }} 
+              className={`w-full flex items-center px-6 py-5 rounded-[20px] text-base font-black transition-all ${activeCategory === 'All' && location.pathname === '/' ? 'bg-[#e0d4c4] text-[#4B3621] shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+            >
+               <div className="flex items-center gap-3"><LayoutGrid size={22} /> All Items</div>
+            </button>
+            <div className="px-6 py-4 mt-6 mb-2 border-t border-gray-50">
+               <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px]">Categories</p>
+            </div>
+            {Object.values(Category).map(cat => (
+               <button 
+                 key={cat} 
+                 onClick={() => { setActiveCategory(cat); navigate('/'); }} 
+                 className={`w-full flex items-center px-6 py-4 rounded-[16px] text-xs font-black transition-all uppercase tracking-wide text-left ${activeCategory === cat && location.pathname === '/' ? 'bg-beige-50 text-[#4B3621] shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
+               >
+                  {cat}
+               </button>
+            ))}
+         </div>
+
+         <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2 shrink-0">
+            <button onClick={() => navigate('/')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="POS"><LayoutList size={28}/></button>
+            <button onClick={() => navigate('/transactions')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/transactions' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="Orders History"><History size={28}/></button>
+            {posUser.role === 'Admin' && (
+              <button onClick={() => navigate('/admin')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/admin' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="Management"><BarChart3 size={28}/></button>
+            )}
          </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         <Routes>
           <Route path="/" element={
-            <div className="flex flex-1 h-full overflow-hidden">
-              <main className="flex-1 p-4 md:p-8 overflow-hidden flex flex-col relative">
-                <header className="mb-8 flex flex-col md:flex-row gap-4 md:items-center justify-between shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-coffee-100 p-3 rounded-2xl shadow-sm border border-coffee-200"><Coffee className="text-coffee-800" size={24} /></div>
-                        <div>
-                            <h2 className="text-2xl font-serif font-bold text-coffee-900 leading-none mb-1">Tropical Dreams Menu</h2>
-                            <p className="text-sm text-coffee-500 font-medium">Lodwar, Turkana | Welcome, {posUser.name}</p>
-                        </div>
-                    </div>
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-coffee-400" size={18} />
-                        <input type="text" placeholder="Search menu..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-coffee-200 rounded-2xl outline-none shadow-sm focus:ring-2 focus:ring-tropical-500 transition-all" />
-                    </div>
+            <div className="flex flex-1 overflow-hidden h-full">
+              <main className="flex-1 flex flex-col overflow-hidden p-8">
+                <header className="mb-10 flex items-center justify-between shrink-0">
+                  <div className="relative w-full max-w-3xl">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
+                    <input 
+                      type="text" 
+                      placeholder="Search menu..." 
+                      value={searchQuery} 
+                      onChange={(e) => setSearchQuery(e.target.value)} 
+                      className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm" 
+                    />
+                  </div>
                 </header>
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide shrink-0">
-                  <button onClick={() => setActiveCategory('All')} className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === 'All' ? 'bg-coffee-900 text-white shadow-lg' : 'bg-white text-coffee-600 border border-coffee-100'}`}>All Items</button>
-                  {Object.values(Category).map(cat => (
-                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-coffee-900 text-white shadow-lg' : 'bg-white text-coffee-600 border border-coffee-100'}`}>{cat}</button>
+                <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 content-start scroll-smooth">
+                  {menuItems.filter(i => (activeCategory === 'All' || i.category === activeCategory) && i.name.toLowerCase().includes(searchQuery.toLowerCase())).map(item => (
+                    <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
                   ))}
-                </div>
-                <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pb-20">
-                  {menuItems.filter(i => (activeCategory === 'All' || i.category === activeCategory) && i.name.toLowerCase().includes(searchQuery.toLowerCase())).map(item => <MenuItemCard key={item.id} item={item} onAdd={addToCart} />)}
                   {menuItems.length === 0 && (
-                      <div className="col-span-full py-20 text-center text-coffee-300">
-                          <p className="font-bold text-lg">No menu items found in your database.</p>
-                          <p className="text-sm">Add them in the Admin section.</p>
-                      </div>
+                    <div className="col-span-full py-20 text-center text-gray-400 font-bold">
+                        No menu items found. Please check Admin settings.
+                    </div>
                   )}
                 </div>
-                
-                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 ${lastAddedItem ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                   <div className="bg-coffee-900/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/10">
-                      <CheckCircle size={20} className="text-tropical-400" />
-                      <span className="font-bold">Added {lastAddedItem} to cart</span>
-                   </div>
-                </div>
               </main>
-              
-              <div className="w-80 lg:w-96 hidden lg:block border-l border-coffee-100 bg-white shadow-inner">
+
+              {/* CART SIDEBAR - Grid based UI (Design from Image 2) */}
+              <div className="w-[420px] shrink-0 h-full">
                 <CartSidebar 
-                  cart={cart} onUpdateQuantity={updateQuantity} onRemove={removeFromCart} onClear={clearCart} onCheckout={handleCheckout} 
-                  subtotal={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} tax={0} total={cart.reduce((a,c)=>a+(c.price*c.quantity),0)}
-                  isProcessing={isProcessing} userRole={posUser.role} onLogAction={logActivity}
-                  isEditing={!!editingTransactionId} prefilledTable={prefilledTable} prefilledOrderType={prefilledOrderType}
+                  cart={cart} 
+                  onUpdateQuantity={(id, d) => setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))} 
+                  onRemove={(id) => setCart(p => p.filter(i => i.id !== id))} 
+                  onClear={() => { setCart([]); setEditingTransactionId(null); }} 
+                  onCheckout={handleCheckout} 
+                  onHold={() => {}} 
+                  subtotal={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
+                  tax={0} 
+                  total={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
+                  isProcessing={isProcessing} 
+                  userRole={posUser.role} 
+                  onLogAction={logActivity} 
                 />
               </div>
             </div>
           } />
-          
-          <Route path="/inventory" element={<InventoryPage inventory={inventory} onUpdateStock={handleUpdateInvStock} onRefresh={() => fetchData(false)} />} />
-          
-          <Route path="/transactions" element={<TransactionsPage transactions={salesHistory} onUpdateStatus={handleUpdateStatus} user={posUser} onEditOrder={(tx) => {
-              const reconstructed: CartItem[] = tx.items.map(i => {
-                const orig = menuItems.find(m => m.id === i.id);
-                return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
-              });
-              setCart(reconstructed);
-              setEditingTransactionId(tx.id);
-              setPrefilledTable(tx.tableNumber);
-              setPrefilledOrderType(tx.orderType || 'Dine-in');
-              navigate('/');
-          }} />} />
-          
-          <Route path="/admin" element={<AdminDashboard menuItems={menuItems} users={users} salesHistory={salesHistory} expenses={expenses} auditLogs={auditLogs} onSaveItem={async (i) => { await DB.saveMenuItem(i); setMenuItems(prev => [i, ...prev.filter(x => x.id !== i.id)]); }} onDeleteItem={async (id) => { await DB.deleteMenuItem(id); setMenuItems(prev => prev.filter(i => i.id !== id)); }} onSaveUser={async (u) => { await DB.saveUser(u); setUsers(prev => [u, ...prev.filter(x => x.id !== u.id)]); }} onDeleteUser={async (id) => { await DB.deleteUser(id); setUsers(prev => prev.filter(u => u.id !== id)); }} onSaveExpense={async (e) => { await DB.saveExpense(e); setExpenses(prev => [e, ...prev]); }} onDeleteExpense={async (id) => { await DB.deleteExpense(id); setExpenses(prev => prev.filter(e => e.id !== id)); }} onClose={() => navigate('/')} onRefresh={() => fetchData(false)} currentUserRole={posUser.role} currentUser={posUser} />} />
+
+          <Route path="/transactions" element={
+            <TransactionsPage 
+              transactions={salesHistory} 
+              onUpdateStatus={handleUpdateStatus} 
+              user={posUser} 
+              onEditOrder={(tx) => {
+                const reconstructed: CartItem[] = tx.items.map(i => {
+                  const orig = menuItems.find(m => m.id === i.id);
+                  return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
+                });
+                setCart(reconstructed);
+                setEditingTransactionId(tx.id);
+                setPrefilledTable(tx.tableNumber);
+                setPrefilledOrderType(tx.orderType || 'Dine-in');
+                navigate('/');
+              }} 
+            />
+          } />
+
+          <Route path="/inventory" element={
+            <InventoryPage 
+              inventory={inventory} 
+              onUpdateStock={async (id, d) => {
+                setInventory(prev => prev.map(item => item.id === id ? { ...item, quantity: item.quantity + d } : item));
+                const item = inventory.find(i => i.id === id);
+                if (item && navigator.onLine) await DB.saveInventoryItem({ ...item, quantity: item.quantity + d });
+              }} 
+              onRefresh={() => fetchData(false)} 
+            />
+          } />
+
+          <Route path="/admin" element={
+            posUser.role === 'Admin' ? (
+              <AdminDashboard 
+                menuItems={menuItems} users={users} salesHistory={salesHistory} expenses={expenses} 
+                auditLogs={auditLogs} inventory={inventory}
+                onUpdateStock={async (id, d) => {
+                  const item = inventory.find(i => i.id === id);
+                  if (item) {
+                    const updated = { ...item, quantity: item.quantity + d };
+                    if (navigator.onLine) await DB.saveInventoryItem(updated);
+                    await LocalDB.updateInventoryItem(updated);
+                    fetchData();
+                  }
+                }}
+                onSaveInventoryItem={async (item) => {
+                  if (navigator.onLine) await DB.saveInventoryItem(item);
+                  await LocalDB.updateInventoryItem(item);
+                  fetchData();
+                }}
+                onDeleteInventoryItem={async (id) => {
+                   if (navigator.onLine) await DB.deleteInventoryItem(id);
+                   const db = await LocalDB.getDB();
+                   await db.delete('inventory', id);
+                   fetchData();
+                }}
+                onSaveItem={async (i) => { await DB.saveMenuItem(i); fetchData(); }} 
+                onDeleteItem={async (id) => { await DB.deleteMenuItem(id); fetchData(); }} 
+                onSaveUser={async (u) => { await DB.saveUser(u); fetchData(); }} 
+                onDeleteUser={async (id) => { await DB.deleteUser(id); fetchData(); }} 
+                onSaveExpense={async (e) => { await DB.saveExpense(e); fetchData(); }} 
+                onDeleteExpense={async (id) => { await DB.deleteExpense(id); fetchData(); }} 
+                onClose={() => navigate('/')} 
+                onRefresh={() => fetchData(false)} 
+                currentUserRole={posUser.role} 
+                currentUser={posUser} 
+              />
+            ) : <Navigate to="/" replace />
+          } />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        
+
         {receiptData && <ReceiptModal data={receiptData} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setReceiptData(null); }} />}
       </div>
 
       {pendingSyncCount > 0 && (
-          <div className="fixed bottom-4 left-4 z-50 bg-coffee-900 text-white px-4 py-2 rounded-xl shadow-xl flex items-center gap-3 border border-white/10 text-xs font-bold animate-in slide-in-from-left-4">
+          <div className="fixed bottom-4 left-4 z-50 bg-coffee-900 text-white px-4 py-2 rounded-xl shadow-xl flex items-center gap-3 border border-white/10 text-xs font-bold">
               <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-              <span>{pendingSyncCount} Orders Syncing...</span>
+              <span>{pendingSyncCount} Syncing...</span>
           </div>
       )}
     </div>
