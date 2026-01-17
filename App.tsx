@@ -62,6 +62,7 @@ const App: React.FC = () => {
     try { if (navigator.onLine) await DB.saveAuditLog(log); } catch (e) {}
   }, [posUser]);
 
+  // Ensure latest order is always at the top
   const sortedSalesHistory = useMemo(() => {
     return [...salesHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [salesHistory]);
@@ -213,8 +214,11 @@ const App: React.FC = () => {
             date: sale.date, orderId, paymentMethod, cashierName: posUser.name,
             tableNumber, orderType, aiMessage: aiMsg, status: sale.status
         });
+        
+        // Show modal immediately for print
         setIsModalOpen(true);
 
+        // Update records
         setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
         if (navigator.onLine) {
             await DB.saveTransaction(sale);
