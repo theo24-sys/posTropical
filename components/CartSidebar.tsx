@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CartItem, PaymentMethod, UserRole } from '../types';
 import { CURRENCY } from '../constants';
-import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, AlertCircle, ReceiptText } from 'lucide-react';
 
 interface CartSidebarProps {
   cart: CartItem[];
@@ -128,17 +128,18 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
 
         <div>
           <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4">PAYMENT METHOD</p>
-          <div className="grid grid-cols-3 gap-3">
-             {(['Cash', 'M-Pesa', 'Card'] as PaymentMethod[]).map(method => (
+          <div className="grid grid-cols-2 gap-3">
+             {(['Cash', 'M-Pesa', 'Card', 'Pay Later'] as PaymentMethod[]).map(method => (
                <button 
                  key={method} 
                  onClick={() => setPaymentMethod(method)} 
-                 className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${paymentMethod === method ? 'bg-gray-50 border-[#4B3621] text-[#4B3621] shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${paymentMethod === method ? 'bg-gray-50 border-[#4B3621] text-[#4B3621] shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'}`}
                >
-                  {method === 'Cash' && <Banknote size={24} />}
-                  {method === 'M-Pesa' && <Smartphone size={24} />}
-                  {method === 'Card' && <CreditCard size={24} />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{method}</span>
+                  {method === 'Cash' && <Banknote size={20} />}
+                  {method === 'M-Pesa' && <Smartphone size={20} />}
+                  {method === 'Card' && <CreditCard size={20} />}
+                  {method === 'Pay Later' && <ReceiptText size={20} />}
+                  <span className="text-[9px] font-black uppercase tracking-widest">{method === 'Pay Later' ? 'Pending (Bill)' : method}</span>
                </button>
              ))}
           </div>
@@ -155,9 +156,9 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         <button 
            onClick={handleCheckoutClick} 
            disabled={cart.length === 0 || isProcessing || isWaiter} 
-           className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${isWaiter ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#e0d4c4] text-[#4B3621] hover:bg-[#d4c5b3] hover:scale-[1.02] active:scale-[0.98]'}`}
+           className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${isWaiter ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : paymentMethod === 'Pay Later' ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-[#e0d4c4] text-[#4B3621] hover:bg-[#d4c5b3]'} hover:scale-[1.02] active:scale-[0.98]`}
         >
-          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : 'Checkout'}
+          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? 'Generate Bill' : 'Checkout'}
         </button>
       </div>
     </div>
