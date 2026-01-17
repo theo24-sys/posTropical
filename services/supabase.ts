@@ -99,6 +99,10 @@ export const DB = {
     });
   },
 
+  async deleteInventoryItem(id: string) {
+    await supabase.from('inventory').delete().eq('id', id);
+  },
+
   async getTransactions(): Promise<SaleTransaction[]> {
     const data = await safeFetch<any[]>(supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000));
     return data.map((t: any) => ({
