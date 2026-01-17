@@ -70,7 +70,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         {isWaiter && (
           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center gap-3 text-orange-700 font-bold text-sm">
              <AlertCircle size={18} />
-             <span>Waiter Mode: Order editing restricted.</span>
+             <span>Waiter Mode: Add items to active bills below.</span>
           </div>
         )}
         
@@ -104,34 +104,34 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           )}
         </div>
 
-        {/* Active Bills Section */}
+        {/* Active Bills Section - Essential for adding items while customers are eating */}
         {pendingTransactions.length > 0 && (
-          <div className="pt-8 border-t border-gray-100">
+          <div className="pt-8 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] flex items-center gap-2">
                 <Clock size={14} className="text-orange-400" /> ACTIVE STATION BILLS
               </p>
-              <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-[10px] font-black">{pendingTransactions.length}</span>
+              <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-[10px] font-black">{pendingTransactions.length}</span>
             </div>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {pendingTransactions.map(tx => (
                 <button 
                   key={tx.id}
                   onClick={() => onResumeOrder?.(tx)}
-                  className="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-orange-200 hover:shadow-lg transition-all text-left group"
+                  className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-[24px] hover:border-orange-200 hover:shadow-xl transition-all text-left group shadow-sm"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 font-black">
+                    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 font-black text-lg">
                       {tx.tableNumber || 'TA'}
                     </div>
                     <div>
-                      <p className="text-sm font-black text-[#4B3621]">Table {tx.tableNumber || 'Take Away'}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">{tx.items.length} items • {new Date(tx.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                      <p className="text-sm font-black text-[#4B3621]">{tx.tableNumber ? `Table ${tx.tableNumber}` : 'Take Away'}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tx.items.length} items • {new Date(tx.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-[#4B3621]">{CURRENCY} {tx.total.toLocaleString()}</span>
-                    <ChevronRight size={16} className="text-gray-200 group-hover:text-orange-400" />
+                  <div className="flex items-center gap-3">
+                    <span className="text-base font-black text-[#4B3621]">{CURRENCY} {tx.total.toLocaleString()}</span>
+                    <ChevronRight size={18} className="text-gray-200 group-hover:text-orange-400 transition-colors" />
                   </div>
                 </button>
               ))}
@@ -200,7 +200,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
            disabled={cart.length === 0 || isProcessing || isWaiter} 
            className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${isWaiter ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : paymentMethod === 'Pay Later' ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10' : 'bg-[#4B3621] text-white hover:bg-[#3e2d1e]'} hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3`}
         >
-          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Print Bill Only</> : 'Process Payment'}
+          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Print Guest Bill</> : 'Process Payment'}
         </button>
       </div>
     </div>
