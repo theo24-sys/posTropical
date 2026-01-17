@@ -45,7 +45,6 @@ export interface MenuItem {
   lowStockThreshold: number;
 }
 
-// Comprehensive Inventory Categories
 export type InventoryCategory = 
   | 'Meat & Poultry' 
   | 'Dairy & Eggs' 
@@ -59,7 +58,7 @@ export interface InventoryItem {
   id: string;
   name: string;
   quantity: number;
-  unit: string; // e.g., 'Kgs', 'Units', 'Trays', 'Liters', 'Pcs'
+  unit: string;
   category: InventoryCategory;
   lowStockThreshold: number;
 }
