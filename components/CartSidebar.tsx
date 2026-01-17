@@ -56,7 +56,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-[#FCFBF8] border-l border-gray-100 font-sans shadow-inner">
-      <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur-sm">
+      {/* FIXED HEADER */}
+      <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-5">
            <div className="bg-[#F9F6F3] p-4 rounded-2xl border border-gray-50 shadow-sm">
               <ShoppingBag size={32} className="text-[#4B3621]" />
@@ -68,7 +69,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin">
+      {/* SCROLLABLE CONTENT AREA */}
+      <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-thin">
         {isWaiter && (
           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center gap-3 text-orange-700 font-bold text-sm">
              <AlertCircle size={18} />
@@ -76,6 +78,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           </div>
         )}
         
+        {/* Cart Items Section */}
         <div className="space-y-4">
           {cart.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center opacity-10 space-y-4 text-center">
@@ -105,6 +108,56 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           )}
         </div>
 
+        {/* Order Configuration - Now Scrollable */}
+        <div className="pt-8 border-t border-gray-100 space-y-8">
+          {/* Dine-in / Take Away Toggle */}
+          <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+             <button onClick={() => setOrderType('Dine-in')} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all ${orderType === 'Dine-in' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}>
+                <Utensils size={18} /> Dine-In
+             </button>
+             <button onClick={() => setOrderType('Take Away')} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all ${orderType === 'Take Away' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}>
+                <ShoppingBag size={18} /> Take Away
+             </button>
+          </div>
+
+          {orderType === 'Dine-in' && (
+            <div>
+              <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 flex items-center gap-2"><Utensils size={14} /> SELECT TABLE</p>
+              <div className="grid grid-cols-4 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                  <button 
+                    key={num} 
+                    onClick={() => setSelectedTable(num)} 
+                    className={`py-4 rounded-xl text-lg font-black border-2 transition-all ${selectedTable === num ? 'bg-[#4B3621] text-white border-[#4B3621] shadow-lg scale-105' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'}`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4">PAYMENT METHOD</p>
+            <div className="grid grid-cols-2 gap-3">
+               {(['Cash', 'M-Pesa', 'Card', 'Pay Later'] as PaymentMethod[]).map(method => (
+                 <button 
+                   key={method} 
+                   onClick={() => setPaymentMethod(method)} 
+                   className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${paymentMethod === method ? 'bg-gray-50 border-[#4B3621] text-[#4B3621] shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'} ${method === 'Pay Later' ? 'border-dashed border-orange-200 hover:border-orange-400' : ''}`}
+                 >
+                    {method === 'Cash' && <Banknote size={20} />}
+                    {method === 'M-Pesa' && <Smartphone size={20} />}
+                    {method === 'Card' && <CreditCard size={20} />}
+                    {method === 'Pay Later' && <ReceiptText size={20} className={paymentMethod === 'Pay Later' ? 'text-orange-500' : ''} />}
+                    <span className="text-[9px] font-black uppercase tracking-widest">{method === 'Pay Later' ? 'Pending' : method}</span>
+                 </button>
+               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Active Bills Section */}
         {pendingTransactions.length > 0 && (
           <div className="pt-8 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4">
             <div className="flex items-center justify-between mb-4">
@@ -140,52 +193,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         )}
       </div>
 
-      <div className="p-8 bg-white border-t border-gray-100 space-y-8 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
-        <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
-           <button onClick={() => setOrderType('Dine-in')} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all ${orderType === 'Dine-in' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}>
-              <Utensils size={18} /> Dine-In
-           </button>
-           <button onClick={() => setOrderType('Take Away')} className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-black transition-all ${orderType === 'Take Away' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'}`}>
-              <ShoppingBag size={18} /> Take Away
-           </button>
-        </div>
-
-        {orderType === 'Dine-in' && (
-          <div>
-            <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 flex items-center gap-2"><Utensils size={14} /> SELECT TABLE</p>
-            <div className="grid grid-cols-4 gap-3">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                <button 
-                  key={num} 
-                  onClick={() => setSelectedTable(num)} 
-                  className={`py-4 rounded-xl text-lg font-black border-2 transition-all ${selectedTable === num ? 'bg-[#4B3621] text-white border-[#4B3621] shadow-lg scale-105' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'}`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4">PAYMENT METHOD</p>
-          <div className="grid grid-cols-2 gap-3">
-             {(['Cash', 'M-Pesa', 'Card', 'Pay Later'] as PaymentMethod[]).map(method => (
-               <button 
-                 key={method} 
-                 onClick={() => setPaymentMethod(method)} 
-                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${paymentMethod === method ? 'bg-gray-50 border-[#4B3621] text-[#4B3621] shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'} ${method === 'Pay Later' ? 'border-dashed border-orange-200 hover:border-orange-400' : ''}`}
-               >
-                  {method === 'Cash' && <Banknote size={20} />}
-                  {method === 'M-Pesa' && <Smartphone size={20} />}
-                  {method === 'Card' && <CreditCard size={20} />}
-                  {method === 'Pay Later' && <ReceiptText size={20} className={paymentMethod === 'Pay Later' ? 'text-orange-500' : ''} />}
-                  <span className="text-[9px] font-black uppercase tracking-widest">{method === 'Pay Later' ? 'Pending' : method}</span>
-               </button>
-             ))}
-          </div>
-        </div>
-
+      {/* FIXED FOOTER */}
+      <div className="p-8 bg-white border-t border-gray-100 space-y-6 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0">
         <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-6">
            <span className="text-base font-black text-gray-400 uppercase tracking-widest">Total Amount</span>
            <div className="text-right">
