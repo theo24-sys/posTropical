@@ -20,6 +20,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const [settleMethod, setSettleMethod] = useState<PaymentMethod>('Cash');
   const navigate = useNavigate();
 
+  const formatEATDate = (isoString: string) => {
+    return new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Africa/Nairobi'
+    }).format(new Date(isoString));
+  };
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchesStatus = filterStatus === 'All' || t.status === filterStatus;
@@ -32,7 +40,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
 
   const handleSettleClick = (t: SaleTransaction) => {
     setSelectedTransaction(t);
-    setSettleMethod('Cash'); // Default
+    setSettleMethod('Cash'); 
     setIsSettleModalOpen(true);
   };
 
@@ -45,132 +53,130 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === 'Paid') return <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit"><CheckCircle size={12} /> Paid</span>;
-    return <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit"><Clock size={12} /> Pending</span>;
+    if (status === 'Paid') return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 w-fit"><CheckCircle size={12} /> Succeeded</span>;
+    return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 w-fit animate-pulse"><Clock size={12} /> Unpaid</span>;
   };
 
   return (
-    <div className="min-h-screen bg-beige-100 flex flex-col font-sans">
-      {/* Header */}
-      <div className="bg-coffee-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
-         <div className="flex items-center gap-4">
-             <button onClick={() => navigate('/')} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
-                <ArrowLeft size={20} />
+    <div className="min-h-screen bg-[#FDFCF9] flex flex-col font-sans">
+      <div className="bg-[#4B3621] text-white px-10 py-8 flex justify-between items-center shadow-xl shrink-0">
+         <div className="flex items-center gap-6">
+             <button onClick={() => navigate('/')} className="bg-white/10 p-4 rounded-2xl hover:bg-white/20 transition-all active:scale-95 shadow-lg">
+                <ArrowLeft size={24} />
              </button>
              <div>
-                <h1 className="font-serif text-xl font-bold">Transaction Management</h1>
-                <p className="text-coffee-300 text-xs">View and manage order status</p>
+                <h1 className="font-serif text-3xl font-black tracking-tighter">Order Ledger</h1>
+                <p className="text-coffee-200 text-xs font-bold opacity-60 uppercase tracking-widest">Audit & Settlement Center</p>
              </div>
          </div>
-         <div className="hidden md:flex bg-white/10 px-4 py-2 rounded-lg items-center gap-2">
-            <span className="text-sm font-medium">Pending Orders:</span>
-            <span className="bg-orange-500 text-white px-2 py-0.5 rounded-md text-xs font-bold">{transactions.filter(t => t.status === 'Pending').length}</span>
+         <div className="hidden md:flex bg-white/10 px-6 py-3 rounded-2xl items-center gap-4 backdrop-blur-sm border border-white/5 shadow-inner">
+            <span className="text-xs font-black uppercase tracking-widest opacity-60">Active Pending:</span>
+            <span className="bg-orange-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg shadow-orange-900/20">{transactions.filter(t => t.status === 'Pending').length}</span>
          </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="bg-white border-b border-coffee-200 p-4 sticky top-0 z-10 flex flex-col md:flex-row gap-4 items-center justify-between">
-         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+      <div className="bg-white border-b border-gray-100 p-6 sticky top-0 z-10 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm">
+         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
              {(['All', 'Pending', 'Paid'] as const).map(status => (
                 <button 
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
-                    ${filterStatus === status ? 'bg-coffee-800 text-white shadow-md' : 'bg-beige-50 text-coffee-600 hover:bg-coffee-100'}
+                  className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap
+                    ${filterStatus === status ? 'bg-[#4B3621] text-white shadow-xl translate-y-[-2px]' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}
                   `}
                 >
-                  {status} Orders
+                  {status} Records
                 </button>
              ))}
          </div>
-         
-         <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-coffee-400" size={18} />
+         <div className="relative w-full md:w-[400px]">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
             <input 
               type="text" 
               placeholder="Search ID, Staff or Table..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-coffee-200 rounded-xl focus:ring-2 focus:ring-coffee-500 outline-none bg-beige-50"
+              className="w-full pl-16 pr-6 py-4 bg-gray-50 border-2 border-transparent rounded-[24px] focus:bg-white focus:border-[#4B3621] outline-none font-bold text-base transition-all shadow-inner"
             />
          </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
-         <div className="bg-white rounded-2xl shadow-sm border border-coffee-100 overflow-hidden">
-             <table className="w-full text-left text-sm">
-                 <thead className="bg-beige-50 text-coffee-600 font-medium border-b border-coffee-100">
+      <div className="flex-1 p-6 md:p-12 overflow-y-auto w-full max-w-[1600px] mx-auto">
+         <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+             <table className="w-full text-left">
+                 <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-100">
                      <tr>
-                         <th className="px-6 py-4">Status</th>
-                         <th className="px-6 py-4">Order Info</th>
-                         <th className="px-6 py-4">Items</th>
-                         <th className="px-6 py-4">Total</th>
-                         <th className="px-6 py-4 text-right">Action</th>
+                         <th className="px-8 py-6">Identity</th>
+                         <th className="px-8 py-6">Order Snapshot</th>
+                         <th className="px-8 py-6">Volume</th>
+                         <th className="px-8 py-6 text-right">Value Point</th>
+                         <th className="px-8 py-6 text-right">Ops</th>
                      </tr>
                  </thead>
-                 <tbody className="divide-y divide-coffee-50">
+                 <tbody className="divide-y divide-gray-50">
                     {filteredTransactions.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="text-center py-12 text-coffee-400 italic">No transactions found matching your filter.</td>
+                            <td colSpan={5} className="text-center py-40 text-gray-300 italic font-black text-xl uppercase tracking-widest opacity-40">No records in this window</td>
                         </tr>
                     ) : (
                         filteredTransactions.map(t => (
-                            <tr key={t.id} className="hover:bg-beige-50 transition-colors">
-                                <td className="px-6 py-4">{getStatusBadge(t.status)}</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-coffee-800">#{t.id}</span>
-                                        <span className="text-xs text-coffee-500">{new Date(t.date).toLocaleString()}</span>
-                                        <div className="flex items-center gap-2 mt-1">
+                            <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
+                                <td className="px-8 py-8">
+                                    <div className="flex flex-col gap-4">
+                                        {getStatusBadge(t.status)}
+                                        <div>
+                                            <p className="font-black text-xl text-[#4B3621] leading-none mb-2">#{t.id}</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{formatEATDate(t.date)}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-8 py-8">
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2">
                                             {t.orderType === 'Take Away' ? (
-                                                <span className="text-xs bg-tropical-50 px-1.5 rounded border border-tropical-200 text-tropical-700 flex items-center gap-1">
-                                                    <ShoppingBasket size={10} /> Take Away
+                                                <span className="text-[9px] font-black uppercase tracking-widest bg-teal-50 text-teal-700 px-3 py-1 rounded-lg border border-teal-100 flex items-center gap-1.5 shadow-sm">
+                                                    <ShoppingBasket size={12} /> Take Away
                                                 </span>
                                             ) : (
-                                                <span className="text-xs bg-gray-100 px-1.5 rounded border border-gray-200 text-gray-600 flex items-center gap-1">
-                                                    <Utensils size={10} /> Table {t.tableNumber || '-'}
+                                                <span className="text-[9px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 px-3 py-1 rounded-lg border border-gray-100 flex items-center gap-1.5 shadow-sm">
+                                                    <Utensils size={12} /> Table {t.tableNumber || '-'}
                                                 </span>
                                             )}
-                                            <span className="text-xs text-gray-500">by {t.cashierName}</span>
                                         </div>
-                                        {t.updatedBy && t.status === 'Paid' && (
-                                            <div className="flex items-center gap-1 mt-1 text-[10px] text-green-600 font-medium">
-                                                <UserIcon size={10} /> Collected by {t.updatedBy}
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="max-w-xs">
-                                        <p className="truncate font-medium text-coffee-700">
+                                        <p className="text-sm font-bold text-[#4B3621] leading-relaxed line-clamp-2 max-w-sm">
                                             {t.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                                         </p>
-                                        <p className="text-xs text-coffee-400">{t.items.length} items</p>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 font-bold text-lg text-coffee-900">{CURRENCY} {t.total.toLocaleString()}</td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-8 py-8">
+                                    <span className="bg-gray-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        {t.items.length} Units
+                                    </span>
+                                </td>
+                                <td className="px-8 py-8 text-right">
+                                    <p className="text-2xl font-black text-[#4B3621] tracking-tighter">{CURRENCY} {t.total.toLocaleString()}</p>
+                                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mt-1">Cashier: {t.cashierName}</p>
+                                </td>
+                                <td className="px-8 py-8 text-right">
                                     {t.status === 'Pending' ? (
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                                             {onEditOrder && (
                                                 <button
                                                     onClick={() => onEditOrder(t)}
-                                                    className="bg-coffee-100 hover:bg-coffee-200 text-coffee-800 px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-                                                    title="Add items to this order"
+                                                    className="bg-white border-2 border-gray-100 hover:border-[#4B3621] text-[#4B3621] px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
                                                 >
-                                                    <PlusCircle size={14} /> Add Items
+                                                    <PlusCircle size={16} /> Add Items
                                                 </button>
                                             )}
                                             <button 
                                                 onClick={() => handleSettleClick(t)}
-                                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-green-900/10 transition-colors"
+                                                className="bg-[#4B3621] text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all"
                                             >
-                                                Mark Paid
+                                                Settle Bill
                                             </button>
                                         </div>
                                     ) : (
-                                        <span className="text-xs text-gray-400 font-medium">Completed</span>
+                                        <span className="text-[9px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-4 py-2 rounded-xl">Archive Locked</span>
                                     )}
                                 </td>
                             </tr>
@@ -181,47 +187,45 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
          </div>
       </div>
 
-      {/* Settle Modal */}
       {isSettleModalOpen && selectedTransaction && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-                  <div className="bg-green-600 p-4 text-white text-center">
-                      <h3 className="font-bold text-lg">Confirm Payment</h3>
-                      <p className="text-green-100 text-sm">Order #{selectedTransaction.id}</p>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/90 backdrop-blur-xl p-6">
+              <div className="bg-white rounded-[56px] shadow-2xl w-full max-w-xl overflow-hidden p-12 relative animate-in zoom-in-95 duration-300">
+                  <div className="text-center mb-10">
+                      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                         <CheckCircle size={40} className="text-green-600" />
+                      </div>
+                      <h3 className="font-serif text-4xl font-black text-[#4B3621] tracking-tighter mb-2">Finalize Sale</h3>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Order Reference: #{selectedTransaction.id}</p>
                   </div>
-                  <div className="p-6">
-                      <div className="text-center mb-6">
-                          <p className="text-gray-500 text-sm mb-1">Total Amount Due</p>
-                          <h2 className="text-3xl font-bold text-gray-900">{CURRENCY} {selectedTransaction.total.toLocaleString()}</h2>
-                          <div className="mt-2 text-xs bg-gray-50 text-gray-500 p-2 rounded border border-gray-100">
-                             Collecting as: <strong>{user.name}</strong>
-                          </div>
+                  
+                  <div className="bg-gray-50 rounded-[32px] p-8 mb-10 text-center border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-[3px] mb-2">Total Receivable</p>
+                      <h2 className="text-5xl font-black text-[#4B3621] tracking-tighter">{CURRENCY} {selectedTransaction.total.toLocaleString()}</h2>
+                  </div>
+                  
+                  <div className="space-y-4 mb-10">
+                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Select Tender Method</p>
+                      <div className="grid grid-cols-3 gap-4">
+                          {(['Cash', 'M-Pesa', 'Card'] as PaymentMethod[]).map(m => (
+                              <button
+                                key={m}
+                                onClick={() => setSettleMethod(m)}
+                                className={`py-6 rounded-[24px] border-2 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-3 transition-all
+                                    ${settleMethod === m ? 'bg-white border-[#4B3621] text-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
+                                `}
+                              >
+                                {m === 'Cash' && <Banknote size={24} />}
+                                {m === 'M-Pesa' && <Smartphone size={24} />}
+                                {m === 'Card' && <CreditCard size={24} />}
+                                {m}
+                              </button>
+                          ))}
                       </div>
-                      
-                      <div className="space-y-3 mb-6">
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Select Payment Method</p>
-                          <div className="grid grid-cols-3 gap-2">
-                              {(['Cash', 'M-Pesa', 'Card'] as PaymentMethod[]).map(m => (
-                                  <button
-                                    key={m}
-                                    onClick={() => setSettleMethod(m)}
-                                    className={`py-3 rounded-xl border text-sm font-bold flex flex-col items-center gap-1 transition-all
-                                        ${settleMethod === m ? 'bg-green-50 border-green-500 text-green-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}
-                                    `}
-                                  >
-                                    {m === 'Cash' && <Banknote size={18} />}
-                                    {m === 'M-Pesa' && <Smartphone size={18} />}
-                                    {m === 'Card' && <CreditCard size={18} />}
-                                    {m}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
+                  </div>
 
-                      <div className="flex gap-3">
-                          <button onClick={() => setIsSettleModalOpen(false)} className="flex-1 py-3 border border-gray-300 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-                          <button onClick={handleConfirmSettle} className="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-900/20">Confirm Paid</button>
-                      </div>
+                  <div className="flex gap-4">
+                      <button onClick={() => setIsSettleModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest text-gray-400">Abort</button>
+                      <button onClick={handleConfirmSettle} className="flex-[2] py-6 bg-[#4B3621] text-white rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all">Settle & Archive</button>
                   </div>
               </div>
           </div>
