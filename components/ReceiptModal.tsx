@@ -70,7 +70,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <table>${itemsHtml}</table>
         <div class="divider"></div>
         <div style="display: flex; justify-content: space-between; font-size: 14px;" class="bold">
-          <span>TOTAL</span>
+          <span>TOTAL DUE</span>
           <span>KES ${data.total.toLocaleString()}</span>
         </div>
         <div class="divider"></div>
@@ -81,7 +81,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         </div>
         <div class="footer">
           <p>Served by: ${data.cashierName}</p>
-          <p style="margin-top: 10px;" class="bold italic">"${data.aiMessage || 'Thank you for choosing Tropical Dreams!'}"</p>
+          <p style="margin-top: 10px;" class="bold italic">"${data.aiMessage || 'Asante sana for visiting!'}"</p>
           <p style="margin-top: 8px;" class="bold uppercase">Karibu Tena</p>
         </div>
       </body>
@@ -102,7 +102,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               {isPending ? <ReceiptText size={40} /> : <ShieldCheck size={40} />}
             </div>
             <h2 className="font-serif text-3xl font-black relative z-10 uppercase tracking-tighter">{docTitle}</h2>
-            <p className="text-white opacity-80 text-xs font-black tracking-widest mt-2 relative z-10">ORDER #{data.orderId} • {isPending ? 'WAITING FOR PAYMENT' : 'SETTLED'}</p>
+            <p className="text-white opacity-80 text-xs font-black tracking-widest mt-2 relative z-10">ORDER #{data.orderId} • {isPending ? 'PAYMENT REQUIRED' : 'SETTLED'}</p>
           </div>
 
           <div className="p-8 overflow-y-auto flex-1 bg-gray-50/30">
@@ -115,39 +115,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               </div>
 
-              {/* High-visibility Payment Block for Bills */}
-              <div className={`mb-8 p-6 rounded-[24px] border-2 text-center transition-all ${isPending ? 'bg-orange-50 border-orange-100 scale-[1.02] shadow-lg shadow-orange-900/5' : 'bg-teal-50 border-teal-100'}`}>
+              {/* Payment Details Block */}
+              <div className={`mb-8 p-6 rounded-[24px] border-2 text-center transition-all ${isPending ? 'bg-green-50 border-green-100 scale-[1.02] shadow-lg shadow-green-900/5' : 'bg-teal-50 border-teal-100'}`}>
                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <Smartphone size={18} className={isPending ? 'text-orange-600' : 'text-teal-600'} />
-                      <p className={`text-[10px] font-black uppercase tracking-[3px] ${isPending ? 'text-orange-700' : 'text-teal-700'}`}>Lipa Na M-Pesa</p>
+                      <Smartphone size={18} className={isPending ? 'text-green-600' : 'text-teal-600'} />
+                      <p className={`text-[10px] font-black uppercase tracking-[3px] ${isPending ? 'text-green-700' : 'text-teal-700'}`}>Lipa Na M-Pesa</p>
                    </div>
                    <div className="space-y-3">
-                     <p className="text-lg font-black text-[#4B3621]">Business No: <span className={isPending ? 'text-orange-600' : 'text-[#4B3621]'}>{PAYBILL_NO}</span></p>
-                     <p className="text-lg font-black text-[#4B3621]">Account No: <span className={isPending ? 'text-orange-600' : 'text-[#4B3621]'}>{ACCOUNT_NO}</span></p>
+                     <p className="text-lg font-black text-[#4B3621]">Paybill: <span className={isPending ? 'text-green-600' : 'text-[#4B3621]'}>{PAYBILL_NO}</span></p>
+                     <p className="text-lg font-black text-[#4B3621]">Account: <span className={isPending ? 'text-green-600' : 'text-[#4B3621]'}>{ACCOUNT_NO}</span></p>
                    </div>
-                   <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest leading-relaxed">
-                        {isPending ? 'Please show this screen or print-out to the cashier once paid' : 'Payment successful - Asante!'}
-                      </p>
-                   </div>
+                   <p className="mt-4 text-[9px] font-black text-gray-300 uppercase tracking-widest">Please pay before departure. Asante!</p>
               </div>
 
-              {data.aiMessage && (
-                <div className="mb-8 bg-amber-50/50 p-6 rounded-[24px] border border-amber-100 relative">
-                    <div className="flex gap-4 items-start">
-                      <Sparkles size={18} className="text-amber-600 mt-1 shrink-0" />
-                      <p className="text-[#4B3621] italic text-base font-serif leading-relaxed">"{data.aiMessage}"</p>
-                    </div>
-                </div>
-              )}
-              
-              <div className="mb-8 flex justify-center">
-                 <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-gray-50 text-[#4B3621] rounded-full font-black text-xs uppercase tracking-widest border border-gray-100">
-                    {data.orderType === 'Take Away' ? <><ShoppingBasket size={16} /> Take Away</> : <><Utensils size={16} /> Table {data.tableNumber || 'TA'}</>}
-                 </div>
-              </div>
-
-              <div className="space-y-4 mb-10">
+              <div className="space-y-4 mb-10 border-t border-gray-100 pt-8">
                 {data.items.map((item) => (
                   <div key={item.id} className="flex justify-between items-start">
                     <div className="flex gap-4">
@@ -161,14 +142,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
               <div className={`p-6 rounded-[24px] text-white transition-colors duration-500 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'}`}>
                 <div className="flex justify-between items-center font-black text-2xl tracking-tighter uppercase">
-                  <span>{isPending ? 'Total Due' : 'Amount Paid'}</span>
+                  <span>{isPending ? 'Total Due' : 'Paid'}</span>
                   <span>{CURRENCY} {data.total.toLocaleString()}</span>
-                </div>
-                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Settlement Status</span>
-                   <span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-[2px] ${isPending ? 'bg-white/20 text-white animate-pulse' : 'bg-green-500 text-white'}`}>
-                      {isPending ? 'Unpaid' : 'Succeeded'}
-                   </span>
                 </div>
               </div>
             </div>
@@ -176,7 +151,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
           <div className="p-8 bg-white border-t border-gray-100 flex gap-4 shrink-0 relative z-10">
             <button onClick={onClose} className="flex-1 py-5 bg-gray-50 border border-gray-100 rounded-[22px] font-black text-[10px] uppercase tracking-[3px] text-gray-400 hover:text-gray-900 transition-all">Dismiss</button>
-            <button onClick={handlePrint} disabled={isPrinting} className={`flex-[2] py-5 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'} text-white rounded-[22px] font-black text-[10px] uppercase tracking-[3px] shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3`}><Printer size={20} /> {isPrinting ? 'Processing...' : isPending ? 'Print Station Bill' : 'Print Receipt'}</button>
+            <button onClick={handlePrint} disabled={isPrinting} className={`flex-[2] py-5 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'} text-white rounded-[22px] font-black text-[10px] uppercase tracking-[3px] shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3`}><Printer size={20} /> {isPrinting ? 'Processing...' : isPending ? 'Print Guest Bill' : 'Print Receipt'}</button>
           </div>
         </div>
     </div>
