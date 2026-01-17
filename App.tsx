@@ -346,8 +346,8 @@ const App: React.FC = () => {
               <div className="w-[420px] shrink-0 h-full">
                 <CartSidebar 
                   cart={cart} 
-                  onUpdateQuantity={(id, d) => setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))} 
-                  onRemove={(id) => setCart(p => p.filter(i => i.id !== id))} 
+                  onUpdateQuantity={(id: string, d: number) => setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))} 
+                  onRemove={(id: string) => setCart(p => p.filter(i => i.id !== id))} 
                   onClear={() => { setCart([]); setEditingTransactionId(null); }} 
                   onCheckout={handleCheckout} 
                   onHold={() => {}} 
@@ -384,7 +384,7 @@ const App: React.FC = () => {
           <Route path="/inventory" element={
             <InventoryPage 
               inventory={inventory} 
-              onUpdateStock={async (id, d) => {
+              onUpdateStock={async (id: string, d: number) => {
                 const item = inventory.find(i => i.id === id);
                 if (item) {
                   const updated = { ...item, quantity: item.quantity + d };
@@ -402,7 +402,7 @@ const App: React.FC = () => {
               <AdminDashboard 
                 menuItems={menuItems} users={users} salesHistory={salesHistory} expenses={expenses} 
                 auditLogs={auditLogs} inventory={inventory}
-                onUpdateStock={async (id, d) => {
+                onUpdateStock={async (id: string, d: number) => {
                   const item = inventory.find(i => i.id === id);
                   if (item) {
                     const updated = { ...item, quantity: item.quantity + d };
@@ -411,23 +411,23 @@ const App: React.FC = () => {
                     fetchData();
                   }
                 }}
-                onSaveInventoryItem={async (item) => {
+                onSaveInventoryItem={async (item: InventoryItem) => {
                   if (navigator.onLine) await DB.saveInventoryItem(item);
                   await LocalDB.updateInventoryItem(item);
                   fetchData();
                 }}
-                onDeleteInventoryItem={async (id) => {
+                onDeleteInventoryItem={async (id: string) => {
                    if (navigator.onLine) await DB.deleteInventoryItem(id);
                    const db = await LocalDB.getDB();
                    await db.delete('inventory', id);
                    fetchData();
                 }}
-                onSaveItem={async (i) => { await DB.saveMenuItem(i); fetchData(); }} 
-                onDeleteItem={async (id) => { await DB.deleteMenuItem(id); fetchData(); }} 
-                onSaveUser={async (u) => { await DB.saveUser(u); fetchData(); }} 
-                onDeleteUser={async (id) => { await DB.deleteUser(id); fetchData(); }} 
-                onSaveExpense={async (e) => { await DB.saveExpense(e); fetchData(); }} 
-                onDeleteExpense={async (id) => { await DB.deleteExpense(id); fetchData(); }} 
+                onSaveItem={async (i: MenuItem) => { await DB.saveMenuItem(i); fetchData(); }} 
+                onDeleteItem={async (id: string) => { await DB.deleteMenuItem(id); fetchData(); }} 
+                onSaveUser={async (u: User) => { await DB.saveUser(u); fetchData(); }} 
+                onDeleteUser={async (id: string) => { await DB.deleteUser(id); fetchData(); }} 
+                onSaveExpense={async (e: Expense) => { await DB.saveExpense(e); fetchData(); }} 
+                onDeleteExpense={async (id: string) => { await DB.deleteExpense(id); fetchData(); }} 
                 onClose={() => navigate('/')} 
                 onRefresh={() => fetchData(false)} 
                 currentUserRole={posUser.role} 
