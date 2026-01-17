@@ -385,9 +385,13 @@ const App: React.FC = () => {
             <InventoryPage 
               inventory={inventory} 
               onUpdateStock={async (id, d) => {
-                setInventory(prev => prev.map(item => item.id === id ? { ...item, quantity: item.quantity + d } : item));
                 const item = inventory.find(i => i.id === id);
-                if (item && navigator.onLine) await DB.saveInventoryItem({ ...item, quantity: item.quantity + d });
+                if (item) {
+                  const updated = { ...item, quantity: item.quantity + d };
+                  setInventory(prev => prev.map(i => i.id === id ? updated : i));
+                  if (navigator.onLine) await DB.saveInventoryItem(updated);
+                  await LocalDB.updateInventoryItem(updated);
+                }
               }} 
               onRefresh={() => fetchData(false)} 
             />
