@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { SaleTransaction, PaymentMethod, User } from '../types';
 import { CURRENCY } from '../constants';
-import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, User as UserIcon, Utensils, ShoppingBasket, PlusCircle } from 'lucide-react';
+import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
@@ -29,13 +29,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   };
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const matchesStatus = filterStatus === 'All' || t.status === filterStatus;
-      const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            t.cashierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (t.tableNumber?.toString() || '').includes(searchQuery);
-      return matchesStatus && matchesSearch;
-    });
+    // Explicitly sort by date descending (latest first)
+    return transactions
+      .filter(t => {
+        const matchesStatus = filterStatus === 'All' || t.status === filterStatus;
+        const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              t.cashierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              (t.tableNumber?.toString() || '').includes(searchQuery);
+        return matchesStatus && matchesSearch;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions, filterStatus, searchQuery]);
 
   const handleSettleClick = (t: SaleTransaction) => {
@@ -121,7 +124,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
                     ) : (
                         filteredTransactions.map(t => (
                             <tr key={t.id} className="hover:bg-gray-50/50 transition-colors group">
-                                <td className="px-8 py-8">
+                                <td className="px-8 py-8 whitespace-nowrap">
                                     <div className="flex flex-col gap-4">
                                         {getStatusBadge(t.status)}
                                         <div>
@@ -154,7 +157,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
                                     </span>
                                 </td>
                                 <td className="px-8 py-8 text-right">
-                                    <p className="text-2xl font-black text-[#4B3621] tracking-tighter">{CURRENCY} {t.total.toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-[#4B3621] tracking-tighter whitespace-nowrap">{CURRENCY} {t.total.toLocaleString()}</p>
                                     <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mt-1">Cashier: {t.cashierName}</p>
                                 </td>
                                 <td className="px-8 py-8 text-right">
