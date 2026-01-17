@@ -49,6 +49,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
       alert("Please select a table number.");
       return;
     }
+    // Logic: even if no "new" items were added to a resumed order, 
+    // we still call onCheckout to allow for re-saving and re-printing the bill.
     onCheckout(paymentMethod, orderType, undefined, undefined, orderType === 'Dine-in' ? selectedTable : undefined);
   };
 
@@ -90,9 +92,9 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                   <h4 className="font-black text-base truncate text-[#4B3621]">{item.name}</h4>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-3">
-                       <button onClick={() => onUpdateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm"><Minus size={14}/></button>
+                       <button onClick={() => onUpdateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm transition-transform active:scale-90"><Minus size={14}/></button>
                        <span className="text-sm font-black w-6 text-center">{item.quantity}</span>
-                       <button onClick={() => onUpdateQuantity(item.id, 1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm"><Plus size={14}/></button>
+                       <button onClick={() => onUpdateQuantity(item.id, 1)} className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 shadow-sm transition-transform active:scale-90"><Plus size={14}/></button>
                     </div>
                     <span className="text-sm font-black text-teal-700">{CURRENCY} {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
@@ -197,7 +199,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
            disabled={cart.length === 0 || isProcessing || isWaiter} 
            className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${isWaiter ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : paymentMethod === 'Pay Later' ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10' : 'bg-[#4B3621] text-white hover:bg-[#3e2d1e]'} hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3`}
         >
-          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Save Pending Order</> : 'Process Payment'}
+          {isProcessing ? 'Processing...' : isWaiter ? 'Order Locked' : paymentMethod === 'Pay Later' ? <><ReceiptText size={22} /> Save & Print Bill</> : 'Process Payment'}
         </button>
       </div>
     </div>
