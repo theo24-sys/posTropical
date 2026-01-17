@@ -58,7 +58,7 @@ export const DB = {
     const data = await safeFetch<any[]>(supabase.from('menu_items').select('*'));
     return data.map((item: any) => ({
       ...item,
-      lowStockThreshold: item.low_stock_threshold
+      lowStockThreshold: item.low_stock_threshold || item.lowStockThreshold || 0
     }));
   },
 
@@ -84,7 +84,7 @@ export const DB = {
     const data = await safeFetch<any[]>(supabase.from('inventory').select('*'));
     return data.map((i: any) => ({
       ...i,
-      lowStockThreshold: i.low_stock_threshold
+      lowStockThreshold: i.low_stock_threshold || i.lowStockThreshold || 0
     }));
   },
 
@@ -134,45 +134,12 @@ export const DB = {
         updated_by: transaction.updatedBy,
         updated_at: transaction.updatedAt
     };
-
-    try {
-      const { error, status } = await supabase.from('transactions').upsert(dbTx);
-      if (error) {
-          if (status === 400) {
-            console.warn("Schema mismatch detected, trying minimal payload...");
-            const minimalTx = {
-                id: transaction.id,
-                date: transaction.date,
-                total: transaction.total,
-                status: transaction.status,
-                items: transaction.items
-            };
-            await supabase.from('transactions').upsert(minimalTx);
-          } else {
-            throw error;
-          }
-      }
-    } catch (e: any) {
-      console.error("Error saving transaction to Supabase:", e.message);
-      throw e;
-    }
+    await supabase.from('transactions').upsert(dbTx);
   },
 
-  async updateTransactionStatus(id: string, status: string, paymentMethod: string, updatedBy: string) {
-    const { error } = await supabase.from('transactions').update({ 
-        status, 
-        payment_method: paymentMethod,
-        updated_by: updatedBy,
-        updated_at: new Date().toISOString()
-    }).eq('id', id);
-    if (error) throw error;
-  },
-
+  // Added missing updateTransactionDate method for repair operations
   async updateTransactionDate(id: string, newDate: string) {
-    const { error } = await supabase.from('transactions')
-      .update({ date: newDate })
-      .eq('id', id);
-    if (error) throw error;
+    await supabase.from('transactions').update({ date: newDate }).eq('id', id);
   },
 
   async getExpenses(): Promise<Expense[]> {
