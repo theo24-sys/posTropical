@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, HeldOrder, InventoryItem } from './types';
+import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
 import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, INITIAL_KITCHEN_INVENTORY } from './constants'; 
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
@@ -14,16 +14,13 @@ import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
 import { 
-  Search, LayoutGrid, LogOut, Coffee, 
-  CheckCircle, Loader2, List, RefreshCw, Package, CloudOff, Cloud,
-  History, BarChart3, LayoutList, ChevronRight
+  Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
 } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Global State ---
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -45,7 +42,6 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [lastAddedItem, setLastAddedItem] = useState<string | null>(null);
   
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [prefilledTable, setPrefilledTable] = useState<number | undefined>(undefined);
@@ -104,8 +100,6 @@ const App: React.FC = () => {
               LocalDB.saveSalesHistory(cloudSales),
               LocalDB.saveExpenses(cloudExpenses)
           ]);
-
-          setIsSupabaseConnected(true);
         } else {
           const [localUsers, localMenu, localInv, localSales, localExpenses] = await Promise.all([
             LocalDB.getUsers(),
@@ -120,7 +114,6 @@ const App: React.FC = () => {
           setInventory(localInv.length > 0 ? localInv : INITIAL_KITCHEN_INVENTORY);
           setSalesHistory(localSales);
           setExpenses(localExpenses);
-          setIsSupabaseConnected(false);
         }
         
         const pendingOrders = await LocalDB.getPendingOrders();
@@ -128,7 +121,6 @@ const App: React.FC = () => {
 
       } catch (e) {
           console.error("Fetch failed:", e);
-          setIsSupabaseConnected(false);
       } finally { 
           if(isInitial) setIsLoading(false); 
       }
@@ -158,7 +150,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); fetchData(); attemptAutoSync(); };
-    const handleOffline = () => { setIsOnline(false); setIsSupabaseConnected(false); };
+    const handleOffline = () => { setIsOnline(false); };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -184,9 +176,24 @@ const App: React.FC = () => {
       const existing = prev.find(i => i.id === item.id);
       return existing ? prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i) : [...prev, { ...item, quantity: 1 }];
     });
-    setLastAddedItem(item.name);
-    setTimeout(() => setLastAddedItem(null), 2000);
   }, []);
+
+  const onResumeOrder = (tx: SaleTransaction) => {
+    const reconstructed: CartItem[] = tx.items.map(i => {
+      const orig = menuItems.find(m => m.id === i.id);
+      return { 
+        ...(orig || { 
+          id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 
+        }), 
+        quantity: i.quantity 
+      };
+    });
+    setCart(reconstructed);
+    setEditingTransactionId(tx.id);
+    setPrefilledTable(tx.tableNumber);
+    setPrefilledOrderType(tx.orderType || 'Dine-in');
+    navigate('/');
+  };
 
   const handleCheckout = async (paymentMethod: PaymentMethod, orderType: 'Dine-in' | 'Take Away', amountTendered?: number, change?: number, tableNumber?: number) => {
     if (cart.length === 0 || !posUser) return;
@@ -211,7 +218,8 @@ const App: React.FC = () => {
         });
         setIsModalOpen(true);
 
-        // Inventory deduction
+        // Inventory deduction (only on new items or paid items logic could be refined here, 
+        // but for now we follow the existing pattern)
         let currentInv = [...inventory];
         cart.forEach(item => {
             const ingredients = KITCHEN_RECIPES[item.id];
@@ -260,7 +268,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
-      {/* SIDEBAR - VERTICAL CATEGORIES (Design from Image 2) */}
+      {/* SIDEBAR */}
       <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
          <div className="bg-[#4B3621] p-10 text-center shrink-0 relative">
             <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center p-2 shadow-xl border border-white/20">
@@ -312,7 +320,7 @@ const App: React.FC = () => {
          </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Routes>
           <Route path="/" element={
@@ -342,7 +350,6 @@ const App: React.FC = () => {
                 </div>
               </main>
 
-              {/* CART SIDEBAR - Grid based UI (Design from Image 2) */}
               <div className="w-[420px] shrink-0 h-full">
                 <CartSidebar 
                   cart={cart} 
@@ -356,7 +363,9 @@ const App: React.FC = () => {
                   total={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
                   isProcessing={isProcessing} 
                   userRole={posUser.role} 
-                  onLogAction={logActivity} 
+                  onLogAction={logActivity}
+                  pendingTransactions={salesHistory.filter(t => t.status === 'Pending')}
+                  onResumeOrder={onResumeOrder}
                 />
               </div>
             </div>
@@ -367,17 +376,7 @@ const App: React.FC = () => {
               transactions={salesHistory} 
               onUpdateStatus={handleUpdateStatus} 
               user={posUser} 
-              onEditOrder={(tx) => {
-                const reconstructed: CartItem[] = tx.items.map(i => {
-                  const orig = menuItems.find(m => m.id === i.id);
-                  return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
-                });
-                setCart(reconstructed);
-                setEditingTransactionId(tx.id);
-                setPrefilledTable(tx.tableNumber);
-                setPrefilledOrderType(tx.orderType || 'Dine-in');
-                navigate('/');
-              }} 
+              onEditOrder={onResumeOrder} 
             />
           } />
 
