@@ -52,8 +52,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
           .bold { font-weight: bold; }
           .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
           table { width: 100%; border-collapse: collapse; }
-          .mpesa-box { border: 1.5px solid #000; padding: 10px; margin: 10px 0; text-align: center; }
-          .mpesa-title { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+          .mpesa-box { border: 2.5px solid #000; padding: 15px 10px; margin: 15px 0; text-align: center; }
+          .mpesa-title { font-weight: bold; font-size: 14px; margin-bottom: 8px; text-decoration: underline; }
+          .mpesa-label { font-size: 11px; font-weight: bold; display: block; text-transform: uppercase; margin-top: 8px; }
+          .mpesa-number { font-size: 28px; font-weight: 900; display: block; margin-top: 2px; }
           .footer { font-size: 10px; margin-top: 15px; text-align: center; }
         </style>
       </head>
@@ -76,8 +78,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <div class="divider"></div>
         <div class="mpesa-box">
           <div class="mpesa-title">LIPA NA M-PESA</div>
-          <p>Paybill: <span class="bold">${PAYBILL_NO}</span></p>
-          <p>Account: <span class="bold">${ACCOUNT_NO}</span></p>
+          <span class="mpesa-label">Paybill No:</span>
+          <span class="mpesa-number">${PAYBILL_NO}</span>
+          <span class="mpesa-label">Account No:</span>
+          <span class="mpesa-number">${ACCOUNT_NO}</span>
         </div>
         <div class="footer">
           <p>Served by: ${data.cashierName}</p>
@@ -115,17 +119,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               </div>
 
-              {/* Payment Details Block */}
-              <div className={`mb-8 p-6 rounded-[24px] border-2 text-center transition-all ${isPending ? 'bg-green-50 border-green-100 scale-[1.02] shadow-lg shadow-green-900/5' : 'bg-teal-50 border-teal-100'}`}>
-                   <div className="flex items-center justify-center gap-2 mb-4">
-                      <Smartphone size={18} className={isPending ? 'text-green-600' : 'text-teal-600'} />
-                      <p className={`text-[10px] font-black uppercase tracking-[3px] ${isPending ? 'text-green-700' : 'text-teal-700'}`}>Lipa Na M-Pesa</p>
+              {/* Payment Details Block - Updated with much larger fonts */}
+              <div className={`mb-8 p-6 rounded-[32px] border-4 text-center transition-all ${isPending ? 'bg-green-50 border-green-200 scale-[1.02] shadow-xl shadow-green-900/10' : 'bg-teal-50 border-teal-100'}`}>
+                   <div className="flex items-center justify-center gap-2 mb-6">
+                      <Smartphone size={22} className={isPending ? 'text-green-600' : 'text-teal-600'} />
+                      <p className={`text-xs font-black uppercase tracking-[4px] ${isPending ? 'text-green-700' : 'text-teal-700'}`}>Lipa Na M-Pesa</p>
                    </div>
-                   <div className="space-y-3">
-                     <p className="text-lg font-black text-[#4B3621]">Paybill: <span className={isPending ? 'text-green-600' : 'text-[#4B3621]'}>{PAYBILL_NO}</span></p>
-                     <p className="text-lg font-black text-[#4B3621]">Account: <span className={isPending ? 'text-green-600' : 'text-[#4B3621]'}>{ACCOUNT_NO}</span></p>
+                   <div className="space-y-6">
+                     <div>
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Paybill Number</p>
+                       <p className={`text-5xl font-black ${isPending ? 'text-green-600' : 'text-[#4B3621]'}`}>{PAYBILL_NO}</p>
+                     </div>
+                     <div className="h-px bg-gray-200 w-1/2 mx-auto"></div>
+                     <div>
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Account Number</p>
+                       <p className={`text-5xl font-black ${isPending ? 'text-green-600' : 'text-[#4B3621]'}`}>{ACCOUNT_NO}</p>
+                     </div>
                    </div>
-                   <p className="mt-4 text-[9px] font-black text-gray-300 uppercase tracking-widest">Please pay before departure. Asante!</p>
+                   <p className="mt-6 text-[10px] font-black text-[#4B3621] uppercase tracking-widest leading-relaxed">Please show confirmation message before departure. Asante!</p>
               </div>
 
               <div className="space-y-4 mb-10 border-t border-gray-100 pt-8">
