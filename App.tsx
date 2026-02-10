@@ -2,19 +2,18 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
-import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, INITIAL_KITCHEN_INVENTORY } from './constants'; 
+import { LOGO_URL, INITIAL_USERS, MENU_ITEMS, INITIAL_KITCHEN_INVENTORY } from './constants'; 
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
 import { LoginScreen } from './components/LoginScreen';
 import { AdminDashboard } from './components/AdminDashboard';
 import TransactionsPage from './components/TransactionsPage';
-import { InventoryPage } from './components/InventoryPage';
 import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
 import { 
-  Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
+  Search, LayoutGrid, LogOut, Loader2, LayoutList, History
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -62,7 +61,6 @@ const App: React.FC = () => {
     try { if (navigator.onLine) await DB.saveAuditLog(log); } catch (e) {}
   }, [posUser]);
 
-  // Ensure latest order is always at the top
   const sortedSalesHistory = useMemo(() => {
     return [...salesHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [salesHistory]);
@@ -214,18 +212,10 @@ const App: React.FC = () => {
             date: sale.date, orderId, paymentMethod, cashierName: posUser.name,
             tableNumber, orderType, aiMessage: aiMsg, status: sale.status
         });
-        
-        // Show modal immediately for print
         setIsModalOpen(true);
-
-        // Update records
         setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
-        if (navigator.onLine) {
-            await DB.saveTransaction(sale);
-        } else {
-            await LocalDB.queueOrder(sale);
-        }
-        
+        if (navigator.onLine) await DB.saveTransaction(sale);
+        else await LocalDB.queueOrder(sale);
         logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
         setCart([]);
         setEditingTransactionId(null);
@@ -237,7 +227,6 @@ const App: React.FC = () => {
     if (!tx || !posUser) return;
     const updatedTx: SaleTransaction = { ...tx, status: newStatus, paymentMethod, updatedBy: posUser.name, updatedAt: getNairobiISO() };
     setSalesHistory(prev => prev.map(t => t.id === id ? updatedTx : t));
-    
     if (navigator.onLine) await DB.saveTransaction(updatedTx);
     else await LocalDB.queueOrder(updatedTx);
 
@@ -333,99 +322,53 @@ const App: React.FC = () => {
                   ))}
                 </div>
               </main>
-
               <div className="w-[420px] shrink-0 h-full">
                 <CartSidebar 
-                  cart={cart} 
-                  onUpdateQuantity={(id: string, d: number) => setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))} 
-                  onRemove={(id: string) => setCart(p => p.filter(i => i.id !== id))} 
+                  cart={cart} onUpdateQuantity={(id, d) => setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i))} 
+                  onRemove={(id) => setCart(p => p.filter(i => i.id !== id))} 
                   onClear={() => { setCart([]); setEditingTransactionId(null); }} 
-                  onCheckout={handleCheckout} 
-                  onHold={() => {}} 
-                  subtotal={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
-                  tax={0} 
-                  total={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
-                  isProcessing={isProcessing} 
-                  userRole={posUser.role} 
-                  onLogAction={logActivity}
+                  onCheckout={handleCheckout} onHold={() => {}} 
+                  subtotal={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} tax={0} total={cart.reduce((a,c)=>a+(c.price*c.quantity),0)} 
+                  isProcessing={isProcessing} userRole={posUser.role} onLogAction={logActivity}
                   pendingTransactions={sortedSalesHistory.filter(t => t.status === 'Pending')}
                   onResumeOrder={onResumeOrder}
                 />
               </div>
             </div>
           } />
-
-          <Route path="/transactions" element={
-            <TransactionsPage 
-              transactions={sortedSalesHistory} 
-              onUpdateStatus={handleUpdateStatus} 
-              user={posUser} 
-              onEditOrder={onResumeOrder} 
-            />
-          } />
-
+          <Route path="/transactions" element={<TransactionsPage transactions={sortedSalesHistory} onUpdateStatus={handleUpdateStatus} user={posUser} onEditOrder={onResumeOrder} />} />
           <Route path="/admin" element={
             posUser.role === 'Admin' ? (
               <AdminDashboard 
                 menuItems={menuItems} users={users} salesHistory={sortedSalesHistory} expenses={expenses} 
                 auditLogs={auditLogs} inventory={inventory}
-                onUpdateStock={async (id: string, d: number) => {
+                onUpdateStock={async (id, d) => {
                   const item = inventory.find(i => i.id === id);
                   if (item) {
                     const updated = { ...item, quantity: item.quantity + d };
-                    setInventory(prev => prev.map(i => i.id === id ? updated : i));
+                    setInventory(p => p.map(i => i.id === id ? updated : i));
                     if (navigator.onLine) await DB.saveInventoryItem(updated);
                     await LocalDB.updateInventoryItem(updated);
                   }
                 }}
-                onSaveInventoryItem={async (item: InventoryItem) => {
-                  setInventory(prev => {
-                    const exists = prev.find(i => i.id === item.id);
-                    return exists ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev];
-                  });
+                onSaveInventoryItem={async (item) => {
+                  setInventory(p => p.find(i => i.id === item.id) ? p.map(i => i.id === item.id ? item : i) : [item, ...p]);
                   if (navigator.onLine) await DB.saveInventoryItem(item);
                   await LocalDB.updateInventoryItem(item);
                 }}
-                onDeleteInventoryItem={async (id: string) => {
-                   setInventory(prev => prev.filter(i => i.id !== id));
+                onDeleteInventoryItem={async (id) => {
+                   setInventory(p => p.filter(i => i.id !== id));
                    if (navigator.onLine) await DB.deleteInventoryItem(id);
-                   const db = await LocalDB.getDB();
-                   await db.delete('inventory', id);
+                   const db = await LocalDB.getDB(); await db.delete('inventory', id);
                 }}
-                onSaveItem={async (i: MenuItem) => { 
-                  setMenuItems(prev => {
-                    const exists = prev.find(m => m.id === i.id);
-                    return exists ? prev.map(m => m.id === i.id ? i : m) : [i, ...prev];
-                  });
-                  await DB.saveMenuItem(i); 
-                }} 
-                onDeleteItem={async (id: string) => { 
-                  setMenuItems(prev => prev.filter(m => m.id !== id));
-                  await DB.deleteMenuItem(id); 
-                }} 
-                onSaveUser={async (u: User) => { 
-                  setUsers(prev => {
-                    const exists = prev.find(usr => usr.id === u.id);
-                    return exists ? prev.map(usr => usr.id === u.id ? u : usr) : [u, ...prev];
-                  });
-                  await DB.saveUser(u); 
-                }} 
-                onDeleteUser={async (id: string) => { 
-                  setUsers(prev => prev.filter(u => u.id !== id));
-                  await DB.deleteUser(id); 
-                }} 
-                onSaveExpense={async (e: Expense) => { 
-                  setExpenses(prev => [e, ...prev]);
-                  await DB.saveExpense(e); 
-                }} 
-                onDeleteExpense={async (id: string) => { 
-                  setExpenses(prev => prev.filter(e => e.id !== id));
-                  await DB.deleteExpense(id); 
-                }} 
-                onClose={() => navigate('/')} 
-                onRefresh={() => fetchData(false)} 
-                currentUserRole={posUser.role} 
-                currentUser={posUser} 
+                onSaveItem={async (i) => { setMenuItems(p => p.find(m => m.id === i.id) ? p.map(m => m.id === i.id ? i : m) : [i, ...p]); await DB.saveMenuItem(i); }} 
+                onDeleteItem={async (id) => { setMenuItems(p => p.filter(m => m.id !== id)); await DB.deleteMenuItem(id); }} 
+                onSaveUser={async (u) => { setUsers(p => p.find(usr => usr.id === u.id) ? p.map(usr => usr.id === u.id ? u : usr) : [u, ...p]); await DB.saveUser(u); }} 
+                onDeleteUser={async (id) => { setUsers(p => p.filter(u => u.id !== id)); await DB.deleteUser(id); }} 
+                onSaveExpense={async (e) => { setExpenses(p => [e, ...p]); await DB.saveExpense(e); }} 
+                onDeleteExpense={async (id) => { setExpenses(p => p.filter(e => e.id !== id)); await DB.deleteExpense(id); }} 
+                onClose={() => navigate('/')} onRefresh={() => fetchData(false)} 
+                currentUserRole={posUser.role} currentUser={posUser} 
               />
             ) : <Navigate to="/" replace />
           } />
