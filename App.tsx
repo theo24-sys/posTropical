@@ -307,9 +307,6 @@ const App: React.FC = () => {
          <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2 shrink-0">
             <button onClick={() => navigate('/')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="POS"><LayoutList size={28}/></button>
             <button onClick={() => navigate('/transactions')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/transactions' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="Orders History"><History size={28}/></button>
-            {posUser.role === 'Admin' && (
-              <button onClick={() => navigate('/admin')} className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${location.pathname === '/admin' ? 'bg-white shadow-lg text-[#14b8a6]' : 'text-gray-300 hover:text-gray-600'}`} title="Management"><BarChart3 size={28}/></button>
-            )}
          </div>
       </aside>
 
