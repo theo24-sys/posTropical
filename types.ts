@@ -46,13 +46,26 @@ export interface MenuItem {
 }
 
 export type InventoryCategory = 
-  | 'Meat & Poultry' 
-  | 'Dairy & Eggs' 
-  | 'Beverages' 
-  | 'Bakery & Pastries' 
-  | 'Dry Goods' 
-  | 'Vegetables' 
-  | 'Oils & Spices';
+  | 'BREAKFAST'
+  | 'HEALTH KICK'
+  | 'SOUP & SALADS'
+  | 'BITINGS'
+  | 'COFFEE (DOUBLE)'
+  | 'TEAS'
+  | 'SOFT DRINKS'
+  | 'ICED COFFEE'
+  | 'COLD BEVERAGES'
+  | 'SHAKES'
+  | 'SMOOTHIES'
+  | 'FRESH JUICES'
+  | 'LEMONADES'
+  | 'MOJITOS'
+  | 'BAKERY & PASTRIES'
+  | 'MAIN COURSES'
+  | 'BURGERS / BURRITOS & SANDWICHES'
+  | 'PIZZA'
+  | 'SIDES'
+  | 'DESSERTS';
 
 export interface InventoryItem {
   id: string;
