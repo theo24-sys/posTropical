@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { InventoryItem, InventoryCategory } from '../types';
-import { 
-  Search, Plus, Minus, AlertTriangle, Package, Beef, Egg, Wheat, 
-  Carrot, RefreshCw, Layers, GlassWater, Cake, Edit3, Trash2, X, Save 
+import {
+  Search, Plus, Minus, AlertTriangle, Package, Beef, Egg, Wheat,
+  Carrot, RefreshCw, Layers, GlassWater, Cake, Edit3, Trash2, X, Save
 } from 'lucide-react';
 import { DB } from '../services/supabase';
 import { LocalDB } from '../services/db';
@@ -19,13 +18,34 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
   const [activeCategory, setActiveCategory] = useState<InventoryCategory | 'All'>('All');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
+  // Use your REAL menu categories (exact match to InventoryCategory type)
   const categories: (InventoryCategory | 'All')[] = [
-    'All', 'Beverages', 'Bakery & Pastries', 'Meat & Poultry', 'Dairy & Eggs', 'Vegetables', 'Dry Goods', 'Oils & Spices'
+    'All',
+    'BREAKFAST',
+    'HEALTH KICK',
+    'SOUP & SALADS',
+    'BITINGS',
+    'COFFEE (DOUBLE)',
+    'TEAS',
+    'SOFT DRINKS',
+    'ICED COFFEE',
+    'COLD BEVERAGES',
+    'SHAKES',
+    'SMOOTHIES',
+    'FRESH JUICES',
+    'LEMONADES',
+    'MOJITOS',
+    'BAKERY & PASTRIES',
+    'MAIN COURSES',
+    'BURGERS / BURRITOS & SANDWICHES',
+    'PIZZA',
+    'SIDES',
+    'DESSERTS'
   ];
 
   const filteredInventory = inventory.filter(item => {
@@ -44,7 +64,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
     e.preventDefault();
     setIsSaving(true);
     const formData = new FormData(e.target as HTMLFormElement);
-    
+
     const item: InventoryItem = {
       id: editingItem?.id || `inv-${Date.now()}`,
       name: formData.get('name') as string,
@@ -84,13 +104,16 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
   };
 
   const getCategoryIcon = (cat: InventoryCategory) => {
-    switch(cat) {
-      case 'Meat & Poultry': return <Beef size={20} />;
-      case 'Dairy & Eggs': return <Egg size={20} />;
-      case 'Beverages': return <GlassWater size={20} />;
-      case 'Bakery & Pastries': return <Cake size={20} />;
-      case 'Dry Goods': return <Wheat size={20} />;
-      case 'Vegetables': return <Carrot size={20} />;
+    switch (cat) {
+      case 'BREAKFAST': return <Egg size={20} />;
+      case 'BITINGS': return <Beef size={20} />;
+      case 'MAIN COURSES': return <Beef size={20} />;
+      case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
+      case 'SOFT DRINKS': return <GlassWater size={20} />;
+      case 'BAKERY & PASTRIES': return <Cake size={20} />;
+      case 'DESSERTS': return <Cake size={20} />;
+      case 'VEGETABLES': return <Carrot size={20} />;
+      case 'FRESH JUICES': return <Carrot size={20} />;
       default: return <Layers size={20} />;
     }
   };
@@ -104,14 +127,14 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
             <p className="text-coffee-300 text-sm">Manage assets and kitchen supplies</p>
           </div>
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
               className="bg-[#14b8a6] hover:bg-[#0d9488] text-white px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg flex items-center gap-2"
             >
               <Plus size={18} /> New Item
             </button>
-            <button 
-              onClick={handleRefresh} 
+            <button
+              onClick={handleRefresh}
               disabled={isRefreshing}
               className="bg-white/10 hover:bg-white/20 p-3 rounded-xl transition-all"
             >
@@ -135,11 +158,12 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
             </button>
           ))}
         </div>
+
         <div className="relative w-72 hidden md:block">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search assets..." 
+          <input
+            type="text"
+            placeholder="Search assets..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none font-bold text-sm"
@@ -152,10 +176,10 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
           {filteredInventory.map(item => {
             const isLow = item.quantity <= item.lowStockThreshold;
             const isOut = item.quantity <= 0;
-            
+
             return (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className={`bg-white rounded-3xl p-6 shadow-sm border-2 transition-all hover:shadow-xl group relative overflow-hidden
                   ${isOut ? 'border-red-100 bg-red-50/5' : isLow ? 'border-orange-100' : 'border-transparent'}
                 `}
@@ -165,8 +189,12 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
                     {getCategoryIcon(item.category)}
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="p-2 bg-gray-900 text-white rounded-lg hover:bg-black"><Edit3 size={16}/></button>
-                     <button onClick={() => handleDeleteItem(item.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white"><Trash2 size={16}/></button>
+                    <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="p-2 bg-gray-900 text-white rounded-lg hover:bg-black">
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteItem(item.id)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white">
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
 
@@ -174,35 +202,41 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
                   <h3 className="font-black text-lg text-gray-900 leading-tight mb-1">{item.name}</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{item.category}</span>
-                    {isLow && <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${isOut ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>{isOut ? 'Out' : 'Low'}</span>}
+                    {isLow && <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${isOut ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}`}>
+                      {isOut ? 'Out' : 'Low'}
+                    </span>}
                   </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 mb-6">
                   <div className="flex justify-between items-end">
-                     <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current</p>
-                        <p className={`text-2xl font-black ${isOut ? 'text-red-600' : 'text-gray-900'}`}>
-                           {item.quantity} <span className="text-xs font-bold text-gray-400 uppercase">{item.unit}</span>
-                        </p>
-                     </div>
-                     <div className="flex gap-1">
-                        <button onClick={() => onUpdateStock(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 shadow-sm active:scale-90"><Minus size={16}/></button>
-                        <button onClick={() => onUpdateStock(item.id, 1)} className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center hover:bg-black shadow-md active:scale-90"><Plus size={16}/></button>
-                     </div>
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current</p>
+                      <p className={`text-2xl font-black ${isOut ? 'text-red-600' : 'text-gray-900'}`}>
+                        {item.quantity} <span className="text-xs font-bold text-gray-400 uppercase">{item.unit}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => onUpdateStock(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 shadow-sm active:scale-90">
+                        <Minus size={16} />
+                      </button>
+                      <button onClick={() => onUpdateStock(item.id, 1)} className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center hover:bg-black shadow-md active:scale-90">
+                        <Plus size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                     <span>Alert Threshold</span>
-                     <span>{item.lowStockThreshold} {item.unit}</span>
+                    <span>Alert Threshold</span>
+                    <span>{item.lowStockThreshold} {item.unit}</span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                        className={`h-full transition-all duration-700 ${isOut ? 'w-0' : isLow ? 'bg-orange-500' : 'bg-[#14b8a6]'}`}
-                        style={{ width: `${Math.min(100, (item.quantity / (item.lowStockThreshold * 3)) * 100)}%` }}
-                     />
+                    <div
+                      className={`h-full transition-all duration-700 ${isOut ? 'w-0' : isLow ? 'bg-orange-500' : 'bg-[#14b8a6]'}`}
+                      style={{ width: `${Math.min(100, (item.quantity / (item.lowStockThreshold * 3)) * 100)}%` }}
+                    />
                   </div>
                 </div>
               </div>
@@ -215,8 +249,12 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-md p-6">
           <div className="bg-white w-full max-w-xl rounded-[40px] p-10 shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-gray-300 hover:text-gray-900"><X size={32}/></button>
-            <h3 className="font-serif text-3xl font-black mb-8 text-gray-900">{editingItem ? 'Edit Asset SKU' : 'New Stock Asset'}</h3>
+            <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-gray-300 hover:text-gray-900">
+              <X size={32} />
+            </button>
+            <h3 className="font-serif text-3xl font-black mb-8 text-gray-900">
+              {editingItem ? 'Edit Asset SKU' : 'New Stock Asset'}
+            </h3>
             <form onSubmit={handleSaveItem} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Item Name</label>
@@ -232,14 +270,10 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Category</label>
-                <select name="category" defaultValue={editingItem?.category || 'Beverages'} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest">
-                  <option>Beverages</option>
-                  <option>Bakery & Pastries</option>
-                  <option>Meat & Poultry</option>
-                  <option>Dairy & Eggs</option>
-                  <option>Vegetables</option>
-                  <option>Dry Goods</option>
-                  <option>Oils & Spices</option>
+                <select name="category" defaultValue={editingItem?.category || 'MAIN COURSES'} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest">
+                  {categories.filter(c => c !== 'All').map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -247,9 +281,11 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
                 <input name="threshold" type="number" defaultValue={editingItem?.lowStockThreshold} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-red-600" required />
               </div>
               <div className="md:col-span-2 pt-6 flex gap-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 border border-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-400">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 border border-gray-100 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-400">
+                  Cancel
+                </button>
                 <button type="submit" disabled={isSaving} className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
-                  <Save size={18}/> {isSaving ? 'Saving...' : 'Commit Changes'}
+                  <Save size={18} /> {isSaving ? 'Saving...' : 'Commit Changes'}
                 </button>
               </div>
             </form>
