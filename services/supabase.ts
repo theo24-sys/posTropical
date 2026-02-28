@@ -1,7 +1,7 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_CONFIG } from '../config';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
+import { KITCHEN_RECIPES } from '../constants'; // needed for deduction logic
 
 const isValidUrl = (url: string) => {
   try {
@@ -12,30 +12,36 @@ const isValidUrl = (url: string) => {
   }
 };
 
-const supabaseUrl = isValidUrl(SUPABASE_CONFIG.url) 
-  ? SUPABASE_CONFIG.url 
-  : 'https://placeholder.supabase.co'; 
+const supabaseUrl = isValidUrl(SUPABASE_CONFIG.url)
+  ? SUPABASE_CONFIG.url
+  : 'https://placeholder.supabase.co';
 
 const supabaseKey = SUPABASE_CONFIG.key;
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
+/**
+ * Safe wrapper for Supabase queries - returns [] on error or no data
+ */
 const safeFetch = async <T>(query: any): Promise<T | []> => {
-    try {
-        const { data, error, status } = await query;
-        if (error) {
-            if (error.code === '42P01' || status === 404) return [];
-            console.warn("Supabase Fetch Error:", error.message);
-            throw error;
-        }
-        return data || [];
-    } catch (e: any) {
-        console.warn("Supabase Exception:", e.message);
-        return [];
+  try {
+    const { data, error, status } = await query;
+    if (error) {
+      if (error.code === '42P01' || status === 404) return [];
+      console.warn("Supabase Fetch Error:", error.message);
+      throw error;
     }
+    return data || [];
+  } catch (e: any) {
+    console.warn("Supabase Exception:", e.message);
+    return [];
+  }
 };
 
 export const DB = {
+  // ────────────────────────────────────────────────
+  // Users
+  // ────────────────────────────────────────────────
   async getUsers(): Promise<User[]> {
     return await safeFetch(supabase.from('users').select('*'));
   },
@@ -54,6 +60,9 @@ export const DB = {
     await supabase.from('users').delete().eq('id', id);
   },
 
+  // ────────────────────────────────────────────────
+  // Menu Items
+  // ────────────────────────────────────────────────
   async getMenuItems(): Promise<MenuItem[]> {
     const data = await safeFetch<any[]>(supabase.from('menu_items').select('*'));
     return data.map((item: any) => ({
@@ -64,14 +73,14 @@ export const DB = {
 
   async saveMenuItem(item: MenuItem) {
     const dbItem = {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        category: item.category,
-        image: item.image,
-        description: item.description,
-        stock: item.stock,
-        low_stock_threshold: item.lowStockThreshold
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      category: item.category,
+      image: item.image,
+      description: item.description,
+      stock: item.stock,
+      low_stock_threshold: item.lowStockThreshold
     };
     await supabase.from('menu_items').upsert(dbItem);
   },
@@ -80,6 +89,9 @@ export const DB = {
     await supabase.from('menu_items').delete().eq('id', id);
   },
 
+  // ────────────────────────────────────────────────
+  // Inventory
+  // ────────────────────────────────────────────────
   async getInventory(): Promise<InventoryItem[]> {
     const data = await safeFetch<any[]>(supabase.from('inventory').select('*'));
     return data.map((i: any) => ({
@@ -103,45 +115,90 @@ export const DB = {
     await supabase.from('inventory').delete().eq('id', id);
   },
 
+  /**
+   * Deducts stock from inventory based on KITCHEN_RECIPES mapping
+   * @param saleItems - array of { id: menuItemId, quantity: number }
+   */
+  async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
+    try {
+      const updates: { id: string; quantity: number }[] = [];
+
+      for (const item of saleItems) {
+        const recipes = KITCHEN_RECIPES[item.id] || [];
+        for (const rec of recipes) {
+          const deductQty = rec.amount * item.quantity;
+          if (deductQty <= 0) continue;
+
+          const { data: current } = await supabase
+            .from('inventory')
+            .select('quantity')
+            .eq('id', rec.invId)
+            .single();
+
+          if (!current) continue;
+
+          const newQty = Math.max(0, current.quantity - deductQty);
+
+          updates.push({ id: rec.invId, quantity: newQty });
+        }
+      }
+
+      if (updates.length > 0) {
+        const { error } = await supabase.from('inventory').upsert(updates);
+        if (error) throw error;
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Supabase deduction failed:', err.message);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ────────────────────────────────────────────────
+  // Transactions
+  // ────────────────────────────────────────────────
   async getTransactions(): Promise<SaleTransaction[]> {
     const data = await safeFetch<any[]>(supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000));
     return data.map((t: any) => ({
-        id: t.id,
-        date: t.date,
-        total: t.total,
-        paymentMethod: t.payment_method,
-        status: t.status || 'Paid',
-        cashierName: t.cashier_name,
-        tableNumber: t.table_number,
-        orderType: t.order_type,
-        items: t.items,
-        updatedBy: t.updated_by,
-        updatedAt: t.updated_at
+      id: t.id,
+      date: t.date,
+      total: t.total,
+      paymentMethod: t.payment_method,
+      status: t.status || 'Paid',
+      cashierName: t.cashier_name,
+      tableNumber: t.table_number,
+      orderType: t.order_type,
+      items: t.items,
+      updatedBy: t.updated_by,
+      updatedAt: t.updated_at
     }));
   },
 
   async saveTransaction(transaction: SaleTransaction) {
     const dbTx: any = {
-        id: transaction.id,
-        date: transaction.date,
-        total: transaction.total,
-        payment_method: transaction.paymentMethod,
-        status: transaction.status,
-        cashier_name: transaction.cashierName,
-        table_number: transaction.tableNumber,
-        order_type: transaction.orderType,
-        items: transaction.items,
-        updated_by: transaction.updatedBy,
-        updated_at: transaction.updatedAt
+      id: transaction.id,
+      date: transaction.date,
+      total: transaction.total,
+      payment_method: transaction.paymentMethod,
+      status: transaction.status,
+      cashier_name: transaction.cashierName,
+      table_number: transaction.tableNumber,
+      order_type: transaction.orderType,
+      items: transaction.items,
+      updated_by: transaction.updatedBy,
+      updated_at: transaction.updatedAt
     };
     await supabase.from('transactions').upsert(dbTx);
   },
 
-  // Added missing updateTransactionDate method for repair operations
   async updateTransactionDate(id: string, newDate: string) {
     await supabase.from('transactions').update({ date: newDate }).eq('id', id);
   },
 
+  // ────────────────────────────────────────────────
+  // Expenses
+  // ────────────────────────────────────────────────
   async getExpenses(): Promise<Expense[]> {
     const data = await safeFetch<any[]>(supabase.from('expenses').select('*').order('date', { ascending: false }));
     return data.map((e: any) => ({
@@ -169,6 +226,9 @@ export const DB = {
     await supabase.from('expenses').delete().eq('id', id);
   },
 
+  // ────────────────────────────────────────────────
+  // Audit Logs
+  // ────────────────────────────────────────────────
   async getAuditLogs(): Promise<AuditLog[]> {
     const data = await safeFetch<any[]>(supabase.from('audit_logs').select('*').order('date', { ascending: false }).limit(500));
     return data.map((l: any) => ({
