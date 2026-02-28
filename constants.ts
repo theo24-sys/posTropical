@@ -19,19 +19,110 @@ export const INITIAL_USERS: User[] = [
 
 // --- NECESSARY STAFF & KITCHEN INVENTORY ---
 export const INITIAL_KITCHEN_INVENTORY: InventoryItem[] = [
-  { id: 'inv_samosa_pieces',     name: 'Samosa Pieces (raw/frozen)',                     quantity: 300, unit: 'pcs',      category: 'BITINGS',      lowStockThreshold: 80 },
-  { id: 'inv_beef_fillet',       name: 'Beef Fillet Portions',                           quantity: 40,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 8 },
-  { id: 'inv_beef_portions',     name: 'Beef Portions (curry / stir fried / burrito)',   quantity: 60,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 12 },
-  { id: 'inv_beef_patties',      name: 'Beef Burger Patties',                            quantity: 80,  unit: 'pcs',       category: 'BURGERS',      lowStockThreshold: 20 },
-  { id: 'inv_chicken_breast',    name: 'Chicken Breast Portions',                        quantity: 50,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 10 },
-  { id: 'inv_chicken_portions',  name: 'Chicken Portions (curry / stir fried / burger / burrito)', quantity: 90, unit: 'portions', category: 'MAINS',        lowStockThreshold: 18 },
-  { id: 'inv_bbq_chicken_legs',  name: 'Barbeque Chicken Legs',                          quantity: 45,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 9 },
-  { id: 'inv_chicken_wings',     name: 'Chicken Wings (raw/marinated)',                  quantity: 150, unit: 'pcs',      category: 'BITINGS',      lowStockThreshold: 40 },
-  { id: 'inv_lamb_chops',        name: 'Lamb Chops Portions',                            quantity: 30,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 6 },
-  { id: 'inv_fish_fillet',       name: 'Fish Fillet Portions',                           quantity: 30,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 6 },
-  { id: 'inv_whole_fish',        name: 'Whole Fish / Tilapia',                           quantity: 25,  unit: 'pcs',       category: 'MAINS',        lowStockThreshold: 5 },
-  { id: 'inv_sausage',           name: 'Sausage (beef / chicken)',                       quantity: 200, unit: 'pcs',       category: 'BREAKFAST',    lowStockThreshold: 50 },
-  { id: 'inv_keringet_water',    name: 'Keringet Water 1L',                              quantity: 150, unit: 'pcs',       category: 'SOFT_DRINKS',  lowStockThreshold: 40 },
+  { 
+    id: 'inv_samosa_pieces', 
+    name: 'Samosa Pieces (raw/frozen)', 
+    quantity: 300, 
+    unit: 'pcs', 
+    category: 'BITINGS', 
+    lowStockThreshold: 80 
+  },
+  { 
+    id: 'inv_beef_fillet', 
+    name: 'Beef Fillet Portions', 
+    quantity: 40, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 8 
+  },
+  { 
+    id: 'inv_beef_portions', 
+    name: 'Beef Portions (curry / stir fried / burrito)', 
+    quantity: 60, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 12 
+  },
+  { 
+    id: 'inv_beef_patties', 
+    name: 'Beef Burger Patties', 
+    quantity: 80, 
+    unit: 'pcs', 
+    category: 'BURGERS / BURRITOS & SANDWICHES', 
+    lowStockThreshold: 20 
+  },
+  { 
+    id: 'inv_chicken_breast', 
+    name: 'Chicken Breast Portions', 
+    quantity: 50, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 10 
+  },
+  { 
+    id: 'inv_chicken_portions', 
+    name: 'Chicken Portions (curry / stir fried / burger / burrito)', 
+    quantity: 90, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 18 
+  },
+  { 
+    id: 'inv_bbq_chicken_legs', 
+    name: 'Barbeque Chicken Legs', 
+    quantity: 45, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 9 
+  },
+  { 
+    id: 'inv_chicken_wings', 
+    name: 'Chicken Wings (raw/marinated)', 
+    quantity: 150, 
+    unit: 'pcs', 
+    category: 'BITINGS', 
+    lowStockThreshold: 40 
+  },
+  { 
+    id: 'inv_lamb_chops', 
+    name: 'Lamb Chops Portions', 
+    quantity: 30, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 6 
+  },
+  { 
+    id: 'inv_fish_fillet', 
+    name: 'Fish Fillet Portions', 
+    quantity: 30, 
+    unit: 'portions', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 6 
+  },
+  { 
+    id: 'inv_whole_fish', 
+    name: 'Whole Fish / Tilapia', 
+    quantity: 25, 
+    unit: 'pcs', 
+    category: 'MAIN COURSES', 
+    lowStockThreshold: 5 
+  },
+  { 
+    id: 'inv_sausage', 
+    name: 'Sausage (beef / chicken)', 
+    quantity: 200, 
+    unit: 'pcs', 
+    category: 'BREAKFAST', 
+    lowStockThreshold: 50 
+  },
+  { 
+    id: 'inv_keringet_water', 
+    name: 'Keringet Water 1L', 
+    quantity: 150, 
+    unit: 'pcs', 
+    category: 'SOFT DRINKS', 
+    lowStockThreshold: 40 
+  }
 ];
 
 // --- RECIPE MAPPING (Deduction Logic) ---
