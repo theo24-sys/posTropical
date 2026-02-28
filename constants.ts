@@ -19,37 +19,107 @@ export const INITIAL_USERS: User[] = [
 
 // --- NECESSARY STAFF & KITCHEN INVENTORY ---
 export const INITIAL_KITCHEN_INVENTORY: InventoryItem[] = [
-  // Beverages
-  { id: 'inv_water_500', name: 'Mineral Water 500ml', quantity: 48, unit: 'Pcs', category: 'Beverages', lowStockThreshold: 12 },
-  { id: 'inv_water_1l', name: 'Mineral Water 1L', quantity: 24, unit: 'Pcs', category: 'Beverages', lowStockThreshold: 6 },
-  { id: 'inv_milk_500', name: 'Milk 500ml', quantity: 20, unit: 'Pcs', category: 'Dairy & Eggs', lowStockThreshold: 5 },
-  { id: 'inv_milk_1l', name: 'Milk 1L', quantity: 15, unit: 'Pcs', category: 'Dairy & Eggs', lowStockThreshold: 4 },
-  
-  // Bakery & Pastries
-  { id: 'inv_cake_slice', name: 'Cake Slices (Assorted)', quantity: 12, unit: 'Slices', category: 'Bakery & Pastries', lowStockThreshold: 3 },
-  { id: 'inv_muffins', name: 'Muffins', quantity: 10, unit: 'Pcs', category: 'Bakery & Pastries', lowStockThreshold: 4 },
-  { id: 'inv_croissants', name: 'Croissants', quantity: 8, unit: 'Pcs', category: 'Bakery & Pastries', lowStockThreshold: 2 },
-  
-  // Meat Portions
-  { id: 'inv_beef_portion', name: 'Beef Portions (250g)', quantity: 40, unit: 'Units', category: 'Meat & Poultry', lowStockThreshold: 10 },
-  { id: 'inv_chicken_portion', name: 'Chicken Portions', quantity: 30, unit: 'Units', category: 'Meat & Poultry', lowStockThreshold: 8 },
-  { id: 'inv_goat_portion', name: 'Goat Meat Portions', quantity: 20, unit: 'Units', category: 'Meat & Poultry', lowStockThreshold: 5 },
-  
-  // Kitchen Essentials
-  { id: 'inv_eggs', name: 'Eggs', quantity: 10, unit: 'Trays', category: 'Dairy & Eggs', lowStockThreshold: 2 },
-  { id: 'inv_potatoes', name: 'Potatoes', quantity: 4, unit: 'Sacks', category: 'Vegetables', lowStockThreshold: 1 },
-  { id: 'inv_cooking_oil', name: 'Cooking Oil', quantity: 20, unit: 'Liters', category: 'Oils & Spices', lowStockThreshold: 5 },
+  { id: 'inv_samosa_pieces',     name: 'Samosa Pieces (raw/frozen)',                     quantity: 300, unit: 'pcs',      category: 'BITINGS',      lowStockThreshold: 80 },
+  { id: 'inv_beef_fillet',       name: 'Beef Fillet Portions',                           quantity: 40,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 8 },
+  { id: 'inv_beef_portions',     name: 'Beef Portions (curry / stir fried / burrito)',   quantity: 60,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 12 },
+  { id: 'inv_beef_patties',      name: 'Beef Burger Patties',                            quantity: 80,  unit: 'pcs',       category: 'BURGERS',      lowStockThreshold: 20 },
+  { id: 'inv_chicken_breast',    name: 'Chicken Breast Portions',                        quantity: 50,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 10 },
+  { id: 'inv_chicken_portions',  name: 'Chicken Portions (curry / stir fried / burger / burrito)', quantity: 90, unit: 'portions', category: 'MAINS',        lowStockThreshold: 18 },
+  { id: 'inv_bbq_chicken_legs',  name: 'Barbeque Chicken Legs',                          quantity: 45,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 9 },
+  { id: 'inv_chicken_wings',     name: 'Chicken Wings (raw/marinated)',                  quantity: 150, unit: 'pcs',      category: 'BITINGS',      lowStockThreshold: 40 },
+  { id: 'inv_lamb_chops',        name: 'Lamb Chops Portions',                            quantity: 30,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 6 },
+  { id: 'inv_fish_fillet',       name: 'Fish Fillet Portions',                           quantity: 30,  unit: 'portions',  category: 'MAINS',        lowStockThreshold: 6 },
+  { id: 'inv_whole_fish',        name: 'Whole Fish / Tilapia',                           quantity: 25,  unit: 'pcs',       category: 'MAINS',        lowStockThreshold: 5 },
+  { id: 'inv_sausage',           name: 'Sausage (beef / chicken)',                       quantity: 200, unit: 'pcs',       category: 'BREAKFAST',    lowStockThreshold: 50 },
+  { id: 'inv_keringet_water',    name: 'Keringet Water 1L',                              quantity: 150, unit: 'pcs',       category: 'SOFT_DRINKS',  lowStockThreshold: 40 },
 ];
 
 // --- RECIPE MAPPING (Deduction Logic) ---
 export const KITCHEN_RECIPES: Record<string, { invId: string; amount: number }[]> = {
-  'bf_eng': [
-    { invId: 'inv_eggs', amount: 0.06 }, 
-    { invId: 'inv_milk_500', amount: 0.1 },
+  // --- RECIPE MAPPING (Deduction Logic) ---
+  // Samosa Pieces ─ from BITINGS
+  'bit_sam': [
+    { invId: 'inv_samosa_pieces', amount: 2 },   // pair = 2 pieces
   ],
+
+  // Beef items ─ from MAINS + BURGERS
   'mn_fil': [
-    { invId: 'inv_beef_portion', amount: 1 },
-    { invId: 'inv_potatoes', amount: 0.05 },
+    { invId: 'inv_beef_fillet', amount: 1 },
+  ],
+  'mn_bcur': [
+    { invId: 'inv_beef_portions', amount: 1 },
+  ],
+  'mn_sbeef': [
+    { invId: 'inv_beef_portions', amount: 1 },
+  ],
+  'bur_beef': [
+    { invId: 'inv_beef_portions', amount: 1 },
+  ],
+  'bg_beef': [
+    { invId: 'inv_beef_patties', amount: 1 },
+  ],
+
+  // Chicken items ─ from MAINS + BURGERS
+  'mn_gbreast': [
+    { invId: 'inv_chicken_breast', amount: 1 },
+  ],
+  'mn_ccur': [
+    { invId: 'inv_chicken_portions', amount: 1 },
+  ],
+  'mn_schick': [
+    { invId: 'inv_chicken_portions', amount: 1 },
+  ],
+  'mn_ctik': [
+    { invId: 'inv_bbq_chicken_legs', amount: 1 },
+  ],
+  'bg_chick': [
+    { invId: 'inv_chicken_portions', amount: 1 },
+  ],
+  'bur_chick': [
+    { invId: 'inv_chicken_portions', amount: 1 },
+  ],
+
+  // Chicken Wings ─ from BITINGS
+  'bit_w6': [
+    { invId: 'inv_chicken_wings', amount: 6 },
+  ],
+  'bit_w12': [
+    { invId: 'inv_chicken_wings', amount: 12 },
+  ],
+
+  // Lamb Chops ─ from MAINS
+  'mn_lamb': [
+    { invId: 'inv_lamb_chops', amount: 1 },
+  ],
+
+  // Fish items ─ from MAINS
+  'mn_gfish': [
+    { invId: 'inv_fish_fillet', amount: 1 },
+  ],
+  'mn_fcoc': [
+    { invId: 'inv_whole_fish', amount: 1 },
+  ],
+  'mn_til': [
+    { invId: 'inv_whole_fish', amount: 1 },
+  ],
+
+  // Sausage ─ from BREAKFAST + BITINGS
+  'bf_eng': [
+    { invId: 'inv_sausage', amount: 2 },
+  ],
+  'bf_toast': [
+    { invId: 'inv_sausage', amount: 2 },
+  ],
+  'bf_pan': [
+    { invId: 'inv_sausage', amount: 2 },
+  ],
+  'bit_saus': [
+    { invId: 'inv_sausage', amount: 2 },   // Sausage (Pair) in BITINGS
+  ],
+
+  // Keringet Water ─ from SOFT DRINKS
+  'sd_wat': [
+    { invId: 'inv_keringet_water', amount: 1 },
   ],
 };
 // --- MENU ITEMS WITH STOCK ---
