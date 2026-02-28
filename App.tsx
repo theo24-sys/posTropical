@@ -8,7 +8,7 @@ import { ReceiptModal } from './components/ReceiptModal';
 import { LoginScreen } from './components/LoginScreen';
 import { AdminDashboard } from './components/AdminDashboard';
 import TransactionsPage from './components/TransactionsPage';
-import { InventoryPage } from './components/InventoryPage'; // ← kept even if unused for now
+import { InventoryPage } from './components/InventoryPage';
 import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
@@ -155,7 +155,6 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
-    // If logging in via /admin, stay in admin dashboard
     if (location.pathname === '/admin' && isAdmin(user)) {
       // stay
     } else {
@@ -206,6 +205,7 @@ const App: React.FC = () => {
   ) => {
     if (cart.length === 0 || !posUser) return;
     setIsProcessing(true);
+
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
@@ -241,11 +241,31 @@ const App: React.FC = () => {
         await LocalDB.queueOrder(sale);
       }
 
+      // Deduct inventory only when paid
+      if (sale.status === 'Paid') {
+        try {
+          const saleItems = cart.map(i => ({ id: i.id, quantity: i.quantity }));
+          if (saleItems.length > 0) {
+            if (navigator.onLine) {
+              await DB.deductKitchenInventory(saleItems);
+            } else {
+              await LocalDB.deductKitchenInventory(saleItems);
+            }
+            console.log(`Inventory deducted for order ${orderId}`);
+            // Refresh inventory in UI
+            await fetchData(false);
+          }
+        } catch (deductErr) {
+          console.error('Inventory deduction failed:', deductErr);
+          logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr.message}`, 'high');
+        }
+      }
+
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
       setCart([]);
       setEditingTransactionId(null);
     } catch (e) {
-      console.error(e);
+      console.error('Checkout failed:', e);
     } finally {
       setIsProcessing(false);
     }
@@ -281,6 +301,23 @@ const App: React.FC = () => {
         updatedAt: updatedTx.updatedAt
       });
       setIsModalOpen(true);
+
+      // Deduct inventory when settling to PAID
+      try {
+        const saleItems = updatedTx.items.map(i => ({ id: i.id, quantity: i.quantity }));
+        if (saleItems.length > 0) {
+          if (navigator.onLine) {
+            await DB.deductKitchenInventory(saleItems);
+          } else {
+            await LocalDB.deductKitchenInventory(saleItems);
+          }
+          console.log(`Inventory deducted for settled order ${id}`);
+          await fetchData(false); // Refresh inventory UI
+        }
+      } catch (deductErr) {
+        console.error('Deduction failed on settle:', deductErr);
+        logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr.message}`, 'high');
+      }
     }
   };
 
@@ -292,14 +329,9 @@ const App: React.FC = () => {
     );
   }
 
-  // ────────────────────────────────────────────────
-  //  Login screen – hide admin users from normal flow
-  // ────────────────────────────────────────────────
   if (!posUser) {
     const isAdminPath = location.pathname === '/admin';
-
     const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
-
     const visibleUsers = isAdminPath
       ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
       : users.filter(u => normalizeRole(u.role) !== 'ADMIN');
@@ -307,9 +339,6 @@ const App: React.FC = () => {
     return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
   }
 
-  // ────────────────────────────────────────────────
-  //  Logged-in layout
-  // ────────────────────────────────────────────────
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
       <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
@@ -445,8 +474,8 @@ const App: React.FC = () => {
                 <div className="w-[420px] shrink-0 h-full">
                   <CartSidebar
                     cart={cart}
-                    onUpdateQuantity={(id: string, d: number) =>
-                      setCart(p => p.map(i => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i)))
+                    onUpdateQuantity={(id: string, delta: number) =>
+                      setCart(p => p.map(i => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)))
                     }
                     onRemove={(id: string) => setCart(p => p.filter(i => i.id !== id))}
                     onClear={() => {
@@ -492,10 +521,10 @@ const App: React.FC = () => {
                   expenses={expenses}
                   auditLogs={auditLogs}
                   inventory={inventory}
-                  onUpdateStock={async (id: string, d: number) => {
+                  onUpdateStock={async (id: string, delta: number) => {
                     const item = inventory.find(i => i.id === id);
                     if (item) {
-                      const updated = { ...item, quantity: item.quantity + d };
+                      const updated = { ...item, quantity: item.quantity + delta };
                       setInventory(prev => prev.map(i => (i.id === id ? updated : i)));
                       if (navigator.onLine) await DB.saveInventoryItem(updated);
                       await LocalDB.updateInventoryItem(updated);
