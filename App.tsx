@@ -255,10 +255,10 @@ const App: React.FC = () => {
             // Refresh inventory in UI
             await fetchData(false);
           }
-        } catch (deductErr) {
-          console.error('Inventory deduction failed:', deductErr);
-          logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr.message}`, 'high');
-        }
+        } catch (deductErr: any) {  // ← add :any
+               console.error('Inventory deduction failed:', deductErr);
+                logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
+          }
       }
 
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
@@ -314,10 +314,10 @@ const App: React.FC = () => {
           console.log(`Inventory deducted for settled order ${id}`);
           await fetchData(false); // Refresh inventory UI
         }
-      } catch (deductErr) {
-        console.error('Deduction failed on settle:', deductErr);
-        logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr.message}`, 'high');
-      }
+     } catch (deductErr: any) {  // ← add :any
+  console.error('Deduction failed on settle:', deductErr);
+  logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr?.message || 'Unknown error'}`, 'high');
+}
     }
   };
 
