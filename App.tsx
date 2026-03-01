@@ -442,37 +442,38 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Routes>
           <Route
-            path="/"
-            element={
-              <div className="flex flex-1 overflow-hidden h-full">
-                <main className="flex-1 flex flex-col overflow-hidden p-8">
-                  <header className="mb-10 flex items-center justify-between shrink-0">
-                    <div className="relative w-full max-w-3xl">
-                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
-                      <input
-                        type="text"
-                        placeholder="Search menu..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
-                      />
-                    </div>
-                  </header>
-                  <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 content-start scroll-smooth">
-                    {menuItems
-                      .filter(
-                        i =>
-                          (activeCategory === 'All' || i.category === activeCategory) &&
-                          i.name.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map(item => (
-                        <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
-                      ))}
-                  </div>
-                </main>
+  path="/"
+  element={
+    <div className="flex flex-1 overflow-hidden h-full">
+      <main className="flex-1 overflow-y-auto p-8">  {/* ← CHANGED: remove flex flex-col overflow-hidden */}
+        <header className="mb-10 flex items-center justify-between shrink-0">
+          <div className="relative w-full max-w-3xl">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
+            />
+          </div>
+        </header>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 pb-8">  {/* ← removed overflow-y-auto from here */}
+          {menuItems
+            .filter(
+              i =>
+                (activeCategory === 'All' || i.category === activeCategory) &&
+                i.name.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map(item => (
+              <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
+            ))}
+        </div>
+      </main>
 
-                <div className="w-[420px] shrink-0 h-full">
-                  <CartSidebar
+      <div className="w-[420px] shrink-0 h-full">
+        <CartSidebar
+   
                     cart={cart}
                     onUpdateQuantity={(id: string, delta: number) =>
                       setCart(p => p.map(i => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)))
