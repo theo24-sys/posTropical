@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { InventoryItem, InventoryCategory } from '../types';
 import {
-  Search, Plus, Minus, AlertTriangle, Package, Beef, Egg, Wheat,
-  Carrot, RefreshCw, Layers, GlassWater, Cake, Edit3, Trash2, X, Save
+  Search, Plus, Minus, AlertTriangle, Package, Beef, Egg, Cake,
+  GlassWater, RefreshCw, Layers, Edit3, Trash2, X, Save
 } from 'lucide-react';
 import { DB } from '../services/supabase';
 import { LocalDB } from '../services/db';
@@ -23,29 +23,14 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
-  // Use your REAL menu categories (exact match to InventoryCategory type)
+  // ONLY the categories from your real 13 inventory items
   const categories: (InventoryCategory | 'All')[] = [
     'All',
-    'BREAKFAST',
-    'HEALTH KICK',
-    'SOUP & SALADS',
     'BITINGS',
-    'COFFEE (DOUBLE)',
-    'TEAS',
-    'SOFT DRINKS',
-    'ICED COFFEE',
-    'COLD BEVERAGES',
-    'SHAKES',
-    'SMOOTHIES',
-    'FRESH JUICES',
-    'LEMONADES',
-    'MOJITOS',
-    'BAKERY & PASTRIES',
     'MAIN COURSES',
     'BURGERS / BURRITOS & SANDWICHES',
-    'PIZZA',
-    'SIDES',
-    'DESSERTS'
+    'BREAKFAST',
+    'SOFT DRINKS'
   ];
 
   const filteredInventory = inventory.filter(item => {
@@ -103,6 +88,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
     }
   };
 
+  // ONLY icons for categories used in your 13 real items
   const getCategoryIcon = (cat: InventoryCategory) => {
     switch (cat) {
       case 'BREAKFAST': return <Egg size={20} />;
@@ -110,10 +96,6 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
       case 'MAIN COURSES': return <Beef size={20} />;
       case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
       case 'SOFT DRINKS': return <GlassWater size={20} />;
-      case 'BAKERY & PASTRIES': return <Cake size={20} />;
-      case 'DESSERTS': return <Cake size={20} />;
-      case 'VEGETABLES': return <Carrot size={20} />;
-      case 'FRESH JUICES': return <Carrot size={20} />;
       default: return <Layers size={20} />;
     }
   };
