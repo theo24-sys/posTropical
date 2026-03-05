@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ReceiptData } from '../types';
 import { CURRENCY, LOGO_URL } from '../constants';
-import { CheckCircle, Printer, X, Sparkles, MapPin, Coffee, Clock, ReceiptText, ShieldCheck } from 'lucide-react';
+import { Printer, X, ReceiptText, ShieldCheck, MapPin, Coffee } from 'lucide-react';
 
 interface ReceiptModalProps {
   data: ReceiptData | null;
@@ -31,8 +31,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
     const itemsHtml = data.items.map(item => `
       <tr>
-        <td style="padding: 8px 0; font-size: 14px;">${item.quantity} × ${item.name}</td>
-        <td style="padding: 8px 0; text-align: right; font-size: 14px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
+        <td style="padding: 8px 0; font-size: 16px;">${item.quantity} × ${item.name}</td>
+        <td style="padding: 8px 0; text-align: right; font-size: 16px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
       </tr>
     `).join('');
 
@@ -41,36 +41,35 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       <head>
         <title>${docTitle} #${data.orderId}</title>
         <style>
-          body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0 auto; padding: 10px; font-size: 13px; line-height: 1.4; color: #000; }
+          body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0 auto; padding: 10px; font-size: 14px; line-height: 1.5; color: #000; }
           .center { text-align: center; }
           .bold { font-weight: bold; }
           .divider { border-bottom: 1px dashed #000; margin: 12px 0; }
           table { width: 100%; border-collapse: collapse; }
-          .header { font-size: 18px; font-weight: bold; margin: 8px 0; }
-          .total { font-size: 18px; font-weight: bold; margin: 12px 0; }
-          .footer { font-size: 11px; margin-top: 20px; text-align: center; }
+          .header { font-size: 20px; font-weight: bold; margin: 10px 0; }
+          .total { font-size: 22px; font-weight: bold; margin: 16px 0; text-align: center; }
+          .footer { font-size: 12px; margin-top: 20px; text-align: center; }
         </style>
       </head>
       <body>
         <div class="center">
-          <h2 style="margin: 0; font-size: 22px;">Tropical Dreams</h2>
+          <h2 style="margin: 0; font-size: 24px;">Tropical Dreams</h2>
           <p style="margin: 4px 0; font-size: 14px;">Coffee House - Lodwar</p>
           <p style="margin: 2px 0; font-size: 12px;">${SHOP_PHONE}</p>
         </div>
         <div class="divider"></div>
         <div class="center bold header">*** ${docTitle} ***</div>
-        <p style="font-size: 12px; margin: 6px 0;">Order #${data.orderId}</p>
-        <p style="font-size: 11px;">${new Date(data.date).toLocaleString()} • Table: ${data.tableNumber || 'TAKEAWAY'}</p>
+        <p style="font-size: 14px; margin: 6px 0;">Order #${data.orderId}</p>
+        <p style="font-size: 12px;">${new Date(data.date).toLocaleString()} • Table: ${data.tableNumber || 'TAKEAWAY'}</p>
         <div class="divider"></div>
 
         <table>${itemsHtml}</table>
 
         <div class="divider"></div>
 
-        <div class="total center">
-          <span style="font-size: 20px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</span>
-          <br>
-          <span style="font-size: 24px; font-weight: bold;">KES ${data.total.toLocaleString()}</span>
+        <div class="total">
+          <span>${isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span><br>
+          <span style="font-size: 28px;">KES ${data.total.toLocaleString()}</span>
         </div>
 
         <div class="divider"></div>
@@ -78,7 +77,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <div class="footer">
           <p>Served by: ${data.cashierName}</p>
           ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic;">"${data.aiMessage}"</p>` : ''}
-          <p style="margin-top: 16px; font-weight: bold;">Karibu Tena!</p>
+          <p style="margin-top: 16px; font-weight: bold; font-size: 14px;">Karibu Tena!</p>
         </div>
       </body>
       </html>
@@ -120,32 +119,32 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               </div>
             </div>
 
-            {/* Order Items - Larger text */}
+            {/* Order Items - Bigger & Cleaner */}
             <div className="space-y-6 mb-10">
               {data.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+                <div key={item.id} className="flex justify-between items-center py-4 border-b border-gray-100 last:border-b-0">
                   <div className="flex gap-4 items-center">
-                    <span className="font-black text-xl bg-gray-100 px-4 py-2 rounded-2xl text-[#4B3621]">{item.quantity}x</span>
-                    <span className="text-lg font-bold text-gray-800">{item.name}</span>
+                    <span className="font-black text-2xl bg-gray-100 px-5 py-3 rounded-2xl text-[#4B3621] min-w-[60px] text-center">{item.quantity}x</span>
+                    <span className="text-xl font-bold text-gray-800">{item.name}</span>
                   </div>
-                  <span className="font-black text-xl text-[#4B3621]">KES {(item.price * item.quantity).toLocaleString()}</span>
+                  <span className="font-black text-2xl text-[#4B3621]">KES {(item.price * item.quantity).toLocaleString()}</span>
                 </div>
               ))}
             </div>
 
-            {/* Total - Much bigger */}
-            <div className={`p-8 rounded-[32px] text-center font-black text-3xl tracking-tight ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
-              {isPending ? 'TOTAL DUE' : 'TOTAL PAID'} <br />
-              <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
+            {/* Total - Very Prominent */}
+            <div className={`p-10 rounded-[32px] text-center font-black text-4xl tracking-tight ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
+              {isPending ? 'TOTAL DUE' : 'TOTAL PAID'}<br />
+              <span className="text-6xl block mt-3">KES {data.total.toLocaleString()}</span>
             </div>
 
-            {/* Footer message */}
-            <div className="text-center mt-10 text-gray-600">
-              <p className="font-medium text-lg">Served by: {data.cashierName}</p>
+            {/* Footer */}
+            <div className="text-center mt-12 text-gray-700">
+              <p className="font-medium text-xl">Served by: {data.cashierName}</p>
               {data.aiMessage && (
-                <p className="italic mt-4 text-base">"{data.aiMessage}"</p>
+                <p className="italic mt-6 text-lg">"{data.aiMessage}"</p>
               )}
-              <p className="font-bold mt-6 text-xl uppercase">Karibu Tena!</p>
+              <p className="font-bold mt-8 text-2xl uppercase">Karibu Tena!</p>
             </div>
           </div>
         </div>
