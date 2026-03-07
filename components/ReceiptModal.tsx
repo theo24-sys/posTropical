@@ -16,7 +16,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   const SHOP_PHONE = "0748027790";
   const SHOP_LOCATION = "Lodwar, Turkana County";
-
   const isPending = data.status === 'Pending';
   const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
 
@@ -29,19 +28,23 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       return;
     }
 
-    const itemsHtml = data.items.map(item => `
+    // Build items list (plain HTML string)
+    const itemsHtml = data.items
+      .map(item => `
+        <tr>
+          <td style="padding: 8px 0; font-size: 16px;">${item.quantity} × ${item.name}</td>
+          <td style="padding: 8px 0; text-align: right; font-size: 16px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
+        </tr>
+      `)
+      .join('');
 
-    {data.discountAmount > 0 && (
-  <div className="flex justify-between text-sm italic">
-    <span>Promo Discount ({data.discountPercent}%)</span>
-    <span>-{data.discountAmount}</span>
-  </div>
-)}
+    // Build discount line (only if discount exists)
+    const discountHtml = data.discountAmount > 0 ? `
       <tr>
-        <td style="padding: 8px 0; font-size: 16px;">${item.quantity} × ${item.name}</td>
-        <td style="padding: 8px 0; text-align: right; font-size: 16px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
+        <td style="padding: 8px 0; font-size: 16px; font-style: italic;">Promo Discount (${data.discountPercent}%)</td>
+        <td style="padding: 8px 0; text-align: right; font-size: 16px; font-style: italic;">-KES ${data.discountAmount.toLocaleString()}</td>
       </tr>
-    `).join('');
+    ` : '';
 
     printWindow.document.write(`
       <html>
@@ -67,20 +70,18 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <div class="divider"></div>
         <div class="center bold header">*** ${docTitle} ***</div>
         <p style="font-size: 14px; margin: 6px 0;">Order #${data.orderId}</p>
-        <p style="font-size: 12px;">${new Date(data.date).toLocaleString()} • Table: ${data.tableNumber || 'TAKEAWAY'}</p>
+        <p style="font-size: 12px;">${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })} • Table: ${data.tableNumber || 'TAKEAWAY'}</p>
         <div class="divider"></div>
-
-        <table>${itemsHtml}</table>
-
+        <table>
+          ${itemsHtml}
+          ${discountHtml}
+        </table>
         <div class="divider"></div>
-
         <div class="total">
           <span>${isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span><br>
           <span style="font-size: 28px;">KES ${data.total.toLocaleString()}</span>
         </div>
-
         <div class="divider"></div>
-
         <div class="footer">
           <p>Served by: ${data.cashierName}</p>
           ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic;">"${data.aiMessage}"</p>` : ''}
@@ -89,9 +90,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       </body>
       </html>
     `);
+
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => { printWindow.print(); setIsPrinting(false); }, 500);
+    setTimeout(() => {
+      printWindow.print();
+      setIsPrinting(false);
+    }, 500);
   };
 
   return (
@@ -137,6 +142,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                   <span className="font-black text-2xl text-[#4B3621]">KES {(item.price * item.quantity).toLocaleString()}</span>
                 </div>
               ))}
+
+              {/* Discount line - now properly rendered in modal */}
+              {data.discountAmount > 0 && (
+                <div className="flex justify-between items-center py-4 border-b border-gray-100 text-sm italic text-green-700">
+                  <span>Promo Discount ({data.discountPercent}%)</span>
+                  <span>-KES {data.discountAmount.toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Total - Very Prominent */}
