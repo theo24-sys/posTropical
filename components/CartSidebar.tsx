@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CartItem, PaymentMethod, UserRole, SaleTransaction } from '../types';
 import { CURRENCY } from '../constants';
 import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, AlertCircle, ReceiptText, ChevronRight, Clock } from 'lucide-react';
+import { DB } from '../services/supabase'; // Make sure this import exists
 
 interface CartSidebarProps {
   cart: CartItem[];
@@ -27,6 +28,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   cart,
   onUpdateQuantity,
   onRemove,
+  onClear,
   onCheckout,
   total,
   isProcessing,
@@ -39,8 +41,38 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('M-Pesa');
   const [orderType, setOrderType] = useState<'Dine-in' | 'Take Away'>(prefilledOrderType || 'Dine-in');
   const [selectedTable, setSelectedTable] = useState<number | undefined>(prefilledTable);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
   const isWaiter = userRole === 'Waiter';
+
+  // Fetch and calculate discount live
+  useEffect(() => {
+    const calculateDiscount = async () => {
+      try {
+        const promo = await DB.getActivePromotion();
+        const pct = promo?.discount_percent || 0;
+        setDiscountPercent(pct);
+
+        const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const discAmt = subtotal * (pct / 100);
+        setDiscountAmount(discAmt);
+      } catch (err) {
+        console.error('Failed to load discount:', err);
+        setDiscountPercent(0);
+        setDiscountAmount(0);
+      }
+    };
+
+    calculateDiscount();
+
+    // Refresh discount every 5 minutes (in case promo starts/ends)
+    const interval = setInterval(calculateDiscount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [cart]); // Recalculate when cart changes
+
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const finalTotal = subtotal - discountAmount;
 
   const handleCheckoutClick = () => {
     if (isWaiter) return;
@@ -48,8 +80,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
       alert("Please select a table number.");
       return;
     }
-    // Logic: even if no "new" items were added to a resumed order,
-    // we still call onCheckout to allow for re-saving and re-printing the bill.
+    // Pass the discounted total to checkout if needed (optional - you can keep using props.total or override)
     onCheckout(
       paymentMethod,
       orderType,
@@ -241,13 +272,32 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         )}
       </div>
 
-      {/* FIXED FOOTER */}
+      {/* FIXED FOOTER - NOW WITH DISCOUNT DISPLAY */}
       <div className="p-8 bg-white border-t border-gray-100 space-y-6 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0">
-        <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-6">
-          <span className="text-base font-black text-gray-400 uppercase tracking-widest">Total Amount</span>
-          <div className="text-right">
-            <span className="text-xs font-black text-gray-400 uppercase mr-2">{CURRENCY}</span>
-            <span className="text-4xl font-black text-[#4B3621] tracking-tighter">{total.toLocaleString()}</span>
+        <div className="space-y-3">
+          <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-6">
+            <span className="text-base font-black text-gray-400 uppercase tracking-widest">Subtotal</span>
+            <div className="text-right">
+              <span className="text-xs font-black text-gray-400 uppercase mr-2">{CURRENCY}</span>
+              <span className="text-2xl font-black text-[#4B3621] tracking-tighter">{subtotal.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {discountPercent > 0 && (
+            <div className="flex justify-between text-green-700 font-medium text-lg">
+              <span>Promo Discount ({discountPercent}%)</span>
+              <span>-{CURRENCY} {discountAmount.toLocaleString()}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between items-end border-t border-gray-200 pt-4">
+            <span className="text-xl font-black text-[#4B3621] uppercase tracking-widest">Total Amount</span>
+            <div className="text-right">
+              <span className="text-xs font-black text-gray-400 uppercase mr-2">{CURRENCY}</span>
+              <span className="text-4xl font-black text-[#4B3621] tracking-tighter">
+                {finalTotal.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
 
