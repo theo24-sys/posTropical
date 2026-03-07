@@ -48,7 +48,11 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getNairobiISO = () => new Date().toISOString();
+  const getNairobiISO = () => {
+  const now = new Date();
+  const eatOffsetMs = 3 * 60 * 60 * 1000; // EAT = UTC+3 (no DST in Kenya)
+  const eatDate = new Date(now.getTime() + eatOffsetMs);
+  return eatDate.toISOString().replace('Z', '+03:00'); // fake +03:00 for display
 
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
