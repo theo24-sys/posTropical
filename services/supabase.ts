@@ -73,33 +73,35 @@ export const DB = {
         console.log('No active promo via RPC (returned:', data, ')');
       }
 
-      // Fallback: direct table query (only if RPC fails or returns nothing)
-     // Inside getActivePromotion(), replace the fallback block with:
+      // Fallback: direct table query with EAT timezone
+      const eatNow = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
+      const { data: promoData, error: tableError } = await supabase
+        .from('promotions')
+        .select('discount_percent')
+        .eq('is_active', true)
+        .lte('start_datetime', eatNow)
+        .gte('end_datetime', eatNow)
+        .order('start_datetime', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-const eatNow = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
+      if (tableError) {
+        console.error('Fallback promo query failed:', tableError.message);
+        return null;
+      }
 
-const { data: promoData, error: tableError } = await supabase
-  .from('promotions')
-  .select('discount_percent')
-  .eq('is_active', true)
-  .lte('start_datetime', eatNow)
-  .gte('end_datetime', eatNow)
-  .order('start_datetime', { ascending: false })
-  .limit(1)
-  .maybeSingle();
+      if (!promoData) {
+        console.log('No active promotion found in table (EAT time used)');
+        return null;
+      }
 
-if (tableError) {
-  console.error('Fallback promo query failed:', tableError.message);
-  return null;
-}
-
-if (!promoData) {
-  console.log('No active promotion found in table (EAT time used)');
-  return null;
-}
-
-console.log('Active promo loaded via table fallback:', promoData.discount_percent, '%');
-return { discount_percent: promoData.discount_percent };
+      console.log('Active promo loaded via table fallback:', promoData.discount_percent, '%');
+      return { discount_percent: promoData.discount_percent };
+    } catch (err: any) {
+      console.error('getActivePromotion completely failed:', err.message);
+      return null;
+    }
+  },
 
   // ────────────────────────────────────────────────
   // Menu Items
