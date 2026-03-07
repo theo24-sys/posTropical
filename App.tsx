@@ -16,12 +16,17 @@ import {
   Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
 } from 'lucide-react';
 
+// Simple type for promotion (add this to types.ts later if needed)
+interface Promotion {
+  discount_percent: number;
+  // add other fields if you have them
+}
+
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-
   const [users, setUsers] = useState<User[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -29,23 +34,21 @@ const App: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [posUser, setPosUser] = useState<User | null>(null);
-
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [prefilledTable, setPrefilledTable] = useState<number | undefined>(undefined);
   const [prefilledOrderType, setPrefilledOrderType] = useState<'Dine-in' | 'Take Away'>('Dine-in');
+  const [activePromotion, setActivePromotion] = useState<Promotion | null>(null);
 
   const navigate = useNavigate();
   const location = useLocation();
 
   const getNairobiISO = () => new Date().toISOString();
-  const [activePromotion, setActivePromotion] = useState<Promotion | null>(null);
 
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
@@ -82,14 +85,12 @@ const App: React.FC = () => {
           DB.getExpenses(),
           DB.getAuditLogs()
         ]);
-
         setUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS);
         setMenuItems(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS);
         setInventory(cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY);
         setSalesHistory(cloudSales);
         setExpenses(cloudExpenses);
         setAuditLogs(cloudLogs);
-        
 
         await Promise.all([
           LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
@@ -120,8 +121,20 @@ const App: React.FC = () => {
       if (isInitial) setIsLoading(false);
     }
   }, []);
-  const promo = await DB.getActivePromotion();
-setActivePromotion(promo);
+
+  // Fetch active promotion
+  useEffect(() => {
+    async function loadPromotion() {
+      try {
+        const promo = await DB.getActivePromotion(); // assuming this returns Promotion | null
+        setActivePromotion(promo);
+      } catch (err) {
+        console.error('Failed to load promotion:', err);
+        setActivePromotion(null);
+      }
+    }
+    loadPromotion();
+  }, []);
 
   const attemptAutoSync = useCallback(async () => {
     if (!navigator.onLine || isSyncing) return;
@@ -211,33 +224,17 @@ setActivePromotion(promo);
     setIsProcessing(true);
 
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+    const discountPercent = activePromotion?.discount_percent || 0;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const finalTotal = subtotal - discountAmount;
+
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
-    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-const discountPercent = activePromotion?.discount_percent || 0;
-const discountAmount = subtotal * (discountPercent / 100);
-const finalTotal = subtotal - discountAmount;
-
-// Update the sale object and receipt data
-const sale: SaleTransaction = {
-    // ...
-    total: finalTotal, 
-    // ...
-};
-
-setReceiptData({
-    // ...
-    subtotal,
-    discountAmount,
-    discountPercent,
-    total: finalTotal,
-    // ...
-});
 
     const sale: SaleTransaction = {
       id: orderId,
       date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp,
-      total: subtotal,
+      total: finalTotal,  // use discounted total
       paymentMethod,
       status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
       cashierName: posUser.name,
@@ -251,9 +248,20 @@ setReceiptData({
     try {
       const aiMsg = await generateReceiptMessage(cart, posUser.name);
       setReceiptData({
-        items: [...cart], subtotal, tax: 0, total: subtotal, amountTendered, change,
-        date: sale.date, orderId, paymentMethod, cashierName: posUser.name,
-        tableNumber, orderType, aiMessage: aiMsg, status: sale.status
+        items: [...cart],
+        subtotal,
+        tax: 0,
+        total: finalTotal,
+        amountTendered,
+        change,
+        date: sale.date,
+        orderId,
+        paymentMethod,
+        cashierName: posUser.name,
+        tableNumber,
+        orderType,
+        aiMessage: aiMsg,
+        status: sale.status
       });
       setIsModalOpen(true);
 
@@ -276,13 +284,12 @@ setReceiptData({
               await LocalDB.deductKitchenInventory(saleItems);
             }
             console.log(`Inventory deducted for order ${orderId}`);
-            // Refresh inventory in UI
             await fetchData(false);
           }
-        } catch (deductErr: any) {  // ← add :any
-               console.error('Inventory deduction failed:', deductErr);
-                logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
-          }
+        } catch (deductErr: any) {
+          console.error('Inventory deduction failed:', deductErr);
+          logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
+        }
       }
 
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
@@ -317,16 +324,24 @@ setReceiptData({
         const orig = menuItems.find(m => m.id === i.id);
         return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
       });
+
       const aiMsg = await generateReceiptMessage(reconstructed, posUser.name);
       setReceiptData({
-        items: reconstructed, subtotal: tx.total, tax: 0, total: tx.total,
-        date: tx.date, orderId: id, paymentMethod, status: 'Paid',
-        cashierName: tx.cashierName, aiMessage: aiMsg, tableNumber: tx.tableNumber,
+        items: reconstructed,
+        subtotal: tx.total,
+        tax: 0,
+        total: tx.total,
+        date: tx.date,
+        orderId: id,
+        paymentMethod,
+        status: 'Paid',
+        cashierName: tx.cashierName,
+        aiMessage: aiMsg,
+        tableNumber: tx.tableNumber,
         updatedAt: updatedTx.updatedAt
       });
       setIsModalOpen(true);
 
-      // Deduct inventory when settling to PAID
       try {
         const saleItems = updatedTx.items.map(i => ({ id: i.id, quantity: i.quantity }));
         if (saleItems.length > 0) {
@@ -336,12 +351,12 @@ setReceiptData({
             await LocalDB.deductKitchenInventory(saleItems);
           }
           console.log(`Inventory deducted for settled order ${id}`);
-          await fetchData(false); // Refresh inventory UI
+          await fetchData(false);
         }
-     } catch (deductErr: any) {  // ← add :any
-  console.error('Deduction failed on settle:', deductErr);
-  logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr?.message || 'Unknown error'}`, 'high');
-}
+      } catch (deductErr: any) {
+        console.error('Deduction failed on settle:', deductErr);
+        logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr?.message || 'Unknown error'}`, 'high');
+      }
     }
   };
 
@@ -359,7 +374,6 @@ setReceiptData({
     const visibleUsers = isAdminPath
       ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
       : users.filter(u => normalizeRole(u.role) !== 'ADMIN');
-
     return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
   }
 
@@ -438,7 +452,6 @@ setReceiptData({
           >
             <LayoutList size={28} />
           </button>
-
           <button
             onClick={() => navigate('/transactions')}
             className={`flex-1 p-4 rounded-2xl flex items-center justify-center transition-all ${
@@ -448,7 +461,6 @@ setReceiptData({
           >
             <History size={28} />
           </button>
-
           {isAdmin(posUser) && (
             <button
               onClick={() => navigate('/admin')}
@@ -466,38 +478,37 @@ setReceiptData({
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Routes>
           <Route
-  path="/"
-  element={
-    <div className="flex flex-1 overflow-hidden h-full">
-      <main className="flex-1 overflow-y-auto p-8">  {/* ← CHANGED: remove flex flex-col overflow-hidden */}
-        <header className="mb-10 flex items-center justify-between shrink-0">
-          <div className="relative w-full max-w-3xl">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
-            <input
-              type="text"
-              placeholder="Search menu..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
-            />
-          </div>
-        </header>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 pb-8">  {/* ← removed overflow-y-auto from here */}
-          {menuItems
-            .filter(
-              i =>
-                (activeCategory === 'All' || i.category === activeCategory) &&
-                i.name.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map(item => (
-              <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
-            ))}
-        </div>
-      </main>
+            path="/"
+            element={
+              <div className="flex flex-1 overflow-hidden h-full">
+                <main className="flex-1 overflow-y-auto p-8">
+                  <header className="mb-10 flex items-center justify-between shrink-0">
+                    <div className="relative w-full max-w-3xl">
+                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
+                      <input
+                        type="text"
+                        placeholder="Search menu..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
+                      />
+                    </div>
+                  </header>
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 pb-8">
+                    {menuItems
+                      .filter(
+                        i =>
+                          (activeCategory === 'All' || i.category === activeCategory) &&
+                          i.name.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map(item => (
+                        <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
+                      ))}
+                  </div>
+                </main>
 
-      <div className="w-[420px] shrink-0 h-full">
-        <CartSidebar
-   
+                <div className="w-[420px] shrink-0 h-full">
+                  <CartSidebar
                     cart={cart}
                     onUpdateQuantity={(id: string, delta: number) =>
                       setCart(p => p.map(i => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)))
@@ -522,7 +533,6 @@ setReceiptData({
               </div>
             }
           />
-
           <Route
             path="/transactions"
             element={
@@ -534,7 +544,6 @@ setReceiptData({
               />
             }
           />
-
           <Route
             path="/admin"
             element={
@@ -609,7 +618,6 @@ setReceiptData({
               )
             }
           />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
