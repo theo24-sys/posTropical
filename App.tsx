@@ -45,6 +45,7 @@ const App: React.FC = () => {
   const location = useLocation();
 
   const getNairobiISO = () => new Date().toISOString();
+  const [activePromotion, setActivePromotion] = useState<Promotion | null>(null);
 
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
@@ -88,6 +89,7 @@ const App: React.FC = () => {
         setSalesHistory(cloudSales);
         setExpenses(cloudExpenses);
         setAuditLogs(cloudLogs);
+        
 
         await Promise.all([
           LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
@@ -118,6 +120,8 @@ const App: React.FC = () => {
       if (isInitial) setIsLoading(false);
     }
   }, []);
+  const promo = await DB.getActivePromotion();
+setActivePromotion(promo);
 
   const attemptAutoSync = useCallback(async () => {
     if (!navigator.onLine || isSyncing) return;
@@ -209,6 +213,26 @@ const App: React.FC = () => {
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
+    const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+const discountPercent = activePromotion?.discount_percent || 0;
+const discountAmount = subtotal * (discountPercent / 100);
+const finalTotal = subtotal - discountAmount;
+
+// Update the sale object and receipt data
+const sale: SaleTransaction = {
+    // ...
+    total: finalTotal, 
+    // ...
+};
+
+setReceiptData({
+    // ...
+    subtotal,
+    discountAmount,
+    discountPercent,
+    total: finalTotal,
+    // ...
+});
 
     const sale: SaleTransaction = {
       id: orderId,
