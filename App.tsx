@@ -254,15 +254,15 @@ const App: React.FC = () => {
     };
 
     try {
-      const aiMsg = await generateReceiptMessage(cart, posUser.name);
+      const aiMsg = await generateReceiptMessage(cart, posUser.name, discountPercent, discountAmount, finalTotal);
 
       setReceiptData({
         items: [...cart],
         subtotal,                // original full amount (for display)
         tax: 0,
-        total: finalTotal,       // this is the discounted final total
-        discountAmount,          // added so ReceiptModal can show discount line
-        discountPercent,         // added for display
+        total: finalTotal,       // discounted final total
+        discountAmount,          // for display
+        discountPercent,         // for display
         amountTendered,
         change,
         date: sale.date,
