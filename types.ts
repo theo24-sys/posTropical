@@ -139,3 +139,19 @@ export interface AuditLog {
   details: string;
   severity: 'low' | 'medium' | 'high';
 }
+
+export interface Promotion {
+  id: string;
+  name: string;
+  discount_percent: number;
+  start_datetime: string;
+  end_datetime: string;
+  is_active: boolean;
+}
+
+// Also update ReceiptData to include discount info
+export interface ReceiptData {
+  // ... existing fields
+  discountAmount?: number;
+  discountPercent?: number;
+}
