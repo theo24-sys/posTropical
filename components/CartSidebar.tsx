@@ -55,6 +55,14 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   };
 
   return (
+
+    {discountAmount > 0 && (
+  <div className="flex justify-between text-emerald-600 font-bold">
+    <span>Discount ({discountPercent}%)</span>
+    <span>-{CURRENCY} {discountAmount.toLocaleString()}</span>
+  </div>
+)}
+  
     <div className="flex flex-col h-full bg-[#FCFBF8] border-l border-gray-100 font-sans shadow-inner">
       {/* FIXED HEADER */}
       <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur-sm shrink-0">
