@@ -50,6 +50,14 @@ const App: React.FC = () => {
 
   const getNairobiISO = () => new Date().toISOString();  // UTC — good!
 
+  const formatEAT = (utcDateStr: string | Date, options: Intl.DateTimeFormatOptions = {}) => {
+  const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
+  return date.toLocaleString('en-KE', {
+    timeZone: 'Africa/Nairobi',
+    ...options,
+  });
+};
+
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
     const log: AuditLog = {
