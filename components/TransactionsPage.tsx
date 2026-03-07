@@ -19,6 +19,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
   const [settleMethod, setSettleMethod] = useState<PaymentMethod>('Cash');
   const navigate = useNavigate();
+  <p>{formatEAT(tx.date, { dateStyle: 'medium', timeStyle: 'short' })}</p>
 
   const formatEATDate = (isoString: string) => {
     return new Intl.DateTimeFormat('en-GB', {
