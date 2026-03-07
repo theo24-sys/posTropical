@@ -28,7 +28,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       return;
     }
 
-    // Build items list (plain HTML string)
     const itemsHtml = data.items
       .map(item => `
         <tr>
@@ -38,13 +37,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       `)
       .join('');
 
-    // Build discount line (only if discount exists)
-    const discountHtml = data.discountAmount > 0 ? `
+    const discountHtml = data.discountAmount && data.discountAmount > 0 ? `
       <tr>
-        <td style="padding: 8px 0; font-size: 16px; font-style: italic;">Promo Discount (${data.discountPercent}%)</td>
-        <td style="padding: 8px 0; text-align: right; font-size: 16px; font-style: italic;">-KES ${data.discountAmount.toLocaleString()}</td>
+        <td style="padding: 12px 0 8px 0; font-size: 16px; font-style: italic; font-weight: bold;">Promo Discount (${data.discountPercent}%)</td>
+        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 16px; font-style: italic; font-weight: bold;">-KES ${data.discountAmount.toLocaleString()}</td>
       </tr>
     ` : '';
+
+    const subtotalHtml = `
+      <tr>
+        <td style="padding: 12px 0 8px 0; font-size: 16px; font-weight: bold;">Subtotal</td>
+        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 16px; font-weight: bold;">KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</td>
+      </tr>
+    `;
 
     printWindow.document.write(`
       <html>
@@ -74,13 +79,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <div class="divider"></div>
         <table>
           ${itemsHtml}
+          ${subtotalHtml}
           ${discountHtml}
+          <tr>
+            <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 18px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
+            <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 18px;">KES ${data.total.toLocaleString()}</td>
+          </tr>
         </table>
-        <div class="divider"></div>
-        <div class="total">
-          <span>${isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span><br>
-          <span style="font-size: 28px;">KES ${data.total.toLocaleString()}</span>
-        </div>
         <div class="divider"></div>
         <div class="footer">
           <p>Served by: ${data.cashierName}</p>
@@ -131,7 +136,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               </div>
             </div>
 
-            {/* Order Items - Bigger & Cleaner */}
+            {/* Order Items */}
             <div className="space-y-6 mb-10">
               {data.items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-4 border-b border-gray-100 last:border-b-0">
@@ -143,16 +148,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               ))}
 
-              {/* Discount line - now properly rendered in modal */}
-              {data.discountAmount > 0 && (
-                <div className="flex justify-between items-center py-4 border-b border-gray-100 text-sm italic text-green-700">
+              {/* Subtotal */}
+              <div className="flex justify-between items-center py-4 border-b border-gray-100 font-bold">
+                <span>Subtotal</span>
+                <span>KES {(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
+              </div>
+
+              {/* Discount line */}
+              {data.discountAmount && data.discountAmount > 0 && (
+                <div className="flex justify-between items-center py-4 border-b border-gray-100 text-sm italic text-green-700 font-bold">
                   <span>Promo Discount ({data.discountPercent}%)</span>
                   <span>-KES {data.discountAmount.toLocaleString()}</span>
                 </div>
               )}
             </div>
 
-            {/* Total - Very Prominent */}
+            {/* Total */}
             <div className={`p-10 rounded-[32px] text-center font-black text-4xl tracking-tight ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
               {isPending ? 'TOTAL DUE' : 'TOTAL PAID'}<br />
               <span className="text-6xl block mt-3">KES {data.total.toLocaleString()}</span>
