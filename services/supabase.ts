@@ -23,7 +23,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 /**
  * Safe wrapper for Supabase queries - returns [] on error or no data
  */
-const safeFetch = async <T>(query: any): Promise<T | []> => {
+const safeFetch = async <T>(query: any): Promise<T[]> => {
   try {
     const { data, error, status } = await query;
     if (error) {
@@ -37,6 +37,14 @@ const safeFetch = async <T>(query: any): Promise<T | []> => {
     return [];
   }
 };
+
+/**
+ * Simple type for active promotion (add to types.ts later if you want)
+ */
+interface Promotion {
+  discount_percent: number;
+  // add name, start_datetime, etc. if needed later
+}
 
 export const DB = {
   // ────────────────────────────────────────────────
@@ -60,20 +68,47 @@ export const DB = {
     await supabase.from('users').delete().eq('id', id);
   },
 
+  // ────────────────────────────────────────────────
+  // Active Promotion (used for 10% discount)
+  // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
-  const now = new Date().toISOString();
-  // Queries for a promotion where current time is between start and end
-  const { data, error } = await supabase
-    .from('promotions')
-    .select('*')
-    .eq('is_active', true)
-    .lte('start_datetime', now)
-    .gte('end_datetime', now)
-    .maybeSingle();
-    
-  if (error) return null;
-  return data;
-},
+    try {
+      // Preferred: call your existing RPC function (returns just discount_percent)
+      const { data, error } = await supabase.rpc('get_active_discount_percent');
+
+      if (error) {
+        console.warn('RPC get_active_discount_percent failed:', error.message);
+        return null;
+      }
+
+      // If RPC returns a number (discount percent), wrap it in Promotion shape
+      if (typeof data === 'number' && data > 0) {
+        return { discount_percent: data };
+      }
+
+      // Fallback: direct table query if RPC not available
+      const now = new Date().toISOString();
+      const { data: promoData, error: tableError } = await supabase
+        .from('promotions')
+        .select('discount_percent')
+        .eq('is_active', true)
+        .lte('start_datetime', now)
+        .gte('end_datetime', now)
+        .order('start_datetime', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (tableError || !promoData) {
+        return null;
+      }
+
+      return { discount_percent: promoData.discount_percent };
+    } catch (err: any) {
+      console.warn('getActivePromotion failed:', err.message);
+      return null;
+    }
+  },
+
   // ────────────────────────────────────────────────
   // Menu Items
   // ────────────────────────────────────────────────
@@ -131,12 +166,10 @@ export const DB = {
 
   /**
    * Deducts stock from inventory based on KITCHEN_RECIPES mapping
-   * @param saleItems - array of { id: menuItemId, quantity: number }
    */
   async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
     try {
       const updates: { id: string; quantity: number }[] = [];
-
       for (const item of saleItems) {
         const recipes = KITCHEN_RECIPES[item.id] || [];
         for (const rec of recipes) {
@@ -152,7 +185,6 @@ export const DB = {
           if (!current) continue;
 
           const newQty = Math.max(0, current.quantity - deductQty);
-
           updates.push({ id: rec.invId, quantity: newQty });
         }
       }
@@ -173,7 +205,9 @@ export const DB = {
   // Transactions
   // ────────────────────────────────────────────────
   async getTransactions(): Promise<SaleTransaction[]> {
-    const data = await safeFetch<any[]>(supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000));
+    const data = await safeFetch<any[]>(
+      supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000)
+    );
     return data.map((t: any) => ({
       id: t.id,
       date: t.date,
@@ -214,7 +248,9 @@ export const DB = {
   // Expenses
   // ────────────────────────────────────────────────
   async getExpenses(): Promise<Expense[]> {
-    const data = await safeFetch<any[]>(supabase.from('expenses').select('*').order('date', { ascending: false }));
+    const data = await safeFetch<any[]>(
+      supabase.from('expenses').select('*').order('date', { ascending: false })
+    );
     return data.map((e: any) => ({
       id: e.id,
       date: e.date,
@@ -244,7 +280,9 @@ export const DB = {
   // Audit Logs
   // ────────────────────────────────────────────────
   async getAuditLogs(): Promise<AuditLog[]> {
-    const data = await safeFetch<any[]>(supabase.from('audit_logs').select('*').order('date', { ascending: false }).limit(500));
+    const data = await safeFetch<any[]>(
+      supabase.from('audit_logs').select('*').order('date', { ascending: false }).limit(500)
+    );
     return data.map((l: any) => ({
       id: l.id,
       date: l.date,
