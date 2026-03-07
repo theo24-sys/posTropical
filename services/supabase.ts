@@ -60,6 +60,20 @@ export const DB = {
     await supabase.from('users').delete().eq('id', id);
   },
 
+  async getActivePromotion(): Promise<Promotion | null> {
+  const now = new Date().toISOString();
+  // Queries for a promotion where current time is between start and end
+  const { data, error } = await supabase
+    .from('promotions')
+    .select('*')
+    .eq('is_active', true)
+    .lte('start_datetime', now)
+    .gte('end_datetime', now)
+    .maybeSingle();
+    
+  if (error) return null;
+  return data;
+},
   // ────────────────────────────────────────────────
   // Menu Items
   // ────────────────────────────────────────────────
