@@ -48,15 +48,15 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getNairobiISO = () => new Date().toISOString();  // UTC — good!
+  const getNairobiISO = () => new Date().toISOString(); // UTC — good!
 
   const formatEAT = (utcDateStr: string | Date, options: Intl.DateTimeFormatOptions = {}) => {
-  const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
-  return date.toLocaleString('en-KE', {
-    timeZone: 'Africa/Nairobi',
-    ...options,
-  });
-};
+    const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
+    return date.toLocaleString('en-KE', {
+      timeZone: 'Africa/Nairobi',
+      ...options,
+    });
+  };
 
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
@@ -242,7 +242,7 @@ const App: React.FC = () => {
     const sale: SaleTransaction = {
       id: orderId,
       date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp,
-      total: finalTotal,  // use discounted total
+      total: finalTotal, // discounted total saved to DB
       paymentMethod,
       status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
       cashierName: posUser.name,
@@ -255,11 +255,14 @@ const App: React.FC = () => {
 
     try {
       const aiMsg = await generateReceiptMessage(cart, posUser.name);
+
       setReceiptData({
         items: [...cart],
-        subtotal,
+        subtotal,                // original full amount (for display)
         tax: 0,
-        total: finalTotal,
+        total: finalTotal,       // this is the discounted final total
+        discountAmount,          // added so ReceiptModal can show discount line
+        discountPercent,         // added for display
         amountTendered,
         change,
         date: sale.date,
@@ -271,8 +274,8 @@ const App: React.FC = () => {
         aiMessage: aiMsg,
         status: sale.status
       });
-      setIsModalOpen(true);
 
+      setIsModalOpen(true);
       setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
 
       if (navigator.onLine) {
@@ -334,6 +337,7 @@ const App: React.FC = () => {
       });
 
       const aiMsg = await generateReceiptMessage(reconstructed, posUser.name);
+
       setReceiptData({
         items: reconstructed,
         subtotal: tx.total,
@@ -348,6 +352,7 @@ const App: React.FC = () => {
         tableNumber: tx.tableNumber,
         updatedAt: updatedTx.updatedAt
       });
+
       setIsModalOpen(true);
 
       try {
