@@ -30,6 +30,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     }
 
     const itemsHtml = data.items.map(item => `
+
+    {data.discountAmount > 0 && (
+  <div className="flex justify-between text-sm italic">
+    <span>Promo Discount ({data.discountPercent}%)</span>
+    <span>-{data.discountAmount}</span>
+  </div>
+)}
       <tr>
         <td style="padding: 8px 0; font-size: 16px;">${item.quantity} × ${item.name}</td>
         <td style="padding: 8px 0; text-align: right; font-size: 16px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
