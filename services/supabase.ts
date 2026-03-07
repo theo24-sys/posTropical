@@ -1,22 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_CONFIG } from '../config';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
 import { KITCHEN_RECIPES } from '../constants'; // needed for deduction logic
 
-const isValidUrl = (url: string) => {
-  try {
-    new URL(url);
-    return true;
-  } catch (e) {
-    return false;
-  }
-};
-
-const supabaseUrl = isValidUrl(SUPABASE_CONFIG.url)
-  ? SUPABASE_CONFIG.url
-  : 'https://placeholder.supabase.co';
-
-const supabaseKey = SUPABASE_CONFIG.key;
+// === YOUR REAL CONFIG - HARDCODED FOR RELIABILITY ===
+const supabaseUrl = 'https://wmkefywbmydjnyqhvepv.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta2VmeXdibXlkam55cWh2ZXB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODAwMjMsImV4cCI6MjA3OTI1NjAyM30.Hp53NUqr0NPE8KuAGwiBYE0UwDX_AdeJXiy_x4p4BSE';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -39,7 +27,7 @@ const safeFetch = async <T>(query: any): Promise<T[]> => {
 };
 
 /**
- * Simple type for active promotion (add to types.ts later if you want)
+ * Simple type for active promotion
  */
 interface Promotion {
   discount_percent: number;
@@ -73,20 +61,19 @@ export const DB = {
   // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
     try {
-      // Preferred: call your existing RPC function (returns just discount_percent)
+      // Primary: use the RPC function (fastest and most reliable)
       const { data, error } = await supabase.rpc('get_active_discount_percent');
 
       if (error) {
-        console.warn('RPC get_active_discount_percent failed:', error.message);
-        return null;
-      }
-
-      // If RPC returns a number (discount percent), wrap it in Promotion shape
-      if (typeof data === 'number' && data > 0) {
+        console.error('RPC get_active_discount_percent failed:', error.message);
+      } else if (typeof data === 'number' && data > 0) {
+        console.log('Active promo loaded via RPC:', data, '%');
         return { discount_percent: data };
+      } else {
+        console.log('No active promo via RPC (returned:', data, ')');
       }
 
-      // Fallback: direct table query if RPC not available
+      // Fallback: direct table query (only if RPC fails or returns nothing)
       const now = new Date().toISOString();
       const { data: promoData, error: tableError } = await supabase
         .from('promotions')
@@ -98,13 +85,20 @@ export const DB = {
         .limit(1)
         .maybeSingle();
 
-      if (tableError || !promoData) {
+      if (tableError) {
+        console.error('Fallback promo query failed:', tableError.message);
         return null;
       }
 
+      if (!promoData) {
+        console.log('No active promotion found in table');
+        return null;
+      }
+
+      console.log('Active promo loaded via table fallback:', promoData.discount_percent, '%');
       return { discount_percent: promoData.discount_percent };
     } catch (err: any) {
-      console.warn('getActivePromotion failed:', err.message);
+      console.error('getActivePromotion completely failed:', err.message);
       return null;
     }
   },
