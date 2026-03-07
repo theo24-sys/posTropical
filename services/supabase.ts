@@ -61,21 +61,31 @@ export const DB = {
   // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
     try {
-      // Primary: use the RPC function (fastest and most reliable)
-      const { data, error } = await supabase.rpc('get_active_discount_percent');
+      // Primary: call RPC function
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_active_discount_percent');
 
-      if (error) {
-        console.error('RPC get_active_discount_percent failed:', error.message);
-      } else if (typeof data === 'number' && data > 0) {
-        console.log('Active promo loaded via RPC:', data, '%');
-        return { discount_percent: data };
+      if (rpcError) {
+        console.error('RPC call failed:', rpcError.message);
+      } else if (typeof rpcData === 'number' && rpcData > 0) {
+        console.log('Active promo loaded via RPC:', rpcData, '%');
+        return { discount_percent: rpcData };
       } else {
-        console.log('No active promo via RPC (returned:', data, ')');
+        console.log('RPC returned no active promo:', rpcData);
       }
 
-      // Fallback: direct table query with EAT timezone
-      const eatNow = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
-      const { data: promoData, error: tableError } = await supabase
+      // Fallback: direct table query using EAT time
+      const eatNow = new Date().toLocaleString('sv-SE', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(' ', 'T');
+
+      const { data: tableData, error: tableError } = await supabase
         .from('promotions')
         .select('discount_percent')
         .eq('is_active', true)
@@ -86,17 +96,17 @@ export const DB = {
         .maybeSingle();
 
       if (tableError) {
-        console.error('Fallback promo query failed:', tableError.message);
+        console.error('Table fallback query failed:', tableError.message);
         return null;
       }
 
-      if (!promoData) {
-        console.log('No active promotion found in table (EAT time used)');
+      if (!tableData) {
+        console.log('No active promotion found in table (using EAT time)');
         return null;
       }
 
-      console.log('Active promo loaded via table fallback:', promoData.discount_percent, '%');
-      return { discount_percent: promoData.discount_percent };
+      console.log('Active promo loaded via table fallback:', tableData.discount_percent, '%');
+      return { discount_percent: tableData.discount_percent };
     } catch (err: any) {
       console.error('getActivePromotion completely failed:', err.message);
       return null;
