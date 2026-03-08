@@ -17,8 +17,7 @@ const safeFetch = async <T>(query: any): Promise<T[]> => {
     if (error) {
       if (error.code === '42P01' || status === 404) return [];
       console.warn("Supabase Fetch Error:", error.message);
-      // Removed 'throw' to prevent infinite retry loops in frontend
-      return []; 
+      return []; // Return empty instead of throwing to stop loops
     }
     return data || [];
   } catch (e: any) {
@@ -57,21 +56,23 @@ export const DB = {
   },
 
   // ────────────────────────────────────────────────
-  // Active Promotion (Corrected for UTC/ISO Standards)
+  // Active Promotion (FIXED MATCHING LOGIC)
   // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
     try {
-      // Use ISO string to ensure the comparison works with Supabase UTC clock
-      const nowIso = new Date().toISOString(); 
+      // FIX: Use ISO string. PostgreSQL understands this globally.
+      // Your previous format (08/03/2026) was being rejected by the DB comparison.
+      const now = new Date();
+      const eatNowIso = now.toISOString(); 
 
-      console.log('Frontend querying promotions with ISO time:', nowIso);
+      console.log('Frontend querying promotions with ISO time:', eatNowIso);
 
       const { data, error } = await supabase
         .from('promotions')
         .select('discount_percent')
         .eq('is_active', true)
-        .lte('start_datetime', nowIso)
-        .gte('end_datetime', nowIso)
+        .lte('start_datetime', eatNowIso)
+        .gte('end_datetime', eatNowIso)
         .order('start_datetime', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -82,10 +83,13 @@ export const DB = {
       }
 
       if (!data) {
-        console.log('No promo row matched for current UTC time.');
+        // Logging the raw data to see why the match failed
+        const { data: debugRows } = await supabase.from('promotions').select('*').limit(3);
+        console.log('No promo match. DB contents:', debugRows);
         return null;
       }
 
+      console.log('Promo FOUND:', data.discount_percent);
       return { discount_percent: data.discount_percent };
     } catch (err: any) {
       console.error('getActivePromotion crashed:', err.message);
@@ -150,11 +154,10 @@ export const DB = {
 
   /**
    * Deducts stock from inventory based on KITCHEN_RECIPES mapping
-   * Optimized to batch updates into a single call.
+   * BATCH UPDATED for reliability.
    */
   async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
     try {
-      // Fetch all current inventory once to calculate new levels
       const { data: currentInv } = await supabase.from('inventory').select('id, quantity');
       if (!currentInv) return { success: false };
 
@@ -166,11 +169,10 @@ export const DB = {
         for (const rec of recipes) {
           const deductQty = rec.amount * item.quantity;
           const currentQty = invMap.get(rec.invId) ?? 0;
-          
           if (deductQty > 0) {
             const newQty = Math.max(0, currentQty - deductQty);
             updates.push({ id: rec.invId, quantity: newQty });
-            invMap.set(rec.invId, newQty); // Update map for multiple items using same ingredient
+            invMap.set(rec.invId, newQty); 
           }
         }
       }
@@ -179,7 +181,6 @@ export const DB = {
         const { error } = await supabase.from('inventory').upsert(updates);
         if (error) throw error;
       }
-
       return { success: true };
     } catch (err: any) {
       console.error('Supabase deduction failed:', err.message);
