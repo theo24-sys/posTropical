@@ -12,7 +12,7 @@ interface TropicalDB extends DBSchema {
 }
 
 const DB_NAME = 'tropical-pos-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4; // ← BUMPED TO 4 to force upgrade and create missing stores
 
 export const LocalDB = {
   /**
@@ -20,27 +20,58 @@ export const LocalDB = {
    */
   async getDB(): Promise<IDBPDatabase<TropicalDB>> {
     return openDB<TropicalDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        console.log(`Upgrading IndexedDB from v${oldVersion} to v${newVersion}`);
+
+        // Create or verify all stores
         if (!db.objectStoreNames.contains('menu_items')) {
           db.createObjectStore('menu_items', { keyPath: 'id' });
+          console.log('Created store: menu_items');
         }
         if (!db.objectStoreNames.contains('users')) {
           db.createObjectStore('users', { keyPath: 'id' });
+          console.log('Created store: users');
         }
         if (!db.objectStoreNames.contains('offline_orders')) {
           db.createObjectStore('offline_orders', { keyPath: 'id' });
+          console.log('Created store: offline_orders');
         }
         if (!db.objectStoreNames.contains('sales_history')) {
           db.createObjectStore('sales_history', { keyPath: 'id' });
+          console.log('Created store: sales_history');
         }
         if (!db.objectStoreNames.contains('expenses')) {
           db.createObjectStore('expenses', { keyPath: 'id' });
+          console.log('Created store: expenses');
         }
         if (!db.objectStoreNames.contains('inventory')) {
           db.createObjectStore('inventory', { keyPath: 'id' });
+          console.log('Created store: inventory');
         }
       },
+      blocked() {
+        console.warn('IndexedDB blocked - another tab has it open');
+      },
+      blocking() {
+        console.warn('IndexedDB blocking - closing old connection');
+      },
+      terminated() {
+        console.error('IndexedDB connection terminated');
+      }
     });
+  },
+
+  // ────────────────────────────────────────────────
+  // Utility: Reset local DB (call once if needed)
+  // ────────────────────────────────────────────────
+  async resetLocalDB() {
+    try {
+      indexedDB.deleteDatabase(DB_NAME);
+      console.log('LocalDB deleted. Reload page to recreate.');
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to delete local DB:', err);
+    }
   },
 
   // ────────────────────────────────────────────────
@@ -54,6 +85,7 @@ export const LocalDB = {
       await store.put(item);
     }
     await tx.done;
+    console.log('Inventory saved locally');
   },
 
   async getInventory(): Promise<InventoryItem[]> {
@@ -73,13 +105,11 @@ export const LocalDB = {
     const db = await this.getDB();
     const tx = db.transaction('inventory', 'readwrite');
     const store = tx.objectStore('inventory');
-
     for (const item of saleItems) {
       const recipes = KITCHEN_RECIPES[item.id] || [];
       for (const rec of recipes) {
         const deductQty = rec.amount * item.quantity;
         if (deductQty <= 0) continue;
-
         const current = await store.get(rec.invId);
         if (current) {
           current.quantity = Math.max(0, current.quantity - deductQty);
@@ -87,8 +117,8 @@ export const LocalDB = {
         }
       }
     }
-
     await tx.done;
+    console.log('Local inventory deducted');
     return { success: true };
   },
 
