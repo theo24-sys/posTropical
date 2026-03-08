@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ReceiptData } from '../types';
 import { CURRENCY, LOGO_URL } from '../constants';
-import { Printer, X, ReceiptText, ShieldCheck, MapPin, Coffee } from 'lucide-react';
+import { Printer, X, ReceiptText, ShieldCheck } from 'lucide-react';
 
 interface ReceiptModalProps {
   data: ReceiptData | null;
@@ -14,14 +14,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   if (!isOpen || !data) return null;
 
-  // --- 24-HOUR WOMEN'S DAY CHECK (EAT) ---
+  // Women's Day check (EAT timezone)
   const now = new Date();
   const eatDate = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Nairobi',
     day: '2-digit',
     month: '2-digit'
   }).format(now);
-  const isWomensDay = eatDate === "08/03"; 
+  const isWomensDay = eatDate === "08/03";
 
   const SHOP_PHONE = "0748027790";
   const SHOP_LOCATION = "Lodwar, Turkana County";
@@ -30,38 +30,65 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   const handlePrint = () => {
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=600,width=400');
+    const printWindow = window.open('', 'ReceiptPrint', 'height=800,width=460');
     if (!printWindow) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
       return;
     }
 
+    // Safe line length for 72mm printable area (~34 chars in Courier)
+    const MAX_CHARS = 34;
+
+    const formatLine = (left: string, right: string) => {
+      const maxLeft = MAX_CHARS - right.length - 4;
+      let safeLeft = left.length > maxLeft ? left.slice(0, maxLeft - 3) + '...' : left;
+      const dots = '.'.repeat(MAX_CHARS - safeLeft.length - right.length);
+      return safeLeft + dots + right;
+    };
+
     const itemsHtml = data.items
-      .map(item => `
-        <tr>
-          <td style="padding: 8px 0; font-size: 16px;">${item.quantity} × ${item.name}</td>
-          <td style="padding: 8px 0; text-align: right; font-size: 16px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
-        </tr>
-      `)
+      .map(item => {
+        const left = `${item.quantity} × ${item.name}`;
+        const right = `KES ${(item.price * item.quantity).toLocaleString()}`;
+        return `
+          <div style="font-size:19px; font-weight:bold; line-height:1.32; white-space:pre; margin:3px 0;">
+            ${formatLine(left, right)}
+          </div>
+        `;
+      })
       .join('');
 
-    const discountHtml = data.discountAmount && data.discountAmount > 0 ? `
-      <tr>
-        <td style="padding: 12px 0 8px 0; font-size: 16px; font-style: italic; font-weight: bold;">Promo Discount (${data.discountPercent}%)</td>
-        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 16px; font-style: italic; font-weight: bold;">-KES ${data.discountAmount.toLocaleString()}</td>
-      </tr>
-    ` : '';
+    const subtotalRight = `KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}`;
+    const subtotalLine = formatLine('Subtotal', subtotalRight);
 
-    const subtotalHtml = `
-      <tr>
-        <td style="padding: 12px 0 8px 0; font-size: 16px; font-weight: bold;">Subtotal</td>
-        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 16px; font-weight: bold;">KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</td>
-      </tr>
-    `;
+    const discountLine = data.discountAmount && data.discountAmount > 0
+      ? formatLine(`Promo (${data.discountPercent}%)`, `-KES ${data.discountAmount.toLocaleString()}`)
+      : '';
 
-    const womensDayPrintHtml = isWomensDay ? `
-      <div style="margin-top: 20px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase;">
+    const totalRight = `KES ${data.total.toLocaleString()}`;
+    const totalLine = formatLine(`TOTAL ${isPending ? 'DUE' : 'PAID'}`, totalRight);
+
+    const aiMessageHtml = data.aiMessage
+      ? `
+        <div style="margin: 12px 0; padding: 8px 0; font-style: italic; font-size: 17px; line-height: 1.4; text-align: center; border-top: 1px dashed #666; border-bottom: 1px dashed #666;">
+          ${data.aiMessage}
+        </div>
+      `
+      : '';
+
+    const womensDayHtml = isWomensDay ? `
+      <div style="
+        margin: 16px 0;
+        padding: 10px 0;
+        border-top: 2px double #000;
+        border-bottom: 2px double #000;
+        text-align: center;
+        font-weight: bold;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      ">
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
       </div>
     ` : '';
@@ -71,51 +98,94 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       <head>
         <title>${docTitle} #${data.orderId}</title>
         <style>
-          body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0 auto; padding: 10px; font-size: 14px; line-height: 1.5; color: #000; }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .divider { border-bottom: 1px dashed #000; margin: 12px 0; }
-          table { width: 100%; border-collapse: collapse; }
-          .footer { font-size: 12px; margin-top: 20px; text-align: center; }
+          body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 72mm;
+            margin: 0;
+            padding: 5mm 3mm;
+            font-size: 18px;
+            line-height: 1.3;
+            color: #000;
+          }
+          * { margin:0; padding:0; box-sizing:border-box; }
+          .center { text-align:center; }
+          .divider { border-bottom:1px dashed #000; height:1px; margin:8px 0; }
+          h1 { font-size:32px; margin:5px 0; line-height:1.1; font-weight:900; }
+          .shop { font-size:19px; margin:3px 0; }
+          .title { font-size:22px; font-weight:900; margin:6px 0; }
+          .meta { font-size:17px; margin:3px 0; }
+          .footer { margin-top:16px; text-align:center; line-height:1.35; font-size:18px; }
+          .total-line { font-size:26px; font-weight:900; white-space:pre; margin:6px 0; letter-spacing:0.5px; }
         </style>
       </head>
       <body>
+
         <div class="center">
-          <h2 style="margin: 0; font-size: 24px;">Tropical Dreams</h2>
-          <p style="margin: 4px 0; font-size: 14px;">Coffee House - Lodwar</p>
-          <p style="margin: 2px 0; font-size: 12px;">${SHOP_PHONE}</p>
+          <h1>Tropical Dreams</h1>
+          <div class="shop">Coffee House - Lodwar</div>
+          <div class="shop">${SHOP_PHONE}</div>
         </div>
+
         <div class="divider"></div>
-        <div class="center bold">*** ${docTitle} ***</div>
-        <p style="margin: 6px 0;">Order #${data.orderId}</p>
-        <p style="font-size: 12px;">${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}</p>
+
+        <div class="center title">
+          *** ${docTitle.toUpperCase()} ***
+        </div>
+
+        <div class="center meta">Order #${data.orderId}</div>
+        <div class="center meta">
+          ${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}
+        </div>
+
         <div class="divider"></div>
-        <table>
-          ${itemsHtml}
-          ${subtotalHtml}
-          ${discountHtml}
-          <tr>
-            <td style="padding: 12px 0; font-weight: bold; font-size: 18px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
-            <td style="padding: 12px 0; text-align: right; font-weight: bold; font-size: 18px;">KES ${data.total.toLocaleString()}</td>
-          </tr>
-        </table>
+
+        ${itemsHtml}
+
         <div class="divider"></div>
+
+        <div style="font-size:20px; font-weight:bold; white-space:pre;">
+          ${subtotalLine}
+        </div>
+
+        ${discountLine ? `
+          <div style="font-size:19px; font-style:italic; white-space:pre; margin:4px 0;">
+            ${discountLine}
+          </div>
+        ` : ''}
+
+        <div class="divider"></div>
+
+        <div class="center total-line">
+          ${totalLine}
+        </div>
+
+        <div class="divider"></div>
+
         <div class="footer">
-          <p>Served by: ${data.cashierName}</p>
-          ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic;">"${data.aiMessage}"</p>` : ''}
-          <p style="margin-top: 16px; font-weight: bold; font-size: 14px;">Karibu Tena!</p>
+          <div style="font-weight:bold; margin-bottom:6px;">
+            Served by: ${data.cashierName}
+          </div>
+
+          ${aiMessageHtml}
+
+          <div style="font-size:24px; font-weight:900; letter-spacing:0.8px; margin:12px 0;">
+            Karibu Tena!
+          </div>
         </div>
-        ${womensDayPrintHtml}
+
+        ${womensDayHtml}
+
       </body>
       </html>
     `);
 
     printWindow.document.close();
     printWindow.focus();
+
     setTimeout(() => {
       printWindow.print();
       setIsPrinting(false);
-    }, 500);
+    }, 1000);
   };
 
   return (
@@ -143,7 +213,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               <h3 className="font-serif text-2xl font-black text-[#4B3621] uppercase tracking-tighter">Tropical Dreams</h3>
               <p className="text-gray-500 text-sm font-medium">{SHOP_LOCATION} | {SHOP_PHONE}</p>
             </div>
-
             <div className="space-y-4 mb-8">
               {data.items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
@@ -151,12 +220,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                   <span className="font-black text-xl text-[#4B3621]">KES {(item.price * item.quantity).toLocaleString()}</span>
                 </div>
               ))}
-              
               <div className="flex justify-between pt-4 border-t border-gray-100 font-bold text-gray-600">
                 <span>Subtotal</span>
-                <span>KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
+                <span>KES {(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
               </div>
-
               {data.discountAmount && data.discountAmount > 0 && (
                 <div className="flex justify-between text-green-700 font-black italic">
                   <span>Promo Discount ({data.discountPercent}%)</span>
@@ -164,18 +231,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               )}
             </div>
-
             <div className={`p-8 rounded-[32px] text-center font-black ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
               <span className="text-2xl">{isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
               <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
             </div>
-
             <div className="text-center mt-10">
               <p className="font-medium text-lg">Served by: {data.cashierName}</p>
               {data.aiMessage && <p className="italic mt-4 text-gray-600">"{data.aiMessage}"</p>}
               <p className="font-black mt-6 text-xl uppercase tracking-widest">Karibu Tena!</p>
-              
-              {/* --- WOMEN'S DAY MESSAGE --- */}
               {isWomensDay && (
                 <div className="mt-8 p-4 bg-pink-100 border-2 border-dashed border-pink-400 text-pink-700 font-black text-lg uppercase">
                   Happy International Women's Day
