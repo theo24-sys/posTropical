@@ -14,7 +14,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   if (!isOpen || !data) return null;
 
-  // Women's Day check (EAT timezone)
+  // Women's Day check (EAT)
   const now = new Date();
   const eatDate = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Nairobi',
@@ -30,18 +30,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   const handlePrint = () => {
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=800,width=500');
+    const printWindow = window.open('', 'ReceiptPrint', 'height=800,width=480');
     if (!printWindow) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
       return;
     }
 
-    // Helper: create line with dot leaders for right-aligned prices
-    const createDottedLine = (left: string, right: string, totalChars = 42) => {
-      const needed = totalChars - left.length - right.length;
-      const dots = '.'.repeat(Math.max(0, needed));
-      return left + dots + right;
+    // Typical 80mm thermal printer line width in characters (Courier ~10–11 cpi)
+    const MAX_CHARS = 42;
+
+    // Format item line with truncation + dot leaders
+    const formatLine = (leftPart: string, rightPart: string) => {
+      const maxDesc = MAX_CHARS - rightPart.length - 4; // reserve for dots + margin
+      let desc = leftPart;
+      if (desc.length > maxDesc) {
+        desc = desc.slice(0, maxDesc - 3) + '...';
+      }
+      const dotsNeeded = MAX_CHARS - desc.length - rightPart.length;
+      const dots = '.'.repeat(Math.max(0, dotsNeeded));
+      return desc + dots + rightPart;
     };
 
     const itemsHtml = data.items
@@ -49,30 +57,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         const left = `${item.quantity} × ${item.name}`;
         const right = `KES ${(item.price * item.quantity).toLocaleString()}`;
         return `
-          <div style="font-size: 22px; font-weight: bold; line-height: 1.35; white-space: pre; margin: 4px 0;">
-            ${createDottedLine(left, right)}
+          <div style="font-size: 22px; font-weight: bold; line-height: 1.32; white-space: pre; margin: 4px 0;">
+            ${formatLine(left, right)}
           </div>
         `;
       })
       .join('');
 
-    const subtotalLine = createDottedLine(
-      'Subtotal',
-      `KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}`
-    );
+    const subtotalRight = `KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}`;
+    const subtotalLine = formatLine('Subtotal', subtotalRight);
 
     const discountLine = data.discountAmount && data.discountAmount > 0
-      ? createDottedLine(
-          `Promo (${data.discountPercent}%)`,
-          `-KES ${data.discountAmount.toLocaleString()}`
-        )
+      ? formatLine(`Promo (${data.discountPercent}%)`, `-KES ${data.discountAmount.toLocaleString()}`)
       : '';
 
-    const totalLine = createDottedLine(
-      `TOTAL ${isPending ? 'DUE' : 'PAID'}`,
-      `KES ${data.total.toLocaleString()}`,
-      38
-    );
+    const totalRight = `KES ${data.total.toLocaleString()}`;
+    const totalLine = formatLine(`TOTAL ${isPending ? 'DUE' : 'PAID'}`, totalRight);
 
     const womensDayHtml = isWomensDay ? `
       <div style="
@@ -84,7 +84,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         font-weight: bold;
         font-size: 21px;
         text-transform: uppercase;
-        letter-spacing: 1.2px;
+        letter-spacing: 1px;
       ">
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
       </div>
@@ -97,9 +97,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <style>
           body {
             font-family: 'Courier New', Courier, monospace;
-            width: 78mm;
+            width: 76mm;
             margin: 0;
-            padding: 5mm 2.5mm;
+            padding: 4mm 2mm;
             font-size: 20px;
             line-height: 1.3;
             color: #000;
@@ -142,12 +142,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
         <div class="divider"></div>
 
-        <div style="font-size: 24px; font-weight: bold;">
+        <div style="font-size: 24px; font-weight: bold; white-space: pre;">
           ${subtotalLine}
         </div>
 
         ${discountLine ? `
-          <div style="font-size: 22px; font-style: italic; margin: 6px 0;">
+          <div style="font-size: 22px; font-style: italic; white-space: pre; margin: 6px 0;">
             ${discountLine}
           </div>
         ` : ''}
@@ -192,7 +192,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#4B3621]/80 backdrop-blur-md">
       <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 relative">
-        {/* Header - screen view unchanged */}
+        {/* Header */}
         <div className={`${isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
           <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
             <X size={24} />
@@ -206,7 +206,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
           </p>
         </div>
 
-        {/* Content - screen view unchanged */}
+        {/* Content - screen view */}
         <div className="p-8 overflow-y-auto flex-1 bg-gray-50/30">
           <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 relative">
             <div className="text-center mb-8 border-b border-gray-100 pb-8">
@@ -249,9 +249,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Buttons */}
         <div className="p-8 bg-white border-t border-gray-100 flex gap-4 shrink-0">
-          <button onClick={onClose} className="flex-1 py-5 bg-gray-100 rounded-[28px] font-black text-xs uppercase text-gray-500 hover:bg-gray-200 transition-all">
+          <button 
+            onClick={onClose} 
+            className="flex-1 py-5 bg-gray-100 rounded-[28px] font-black text-xs uppercase text-gray-500 hover:bg-gray-200 transition-all"
+          >
             Close
           </button>
           <button
