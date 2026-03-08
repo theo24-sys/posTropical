@@ -74,7 +74,7 @@ export const DB = {
       }
 
       // Fallback: direct table query using EAT time
-      const eatNow = new Date().toLocaleString('sv-SE', {
+      const eatNow = new Date().toLocaleString('en-US', {
         timeZone: 'Africa/Nairobi',
         year: 'numeric',
         month: '2-digit',
@@ -83,7 +83,9 @@ export const DB = {
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-      }).replace(' ', 'T');
+      }).replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+
+      console.log('Using EAT time for fallback query:', eatNow);
 
       const { data: tableData, error: tableError } = await supabase
         .from('promotions')
