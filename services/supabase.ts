@@ -31,7 +31,6 @@ const safeFetch = async <T>(query: any): Promise<T[]> => {
  */
 interface Promotion {
   discount_percent: number;
-  // add name, start_datetime, etc. if needed later
 }
 
 export const DB = {
@@ -61,20 +60,9 @@ export const DB = {
   // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
     try {
-      // Primary: call RPC function
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_active_discount_percent');
-
-      if (rpcError) {
-        console.error('RPC call failed:', rpcError.message);
-      } else if (typeof rpcData === 'number' && rpcData > 0) {
-        console.log('Active promo loaded via RPC:', rpcData, '%');
-        return { discount_percent: rpcData };
-      } else {
-        console.log('RPC returned no active promo:', rpcData);
-      }
-
-      // Fallback: direct table query using EAT time
-      const eatNow = new Date().toLocaleString('en-US', {
+      // Use clean EAT timestamp string in format YYYY-MM-DD HH:mm:ss
+      const now = new Date();
+      const eatNow = now.toLocaleString('en-GB', {
         timeZone: 'Africa/Nairobi',
         year: 'numeric',
         month: '2-digit',
@@ -83,11 +71,11 @@ export const DB = {
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-      }).replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+      }).replace(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+):(\d+)/, '$3-$2-$1 $4:$5:$6');
 
-      console.log('Using EAT time for fallback query:', eatNow);
+      console.log('Frontend querying promotions with EAT time:', eatNow);
 
-      const { data: tableData, error: tableError } = await supabase
+      const { data, error } = await supabase
         .from('promotions')
         .select('discount_percent')
         .eq('is_active', true)
@@ -97,20 +85,28 @@ export const DB = {
         .limit(1)
         .maybeSingle();
 
-      if (tableError) {
-        console.error('Table fallback query failed:', tableError.message);
+      if (error) {
+        console.error('Promo table query failed:', error.message, error.details, error.hint);
         return null;
       }
 
-      if (!tableData) {
-        console.log('No active promotion found in table (using EAT time)');
+      if (!data) {
+        console.log('No promo row matched with time string:', eatNow);
+        
+        // Debug: show all promo rows so we can see exact date format
+        const { data: debugRows } = await supabase
+          .from('promotions')
+          .select('id, name, discount_percent, start_datetime, end_datetime, is_active')
+          .limit(5);
+        console.log('Debug: all promo rows in DB:', debugRows);
+        
         return null;
       }
 
-      console.log('Active promo loaded via table fallback:', tableData.discount_percent, '%');
-      return { discount_percent: tableData.discount_percent };
+      console.log('Promo FOUND in frontend query:', data.discount_percent);
+      return { discount_percent: data.discount_percent };
     } catch (err: any) {
-      console.error('getActivePromotion completely failed:', err.message);
+      console.error('getActivePromotion crashed:', err.message);
       return null;
     }
   },
