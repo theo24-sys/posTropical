@@ -1,6 +1,7 @@
+```tsx
 import React, { useState } from 'react';
 import { ReceiptData } from '../types';
-import { CURRENCY, LOGO_URL } from '../constants';
+import { LOGO_URL } from '../constants';
 import { Printer, X, ReceiptText, ShieldCheck } from 'lucide-react';
 
 interface ReceiptModalProps {
@@ -14,170 +15,185 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   if (!isOpen || !data) return null;
 
-  // Women's Day check (EAT timezone)
-  const now = new Date();
+  const SHOP_PHONE = "0748027790";
+  const SHOP_LOCATION = "Coffee House - Lodwar";
+
+  const isPending = data.status === 'Pending';
+  const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
+
   const eatDate = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Nairobi',
     day: '2-digit',
     month: '2-digit'
-  }).format(now);
+  }).format(new Date());
+
   const isWomensDay = eatDate === "08/03";
 
-  const SHOP_PHONE = "0748027790";
-  const SHOP_LOCATION = "Lodwar, Turkana County";
-  const isPending = data.status === 'Pending';
-  const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
-
   const handlePrint = () => {
+
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=800,width=460');
+
+    const printWindow = window.open('', 'ReceiptPrint', 'height=600,width=420');
+
     if (!printWindow) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
       return;
     }
 
-    // Safe line length for 72mm printable area (~34 chars in Courier)
-    const MAX_CHARS = 34;
-
-    const formatLine = (left: string, right: string) => {
-      const maxLeft = MAX_CHARS - right.length - 4;
-      let safeLeft = left.length > maxLeft ? left.slice(0, maxLeft - 3) + '...' : left;
-      const dots = '.'.repeat(MAX_CHARS - safeLeft.length - right.length);
-      return safeLeft + dots + right;
-    };
-
-    const itemsHtml = data.items
-      .map(item => {
-        const left = `${item.quantity} × ${item.name}`;
-        const right = `KES ${(item.price * item.quantity).toLocaleString()}`;
-        return `
-          <div style="font-size:19px; font-weight:bold; line-height:1.32; white-space:pre; margin:3px 0;">
-            ${formatLine(left, right)}
-          </div>
-        `;
-      })
-      .join('');
-
-    const subtotalRight = `KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}`;
-    const subtotalLine = formatLine('Subtotal', subtotalRight);
-
-    const discountLine = data.discountAmount && data.discountAmount > 0
-      ? formatLine(`Promo (${data.discountPercent}%)`, `-KES ${data.discountAmount.toLocaleString()}`)
-      : '';
-
-    const totalRight = `KES ${data.total.toLocaleString()}`;
-    const totalLine = formatLine(`TOTAL ${isPending ? 'DUE' : 'PAID'}`, totalRight);
-
-    const aiMessageHtml = data.aiMessage
-      ? `
-        <div style="margin: 12px 0; padding: 8px 0; font-style: italic; font-size: 17px; line-height: 1.4; text-align: center; border-top: 1px dashed #666; border-bottom: 1px dashed #666;">
-          ${data.aiMessage}
-        </div>
-      `
-      : '';
-
-    const womensDayHtml = isWomensDay ? `
-      <div style="
-        margin: 16px 0;
-        padding: 10px 0;
-        border-top: 2px double #000;
-        border-bottom: 2px double #000;
-        text-align: center;
-        font-weight: bold;
-        font-size: 18px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-      ">
-        *** HAPPY INTERNATIONAL WOMEN'S DAY ***
-      </div>
-    ` : '';
-
     printWindow.document.write(`
-      <html>
-      <head>
-        <title>${docTitle} #${data.orderId}</title>
-        <style>
-          body {
-            font-family: 'Courier New', Courier, monospace;
-            width: 72mm;
-            margin: 0;
-            padding: 5mm 3mm;
-            font-size: 18px;
-            line-height: 1.3;
-            color: #000;
-          }
-          * { margin:0; padding:0; box-sizing:border-box; }
-          .center { text-align:center; }
-          .divider { border-bottom:1px dashed #000; height:1px; margin:8px 0; }
-          h1 { font-size:32px; margin:5px 0; line-height:1.1; font-weight:900; }
-          .shop { font-size:19px; margin:3px 0; }
-          .title { font-size:22px; font-weight:900; margin:6px 0; }
-          .meta { font-size:17px; margin:3px 0; }
-          .footer { margin-top:16px; text-align:center; line-height:1.35; font-size:18px; }
-          .total-line { font-size:26px; font-weight:900; white-space:pre; margin:6px 0; letter-spacing:0.5px; }
-        </style>
-      </head>
-      <body>
+    <html>
+    <head>
+    <title>${docTitle} #${data.orderId}</title>
 
-        <div class="center">
-          <h1>Tropical Dreams</h1>
-          <div class="shop">Coffee House - Lodwar</div>
-          <div class="shop">${SHOP_PHONE}</div>
-        </div>
+<style>
 
-        <div class="divider"></div>
+body{
+  font-family:"Courier New", monospace;
+  width:72mm;
+  margin:0 auto;
+  padding:6mm 4mm;
+  font-size:18px;
+  line-height:1.45;
+  color:#000;
+}
 
-        <div class="center title">
-          *** ${docTitle.toUpperCase()} ***
-        </div>
+.center{
+  text-align:center;
+}
 
-        <div class="center meta">Order #${data.orderId}</div>
-        <div class="center meta">
-          ${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}
-        </div>
+.header{
+  font-size:30px;
+  font-weight:900;
+}
 
-        <div class="divider"></div>
+.sub{
+  font-size:18px;
+}
 
-        ${itemsHtml}
+.meta{
+  font-size:16px;
+}
 
-        <div class="divider"></div>
+.divider{
+  border-top:2px dashed #000;
+  margin:10px 0;
+}
 
-        <div style="font-size:20px; font-weight:bold; white-space:pre;">
-          ${subtotalLine}
-        </div>
+table{
+  width:100%;
+  border-collapse:collapse;
+}
 
-        ${discountLine ? `
-          <div style="font-size:19px; font-style:italic; white-space:pre; margin:4px 0;">
-            ${discountLine}
-          </div>
-        ` : ''}
+td{
+  padding:6px 0;
+  font-size:18px;
+}
 
-        <div class="divider"></div>
+td.item{
+  width:70%;
+}
 
-        <div class="center total-line">
-          ${totalLine}
-        </div>
+td.price{
+  width:30%;
+  text-align:right;
+}
 
-        <div class="divider"></div>
+.total-row td{
+  font-size:24px;
+  font-weight:900;
+}
 
-        <div class="footer">
-          <div style="font-weight:bold; margin-bottom:6px;">
-            Served by: ${data.cashierName}
-          </div>
+.footer{
+  margin-top:14px;
+  font-size:18px;
+}
 
-          ${aiMessageHtml}
+@media print{
+  body{
+    width:72mm;
+  }
+}
 
-          <div style="font-size:24px; font-weight:900; letter-spacing:0.8px; margin:12px 0;">
-            Karibu Tena!
-          </div>
-        </div>
+</style>
+</head>
 
-        ${womensDayHtml}
+<body>
 
-      </body>
-      </html>
-    `);
+<div class="center header">Tropical Dreams</div>
+<div class="center sub">${SHOP_LOCATION}</div>
+<div class="center meta">${SHOP_PHONE}</div>
+
+<div class="divider"></div>
+
+<div class="center" style="font-size:20px;font-weight:bold;">
+*** ${docTitle} ***
+</div>
+
+<div class="center meta">Order #${data.orderId}</div>
+
+<div class="center meta">
+${new Date(data.date).toLocaleString('en-KE',{timeZone:'Africa/Nairobi'})}
+</div>
+
+<div class="divider"></div>
+
+<table>
+
+${data.items.map(item => `
+<tr>
+<td class="item">${item.quantity}x ${item.name}</td>
+<td class="price">${(item.price * item.quantity).toLocaleString()}</td>
+</tr>
+`).join('')}
+
+<tr>
+<td class="item"><b>Subtotal</b></td>
+<td class="price"><b>${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</b></td>
+</tr>
+
+${data.discountAmount ? `
+<tr>
+<td class="item"><i>Promo ${data.discountPercent}%</i></td>
+<td class="price"><i>-${data.discountAmount.toLocaleString()}</i></td>
+</tr>
+` : ""}
+
+</table>
+
+<div class="divider"></div>
+
+<table>
+<tr class="total-row">
+<td class="item">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
+<td class="price">${data.total.toLocaleString()}</td>
+</tr>
+</table>
+
+<div class="divider"></div>
+
+<div class="footer center">
+Served by ${data.cashierName}
+</div>
+
+${data.aiMessage ? `
+<div class="footer center"><i>${data.aiMessage}</i></div>
+` : ""}
+
+<div class="footer center" style="font-weight:bold;">
+Karibu Tena!
+</div>
+
+${isWomensDay ? `
+<div class="divider"></div>
+<div class="center" style="font-size:16px;font-weight:bold;">
+HAPPY INTERNATIONAL WOMEN'S DAY
+</div>
+` : ""}
+
+</body>
+</html>
+`);
 
     printWindow.document.close();
     printWindow.focus();
@@ -185,84 +201,55 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     setTimeout(() => {
       printWindow.print();
       setIsPrinting(false);
-    }, 1000);
+    }, 500);
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#4B3621]/80 backdrop-blur-md">
-      <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 relative">
-        {/* Header */}
-        <div className={`${isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
-          <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
+      <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100">
+
+        <div className={`${isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative`}>
+          <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white">
             <X size={24} />
           </button>
-          <div className="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20 relative z-10">
+
+          <div className="flex justify-center mb-4">
             {isPending ? <ReceiptText size={40} /> : <ShieldCheck size={40} />}
           </div>
-          <h2 className="font-serif text-3xl font-black uppercase tracking-tighter">{docTitle}</h2>
-          <p className="text-white opacity-80 text-sm font-black tracking-widest mt-2">
-            ORDER #{data.orderId} • {isPending ? 'PAYMENT REQUIRED' : 'SETTLED'}
+
+          <h2 className="text-2xl font-bold uppercase">{docTitle}</h2>
+
+          <p className="text-sm opacity-80 mt-2">
+            ORDER #{data.orderId}
           </p>
         </div>
 
-        {/* Content */}
-        <div className="p-8 overflow-y-auto flex-1 bg-gray-50/30">
-          <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 relative">
-            <div className="text-center mb-8 border-b border-gray-100 pb-8">
-              <img src={LOGO_URL} alt="Logo" className="h-16 object-contain mx-auto mb-4" />
-              <h3 className="font-serif text-2xl font-black text-[#4B3621] uppercase tracking-tighter">Tropical Dreams</h3>
-              <p className="text-gray-500 text-sm font-medium">{SHOP_LOCATION} | {SHOP_PHONE}</p>
-            </div>
-            <div className="space-y-4 mb-8">
-              {data.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                  <span className="text-lg font-bold text-gray-800">{item.quantity}x {item.name}</span>
-                  <span className="font-black text-xl text-[#4B3621]">KES {(item.price * item.quantity).toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="flex justify-between pt-4 border-t border-gray-100 font-bold text-gray-600">
-                <span>Subtotal</span>
-                <span>KES {(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
-              </div>
-              {data.discountAmount && data.discountAmount > 0 && (
-                <div className="flex justify-between text-green-700 font-black italic">
-                  <span>Promo Discount ({data.discountPercent}%)</span>
-                  <span>-KES {data.discountAmount.toLocaleString()}</span>
-                </div>
-              )}
-            </div>
-            <div className={`p-8 rounded-[32px] text-center font-black ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
-              <span className="text-2xl">{isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
-              <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
-            </div>
-            <div className="text-center mt-10">
-              <p className="font-medium text-lg">Served by: {data.cashierName}</p>
-              {data.aiMessage && <p className="italic mt-4 text-gray-600">"{data.aiMessage}"</p>}
-              <p className="font-black mt-6 text-xl uppercase tracking-widest">Karibu Tena!</p>
-              {isWomensDay && (
-                <div className="mt-8 p-4 bg-pink-100 border-2 border-dashed border-pink-400 text-pink-700 font-black text-lg uppercase">
-                  Happy International Women's Day
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="p-8 text-center">
+          <img src={LOGO_URL} alt="logo" className="h-16 mx-auto mb-4"/>
+          <h3 className="text-xl font-bold">Tropical Dreams</h3>
+          <p className="text-sm text-gray-500">{SHOP_LOCATION} | {SHOP_PHONE}</p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-8 bg-white border-t border-gray-100 flex gap-4 shrink-0">
-          <button onClick={onClose} className="flex-1 py-5 bg-gray-100 rounded-[28px] font-black text-xs uppercase text-gray-500 hover:bg-gray-200 transition-all">
+        <div className="p-8 border-t flex gap-4">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-200 py-3 rounded-lg"
+          >
             Close
           </button>
+
           <button
             onClick={handlePrint}
             disabled={isPrinting}
-            className={`flex-[2] py-5 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'} text-white rounded-[28px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2`}
+            className="flex-1 bg-[#4B3621] text-white py-3 rounded-lg flex items-center justify-center gap-2"
           >
-            <Printer size={18} />
-            {isPrinting ? 'Printing...' : isPending ? 'Print Guest Bill' : 'Print Receipt'}
+            <Printer size={18}/>
+            {isPrinting ? 'Printing...' : 'Print Receipt'}
           </button>
         </div>
+
       </div>
     </div>
   );
 };
+```
