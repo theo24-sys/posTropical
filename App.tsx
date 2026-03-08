@@ -254,7 +254,13 @@ const App: React.FC = () => {
     };
 
     try {
-      const aiMsg = await generateReceiptMessage(cart, posUser.name, discountPercent, discountAmount, finalTotal);
+      const aiMsg = await generateReceiptMessage(
+  cart, 
+  posUser.name, 
+  discountPercent, 
+  discountAmount, 
+  finalTotal, 
+  orderId);
 
       setReceiptData({
         items: [...cart],
