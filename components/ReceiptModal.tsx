@@ -29,7 +29,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   const handlePrint = () => {
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=600,width=400');
+    const printWindow = window.open('', 'ReceiptPrint', 'height=700,width=420');
     if (!printWindow) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
@@ -39,28 +39,28 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     const itemsHtml = data.items
       .map(item => `
         <tr>
-          <td style="padding: 8px 0; font-size: 20px; letter-spacing: 0.4px;">${item.quantity} × ${item.name}</td>
-          <td style="padding: 8px 0; text-align: right; font-size: 20px; letter-spacing: 0.4px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
+          <td style="padding: 6px 0; font-size: 18px; letter-spacing: 0.3px;">${item.quantity} × ${item.name}</td>
+          <td style="padding: 6px 0; text-align: right; font-size: 18px; letter-spacing: 0.3px;">KES ${(item.price * item.quantity).toLocaleString()}</td>
         </tr>
       `)
       .join('');
 
     const discountHtml = data.discountAmount && data.discountAmount > 0 ? `
       <tr>
-        <td style="padding: 12px 0 8px 0; font-size: 20px; font-style: italic; font-weight: bold; letter-spacing: 0.5px;">Promo Discount (${data.discountPercent}%)</td>
-        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 20px; font-style: italic; font-weight: bold; letter-spacing: 0.5px;">-KES ${data.discountAmount.toLocaleString()}</td>
+        <td style="padding: 10px 0 6px 0; font-size: 18px; font-style: italic; font-weight: bold; letter-spacing: 0.4px;">Promo Discount (${data.discountPercent}%)</td>
+        <td style="padding: 10px 0 6px 0; text-align: right; font-size: 18px; font-style: italic; font-weight: bold; letter-spacing: 0.4px;">-KES ${data.discountAmount.toLocaleString()}</td>
       </tr>
     ` : '';
 
     const subtotalHtml = `
       <tr>
-        <td style="padding: 12px 0 8px 0; font-size: 22px; font-weight: bold; letter-spacing: 0.6px;">Subtotal</td>
-        <td style="padding: 12px 0 8px 0; text-align: right; font-size: 22px; font-weight: bold; letter-spacing: 0.6px;">KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</td>
+        <td style="padding: 10px 0 6px 0; font-size: 20px; font-weight: bold; letter-spacing: 0.4px;">Subtotal</td>
+        <td style="padding: 10px 0 6px 0; text-align: right; font-size: 20px; font-weight: bold; letter-spacing: 0.4px;">KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</td>
       </tr>
     `;
 
     const womensDayPrintHtml = isWomensDay ? `
-      <div style="margin-top: 20px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; text-align: center; font-weight: bold; font-size: 18px; text-transform: uppercase; letter-spacing: 0.8px;">
+      <div style="margin-top: 16px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px 0; text-align: center; font-weight: bold; font-size: 17px; text-transform: uppercase; letter-spacing: 0.6px;">
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
       </div>
     ` : '';
@@ -72,30 +72,30 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         <style>
           body { 
             font-family: 'Courier New', Courier, monospace; 
-            width: 80mm; 
+            width: 72mm; 
             margin: 0 auto; 
-            padding: 10px; 
+            padding: 4mm 2mm; 
             font-size: 18px; 
-            line-height: 1.5; 
+            line-height: 1.4; 
             color: #000; 
-            letter-spacing: 0.4px;
+            letter-spacing: 0.3px;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .divider { border-bottom: 1px dashed #000; margin: 12px 0; }
+          .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
           table { width: 100%; border-collapse: collapse; }
-          .footer { font-size: 16px; margin-top: 20px; text-align: center; letter-spacing: 0.4px; }
-          h2 { font-size: 28px; letter-spacing: 0.6px; }
+          .footer { font-size: 16px; margin-top: 16px; text-align: center; letter-spacing: 0.3px; }
+          h2 { font-size: 26px; letter-spacing: 0.5px; margin: 4px 0; }
         </style>
       </head>
       <body>
         <div class="center">
-          <h2 style="margin: 0; font-size: 28px; letter-spacing: 0.8px;">Tropical Dreams</h2>
-          <p style="margin: 4px 0; font-size: 18px; letter-spacing: 0.5px;">Coffee House - Lodwar</p>
-          <p style="margin: 2px 0; font-size: 18px; letter-spacing: 0.5px;">${SHOP_PHONE}</p>
+          <h2 style="margin: 0; font-size: 26px; letter-spacing: 0.6px;">Tropical Dreams</h2>
+          <p style="margin: 4px 0; font-size: 18px; letter-spacing: 0.4px;">Coffee House - Lodwar</p>
+          <p style="margin: 2px 0; font-size: 18px; letter-spacing: 0.4px;">${SHOP_PHONE}</p>
         </div>
         <div class="divider"></div>
-        <div class="center bold" style="font-size: 22px; letter-spacing: 0.6px;">*** ${docTitle} ***</div>
+        <div class="center bold" style="font-size: 20px; letter-spacing: 0.5px;">*** ${docTitle} ***</div>
         <p style="margin: 6px 0; font-size: 18px;">Order #${data.orderId}</p>
         <p style="font-size: 18px;">${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}</p>
         <div class="divider"></div>
@@ -104,15 +104,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
           ${subtotalHtml}
           ${discountHtml}
           <tr>
-            <td style="padding: 12px 0; font-weight: bold; font-size: 24px; letter-spacing: 0.6px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
-            <td style="padding: 12px 0; text-align: right; font-weight: bold; font-size: 24px; letter-spacing: 0.6px;">KES ${data.total.toLocaleString()}</td>
+            <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
+            <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">KES ${data.total.toLocaleString()}</td>
           </tr>
         </table>
         <div class="divider"></div>
         <div class="footer">
           <p style="font-size: 18px;">Served by: ${data.cashierName}</p>
-          ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic; font-size: 18px; letter-spacing: 0.4px;">"${data.aiMessage}"</p>` : ''}
-          <p style="margin-top: 16px; font-weight: bold; font-size: 20px; letter-spacing: 0.6px;">Karibu Tena!</p>
+          ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic; font-size: 18px; letter-spacing: 0.3px;">"${data.aiMessage}"</p>` : ''}
+          <p style="margin-top: 16px; font-weight: bold; font-size: 20px; letter-spacing: 0.5px;">Karibu Tena!</p>
         </div>
         ${womensDayPrintHtml}
       </body>
