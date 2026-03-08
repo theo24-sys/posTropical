@@ -17,7 +17,8 @@ const safeFetch = async <T>(query: any): Promise<T[]> => {
     if (error) {
       if (error.code === '42P01' || status === 404) return [];
       console.warn("Supabase Fetch Error:", error.message);
-      throw error;
+      // Removed 'throw' to prevent infinite retry loops in frontend
+      return []; 
     }
     return data || [];
   } catch (e: any) {
@@ -35,161 +36,7 @@ interface Promotion {
 
 export const DB = {
   // ────────────────────────────────────────────────
-  // 1. PROMOTIONS (Fixed Timezone & Loop Protection)
-  // ────────────────────────────────────────────────
-  async getActivePromotion(): Promise<Promotion | null> {
-    try {
-      // Primary: RPC call (fastest if it works)
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_active_discount_percent');
-
-      if (rpcError) {
-        console.error('RPC call failed:', rpcError.message, rpcError.details, rpcError.hint);
-      } else if (typeof rpcData === 'number' && rpcData > 0) {
-        console.log('Active promo loaded via RPC:', rpcData, '%');
-        return { discount_percent: rpcData };
-      } else {
-        console.log('RPC returned no active promo:', rpcData);
-      }
-
-      // Fallback: direct table query using EAT time
-      const now = new Date();
-      const eatNow = now.toLocaleString('en-GB', {
-        timeZone: 'Africa/Nairobi',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).replace(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+):(\d+)/, '$3-$2-$1 $4:$5:$6');
-
-      console.log('Frontend querying promotions with EAT time:', eatNow);
-
-      const { data: tableData, error: tableError } = await supabase
-        .from('promotions')
-        .select('discount_percent')
-        .eq('is_active', true)
-        .lte('start_datetime', eatNow)
-        .gte('end_datetime', eatNow)
-        .order('start_datetime', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (tableError) {
-        console.error('Table fallback query failed:', tableError.message, tableError.details, tableError.hint);
-        return null;
-      }
-
-      if (!tableData) {
-        console.log('No promo row matched with time string:', eatNow);
-
-        // === DEBUG: SHOW ALL PROMO ROWS ===
-        const { data: debugRows } = await supabase
-          .from('promotions')
-          .select('id, name, discount_percent, start_datetime, end_datetime, is_active')
-          .limit(5);
-        console.log('Debug: all promo rows in DB:', debugRows);
-
-        return null;
-      }
-
-      console.log('Promo FOUND in frontend query:', tableData.discount_percent);
-      return { discount_percent: tableData.discount_percent };
-    } catch (err: any) {
-      console.error('getActivePromotion crashed:', err.message);
-      return null;
-    }
-  },
-
-  // ────────────────────────────────────────────────
-  // 2. INVENTORY (Batch Upsert to prevent IDB Crashes)
-  // ────────────────────────────────────────────────
-  async getInventory(): Promise<InventoryItem[]> {
-    const data = await safeFetch<any[]>(supabase.from('inventory').select('*'));
-    return data.map((i: any) => ({
-      ...i,
-      lowStockThreshold: i.low_stock_threshold || 0
-    }));
-  },
-
-  async saveInventoryItem(item: InventoryItem) {
-    await supabase.from('inventory').upsert({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      unit: item.unit,
-      category: item.category,
-      low_stock_threshold: item.lowStockThreshold
-    });
-  },
-
-  async deleteInventoryItem(id: string) {
-    await supabase.from('inventory').delete().eq('id', id);
-  },
-
-  /**
-   * Optimized: Fetches current stock once, calculates all changes, then sends ONE update.
-   */
-  async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
-    try {
-      const { data: currentInv } = await supabase.from('inventory').select('id, quantity');
-      if (!currentInv) return { success: false };
-      const updates: { id: string; quantity: number }[] = [];
-      const invMap = new Map(currentInv.map(i => [i.id, i.quantity]));
-      for (const item of saleItems) {
-        const recipes = KITCHEN_RECIPES[item.id] || [];
-        for (const rec of recipes) {
-          const deductQty = rec.amount * item.quantity;
-          const currentQty = invMap.get(rec.invId) ?? 0;
-          if (deductQty > 0) {
-            const newQty = Math.max(0, currentQty - deductQty);
-            updates.push({ id: rec.invId, quantity: newQty });
-            invMap.set(rec.invId, newQty); // Support multiple menu items using same ingredient
-          }
-        }
-      }
-      if (updates.length > 0) {
-        const { error } = await supabase.from('inventory').upsert(updates);
-        if (error) throw error;
-      }
-      return { success: true };
-    } catch (err: any) {
-      console.error('Inventory deduction failed:', err.message);
-      return { success: false, error: err.message };
-    }
-  },
-
-  // ────────────────────────────────────────────────
-  // 3. MENU ITEMS
-  // ────────────────────────────────────────────────
-  async getMenuItems(): Promise<MenuItem[]> {
-    const data = await safeFetch<any[]>(supabase.from('menu_items').select('*'));
-    return data.map((item: any) => ({
-      ...item,
-      lowStockThreshold: item.low_stock_threshold || 0
-    }));
-  },
-
-  async saveMenuItem(item: MenuItem) {
-    await supabase.from('menu_items').upsert({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      category: item.category,
-      image: item.image,
-      description: item.description,
-      stock: item.stock,
-      low_stock_threshold: item.lowStockThreshold
-    });
-  },
-
-  async deleteMenuItem(id: string) {
-    await supabase.from('menu_items').delete().eq('id', id);
-  },
-
-  // ────────────────────────────────────────────────
-  // 4. USERS
+  // Users
   // ────────────────────────────────────────────────
   async getUsers(): Promise<User[]> {
     return await safeFetch(supabase.from('users').select('*'));
@@ -210,50 +57,186 @@ export const DB = {
   },
 
   // ────────────────────────────────────────────────
+  // Active Promotion (Corrected for UTC/ISO Standards)
   // ────────────────────────────────────────────────
-// 5. TRANSACTIONS (Type-Safe for Build)
-// ────────────────────────────────────────────────
-async getTransactions(): Promise<SaleTransaction[]> {
-  const data = await safeFetch<any>(
-    supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000)
-  );
-  return data.map((t: any) => ({
-    id: t.id,
-    date: t.date,
-    total: t.total,
-    paymentMethod: t.payment_method,
-    status: t.status || 'Paid',
-    cashierName: t.cashier_name,
-    tableNumber: t.table_number,
-    orderType: t.order_type,
-    items: t.items,
-    updatedBy: t.updated_by,
-    updatedAt: t.updated_at
-  } as SaleTransaction));
-},
+  async getActivePromotion(): Promise<Promotion | null> {
+    try {
+      // Use ISO string to ensure the comparison works with Supabase UTC clock
+      const nowIso = new Date().toISOString(); 
 
-async saveTransaction(transaction: SaleTransaction) {
-  const { error } = await supabase.from('transactions').upsert({
-    id: transaction.id,
-    date: transaction.date,
-    total: transaction.total,
-    payment_method: transaction.paymentMethod,
-    status: transaction.status,
-    cashier_name: transaction.cashierName,
-    table_number: transaction.tableNumber,
-    order_type: transaction.orderType,
-    items: transaction.items,
-    updated_by: transaction.updatedBy,
-    updated_at: transaction.updatedAt
-  });
-  if (error) console.error("Transaction Save Error:", error.message);
-},
+      console.log('Frontend querying promotions with ISO time:', nowIso);
+
+      const { data, error } = await supabase
+        .from('promotions')
+        .select('discount_percent')
+        .eq('is_active', true)
+        .lte('start_datetime', nowIso)
+        .gte('end_datetime', nowIso)
+        .order('start_datetime', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Promo table query failed:', error.message);
+        return null;
+      }
+
+      if (!data) {
+        console.log('No promo row matched for current UTC time.');
+        return null;
+      }
+
+      return { discount_percent: data.discount_percent };
+    } catch (err: any) {
+      console.error('getActivePromotion crashed:', err.message);
+      return null;
+    }
+  },
 
   // ────────────────────────────────────────────────
-  // 6. EXPENSES & AUDIT
+  // Menu Items
+  // ────────────────────────────────────────────────
+  async getMenuItems(): Promise<MenuItem[]> {
+    const data = await safeFetch<any[]>(supabase.from('menu_items').select('*'));
+    return data.map((item: any) => ({
+      ...item,
+      lowStockThreshold: item.low_stock_threshold || item.lowStockThreshold || 0
+    }));
+  },
+
+  async saveMenuItem(item: MenuItem) {
+    const dbItem = {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      category: item.category,
+      image: item.image,
+      description: item.description,
+      stock: item.stock,
+      low_stock_threshold: item.lowStockThreshold
+    };
+    await supabase.from('menu_items').upsert(dbItem);
+  },
+
+  async deleteMenuItem(id: string) {
+    await supabase.from('menu_items').delete().eq('id', id);
+  },
+
+  // ────────────────────────────────────────────────
+  // Inventory
+  // ────────────────────────────────────────────────
+  async getInventory(): Promise<InventoryItem[]> {
+    const data = await safeFetch<any[]>(supabase.from('inventory').select('*'));
+    return data.map((i: any) => ({
+      ...i,
+      lowStockThreshold: i.low_stock_threshold || i.lowStockThreshold || 0
+    }));
+  },
+
+  async saveInventoryItem(item: InventoryItem) {
+    await supabase.from('inventory').upsert({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: item.category,
+      low_stock_threshold: item.lowStockThreshold
+    });
+  },
+
+  async deleteInventoryItem(id: string) {
+    await supabase.from('inventory').delete().eq('id', id);
+  },
+
+  /**
+   * Deducts stock from inventory based on KITCHEN_RECIPES mapping
+   * Optimized to batch updates into a single call.
+   */
+  async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
+    try {
+      // Fetch all current inventory once to calculate new levels
+      const { data: currentInv } = await supabase.from('inventory').select('id, quantity');
+      if (!currentInv) return { success: false };
+
+      const updates: { id: string; quantity: number }[] = [];
+      const invMap = new Map(currentInv.map(i => [i.id, i.quantity]));
+
+      for (const item of saleItems) {
+        const recipes = KITCHEN_RECIPES[item.id] || [];
+        for (const rec of recipes) {
+          const deductQty = rec.amount * item.quantity;
+          const currentQty = invMap.get(rec.invId) ?? 0;
+          
+          if (deductQty > 0) {
+            const newQty = Math.max(0, currentQty - deductQty);
+            updates.push({ id: rec.invId, quantity: newQty });
+            invMap.set(rec.invId, newQty); // Update map for multiple items using same ingredient
+          }
+        }
+      }
+
+      if (updates.length > 0) {
+        const { error } = await supabase.from('inventory').upsert(updates);
+        if (error) throw error;
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Supabase deduction failed:', err.message);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ────────────────────────────────────────────────
+  // Transactions
+  // ────────────────────────────────────────────────
+  async getTransactions(): Promise<SaleTransaction[]> {
+    const data = await safeFetch<any[]>(
+      supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000)
+    );
+    return data.map((t: any) => ({
+      id: t.id,
+      date: t.date,
+      total: t.total,
+      paymentMethod: t.payment_method,
+      status: t.status || 'Paid',
+      cashierName: t.cashier_name,
+      tableNumber: t.table_number,
+      orderType: t.order_type,
+      items: t.items,
+      updatedBy: t.updated_by,
+      updatedAt: t.updated_at
+    }));
+  },
+
+  async saveTransaction(transaction: SaleTransaction) {
+    const dbTx: any = {
+      id: transaction.id,
+      date: transaction.date,
+      total: transaction.total,
+      payment_method: transaction.paymentMethod,
+      status: transaction.status,
+      cashier_name: transaction.cashierName,
+      table_number: transaction.tableNumber,
+      order_type: transaction.orderType,
+      items: transaction.items,
+      updated_by: transaction.updatedBy,
+      updated_at: transaction.updatedAt
+    };
+    await supabase.from('transactions').upsert(dbTx);
+  },
+
+  async updateTransactionDate(id: string, newDate: string) {
+    await supabase.from('transactions').update({ date: newDate }).eq('id', id);
+  },
+
+  // ────────────────────────────────────────────────
+  // Expenses
   // ────────────────────────────────────────────────
   async getExpenses(): Promise<Expense[]> {
-    const data = await safeFetch<any[]>(supabase.from('expenses').select('*').order('date', { ascending: false }));
+    const data = await safeFetch<any[]>(
+      supabase.from('expenses').select('*').order('date', { ascending: false })
+    );
     return data.map((e: any) => ({
       id: e.id,
       date: e.date,
@@ -277,6 +260,24 @@ async saveTransaction(transaction: SaleTransaction) {
 
   async deleteExpense(id: string) {
     await supabase.from('expenses').delete().eq('id', id);
+  },
+
+  // ────────────────────────────────────────────────
+  // Audit Logs
+  // ────────────────────────────────────────────────
+  async getAuditLogs(): Promise<AuditLog[]> {
+    const data = await safeFetch<any[]>(
+      supabase.from('audit_logs').select('*').order('date', { ascending: false }).limit(500)
+    );
+    return data.map((l: any) => ({
+      id: l.id,
+      date: l.date,
+      userId: l.user_id,
+      userName: l.user_name,
+      action: l.action,
+      details: l.details,
+      severity: l.severity
+    }));
   },
 
   async saveAuditLog(log: AuditLog) {
