@@ -210,42 +210,44 @@ export const DB = {
   },
 
   // ────────────────────────────────────────────────
-  // 5. TRANSACTIONS (EAT Time Handling)
   // ────────────────────────────────────────────────
-  async getTransactions(): Promise<SaleTransaction[]> {
-    const data = await safeFetch<any[]>(
-      supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000)
-    );
-    return data.map((t: any) => ({
-      id: t.id,
-      date: t.date,
-      total: t.total,
-      paymentMethod: t.payment_method,
-      status: t.status || 'Paid',
-      cashierName: t.cashier_name,
-      tableNumber: t.table_number,
-      orderType: t.order_type,
-      items: t.items,
-      updatedBy: t.updated_by,
-      updatedAt: t.updated_at
-    }));
-  },
+// 5. TRANSACTIONS (Type-Safe for Build)
+// ────────────────────────────────────────────────
+async getTransactions(): Promise<SaleTransaction[]> {
+  const data = await safeFetch<any>(
+    supabase.from('transactions').select('*').order('date', { ascending: false }).limit(1000)
+  );
+  return data.map((t: any) => ({
+    id: t.id,
+    date: t.date,
+    total: t.total,
+    paymentMethod: t.payment_method,
+    status: t.status || 'Paid',
+    cashierName: t.cashier_name,
+    tableNumber: t.table_number,
+    orderType: t.order_type,
+    items: t.items,
+    updatedBy: t.updated_by,
+    updatedAt: t.updated_at
+  } as SaleTransaction));
+},
 
-  async saveTransaction(transaction: SaleTransaction) {
-    await supabase.from('transactions').upsert({
-      id: transaction.id,
-      date: transaction.date, // Frontend passes the EAT string
-      total: transaction.total,
-      payment_method: transaction.paymentMethod,
-      status: transaction.status,
-      cashier_name: transaction.cashierName,
-      table_number: transaction.tableNumber,
-      order_type: transaction.orderType,
-      items: transaction.items,
-      updated_by: transaction.updatedBy,
-      updated_at: transaction.updatedAt
-    });
-  },
+async saveTransaction(transaction: SaleTransaction) {
+  const { error } = await supabase.from('transactions').upsert({
+    id: transaction.id,
+    date: transaction.date,
+    total: transaction.total,
+    payment_method: transaction.paymentMethod,
+    status: transaction.status,
+    cashier_name: transaction.cashierName,
+    table_number: transaction.tableNumber,
+    order_type: transaction.orderType,
+    items: transaction.items,
+    updated_by: transaction.updatedBy,
+    updated_at: transaction.updatedAt
+  });
+  if (error) console.error("Transaction Save Error:", error.message);
+},
 
   // ────────────────────────────────────────────────
   // 6. EXPENSES & AUDIT
