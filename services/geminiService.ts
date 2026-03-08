@@ -20,7 +20,6 @@ export const generateReceiptMessage = async (
   const womensDayMessages = [
     "Celebrating the incredible women who brew your dreams today!",
     "Served with power and grace by the women of Tropical Dreams.",
-    "Happy International Women's Day from our hardworking lady staff!",
     "Today we celebrate the strength and spirit of women in Lodwar!",
     "Empowered women, empowering your coffee experience. Asante sana!"
   ];
