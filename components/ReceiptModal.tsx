@@ -30,52 +30,62 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   const handlePrint = () => {
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=700,width=480');
+    const printWindow = window.open('', 'ReceiptPrint', 'height=800,width=500');
     if (!printWindow) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
       return;
     }
 
-    // Helper function to create aligned line with dot leaders
-    const createLine = (left: string, right: string, width = 38) => {
-      const available = Math.max(0, width - left.length - right.length);
-      const dots = '.'.repeat(available);
-      return `${left}${dots}${right}`;
+    // Helper: create line with dot leaders for right-aligned prices
+    const createDottedLine = (left: string, right: string, totalChars = 42) => {
+      const needed = totalChars - left.length - right.length;
+      const dots = '.'.repeat(Math.max(0, needed));
+      return left + dots + right;
     };
 
     const itemsHtml = data.items
       .map(item => {
-        const qtyName = `${item.quantity} × ${item.name}`;
-        const priceStr = `KES ${(item.price * item.quantity).toLocaleString()}`;
+        const left = `${item.quantity} × ${item.name}`;
+        const right = `KES ${(item.price * item.quantity).toLocaleString()}`;
         return `
-          <div style="font-size: 20px; font-weight: bold; line-height: 1.3; white-space: pre; margin: 3px 0;">
-            ${createLine(qtyName, priceStr)}
+          <div style="font-size: 22px; font-weight: bold; line-height: 1.35; white-space: pre; margin: 4px 0;">
+            ${createDottedLine(left, right)}
           </div>
         `;
       })
       .join('');
 
-    const subtotalLine = createLine(
+    const subtotalLine = createDottedLine(
       'Subtotal',
       `KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}`
     );
 
     const discountLine = data.discountAmount && data.discountAmount > 0
-      ? createLine(
+      ? createDottedLine(
           `Promo (${data.discountPercent}%)`,
           `-KES ${data.discountAmount.toLocaleString()}`
         )
       : '';
 
-    const totalLine = createLine(
+    const totalLine = createDottedLine(
       `TOTAL ${isPending ? 'DUE' : 'PAID'}`,
       `KES ${data.total.toLocaleString()}`,
-      36
+      38
     );
 
-    const womensDayPrintHtml = isWomensDay ? `
-      <div style="margin: 16px 0; padding: 10px 0; border-top: 3px double #000; border-bottom: 3px double #000; text-align: center; font-weight: bold; font-size: 20px; text-transform: uppercase; letter-spacing: 1.2px;">
+    const womensDayHtml = isWomensDay ? `
+      <div style="
+        margin: 20px 0;
+        padding: 12px 0;
+        border-top: 3px double #000;
+        border-bottom: 3px double #000;
+        text-align: center;
+        font-weight: bold;
+        font-size: 21px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+      ">
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
       </div>
     ` : '';
@@ -83,73 +93,89 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     printWindow.document.write(`
       <html>
       <head>
-        <title>${docTitle} #${data.orderId}</title>
+        <title>Receipt #${data.orderId}</title>
         <style>
           body {
             font-family: 'Courier New', Courier, monospace;
-            width: 76mm;
+            width: 78mm;
             margin: 0;
-            padding: 4mm 2mm;
+            padding: 5mm 2.5mm;
             font-size: 20px;
-            line-height: 1.25;
+            line-height: 1.3;
             color: #000;
-            word-wrap: break-word;
           }
-          * { box-sizing: border-box; margin: 0; padding: 0; }
+          * { margin:0; padding:0; box-sizing:border-box; }
           .center { text-align: center; }
-          .extra-bold { font-weight: 900; }
-          .divider { border-bottom: 2px dashed #000; margin: 8px 0; height: 2px; }
-          h2 { font-size: 32px; margin: 4px 0; line-height: 1.1; }
-          .header-text { font-size: 20px; margin: 4px 0; }
-          .small-text { font-size: 18px; }
-          .footer { margin-top: 16px; text-align: center; line-height: 1.3; font-size: 19px; }
-          .price-line { font-size: 22px; font-weight: bold; white-space: pre; margin: 4px 0; }
+          .divider { border-bottom: 2px dashed #000; height: 2px; margin: 10px 0; }
+          h1 { font-size: 36px; margin: 6px 0; line-height: 1.1; font-weight: 900; }
+          .shop-info { font-size: 21px; margin: 4px 0; }
+          .title { font-size: 26px; font-weight: 900; margin: 8px 0; letter-spacing: 0.5px; }
+          .meta { font-size: 19px; margin: 4px 0; }
+          .footer { margin-top: 20px; text-align: center; line-height: 1.4; font-size: 20px; }
+          .total-line { font-size: 30px; font-weight: 900; white-space: pre; margin: 8px 0; letter-spacing: 0.6px; }
         </style>
       </head>
       <body>
+
         <div class="center">
-          <h2 class="extra-bold">Tropical Dreams</h2>
-          <p class="header-text">Coffee House - Lodwar</p>
-          <p class="small-text">${SHOP_PHONE}</p>
+          <h1>Tropical Dreams</h1>
+          <div class="shop-info">Coffee House - Lodwar</div>
+          <div class="shop-info">${SHOP_PHONE}</div>
         </div>
 
         <div class="divider"></div>
 
-        <div class="center extra-bold" style="font-size: 24px; margin: 6px 0;">
-          *** ${docTitle} ***
+        <div class="center title">
+          *** ${docTitle.toUpperCase()} ***
         </div>
 
-        <p class="center small-text" style="margin: 4px 0;">
-          Order #${data.orderId}
-        </p>
-        <p class="center small-text" style="margin: 2px 0;">
+        <div class="center meta">Order #${data.orderId}</div>
+        <div class="center meta">
           ${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}
-        </p>
+        </div>
 
         <div class="divider"></div>
 
-        <div style="line-height: 1.3;">
+        <div style="margin-bottom: 10px;">
           ${itemsHtml}
-          <div class="divider" style="margin: 8px 0;"></div>
-          <div class="price-line">${subtotalLine}</div>
-          ${discountLine ? `<div class="price-line" style="font-style: italic;">${discountLine}</div>` : ''}
-          <div class="divider" style="margin: 8px 0;"></div>
-          <div class="price-line" style="font-size: 28px; font-weight: 900; letter-spacing: 0.5px;">
-            ${totalLine}
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-size: 24px; font-weight: bold;">
+          ${subtotalLine}
+        </div>
+
+        ${discountLine ? `
+          <div style="font-size: 22px; font-style: italic; margin: 6px 0;">
+            ${discountLine}
           </div>
+        ` : ''}
+
+        <div class="divider"></div>
+
+        <div class="center total-line">
+          ${totalLine}
         </div>
 
         <div class="divider"></div>
 
         <div class="footer">
-          <p class="bold">Served by: ${data.cashierName}</p>
-          ${data.aiMessage ? `<p style="margin: 8px 0; font-style: italic; font-size: 19px;">${data.aiMessage}</p>` : ''}
-          <p class="extra-bold" style="font-size: 24px; margin-top: 12px; letter-spacing: 1px;">
+          <div style="font-weight: bold; margin-bottom: 8px;">
+            Served by: ${data.cashierName}
+          </div>
+          ${data.aiMessage ? `
+            <div style="font-style: italic; margin: 10px 0; font-size: 20px;">
+              ${data.aiMessage}
+            </div>
+          ` : ''}
+          <div style="font-size: 28px; font-weight: 900; letter-spacing: 1px; margin: 14px 0;">
             Karibu Tena!
-          </p>
+          </div>
         </div>
 
-        ${womensDayPrintHtml}
+        ${womensDayHtml}
+
       </body>
       </html>
     `);
@@ -160,13 +186,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     setTimeout(() => {
       printWindow.print();
       setIsPrinting(false);
-    }, 1000);
+    }, 1200);
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#4B3621]/80 backdrop-blur-md">
       <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 relative">
-        {/* Header */}
+        {/* Header - screen view unchanged */}
         <div className={`${isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
           <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
             <X size={24} />
