@@ -113,6 +113,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return tYMD >= customStart && tYMD <= customEnd;
     }
 
+    } catch (err: any) {
+   console.error('Full save error:', err);
+   alert(`Save failed: ${err.message || 'Unknown error - check console (F12)'}\n\nCheck if Supabase URL/key is correct and RLS allows writes.`);
+   }
+  
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
     if (dateRange === 'Week') return tYMD >= getNairobiYMD(weekAgo.toISOString());
