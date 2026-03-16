@@ -1,23 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
-import { KITCHEN_RECIPES } from '../constants'; // needed for deduction logic
+import { KITCHEN_RECIPES } from '../constants';
 
-// === YOUR REAL CONFIG - HARDCODED FOR RELIABILITY ===
 const supabaseUrl = 'https://wmkefywbmydjnyqhvepv.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta2VmeXdibXlkam55cWh2ZXB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODAwMjMsImV4cCI6MjA3OTI1NjAyM30.Hp53NUqr0NPE8KuAGwiBYE0UwDX_AdeJXiy_x4p4BSE';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-/**
- * Safe wrapper for Supabase queries - returns [] on error or no data
- */
 const safeFetch = async <T>(query: any): Promise<T[]> => {
   try {
     const { data, error, status } = await query;
     if (error) {
       if (error.code === '42P01' || status === 404) return [];
       console.warn("Supabase Fetch Error:", error.message);
-      return []; // Return empty instead of throwing to stop loops
+      return [];
     }
     return data || [];
   } catch (e: any) {
@@ -26,9 +22,6 @@ const safeFetch = async <T>(query: any): Promise<T[]> => {
   }
 };
 
-/**
- * Simple type for active promotion
- */
 interface Promotion {
   discount_percent: number;
 }
@@ -56,14 +49,12 @@ export const DB = {
   },
 
   // ────────────────────────────────────────────────
-  // Active Promotion (FIXED MATCHING LOGIC)
+  // Active Promotion
   // ────────────────────────────────────────────────
   async getActivePromotion(): Promise<Promotion | null> {
     try {
-      // FIX: Use ISO string. PostgreSQL understands this globally.
-      // Your previous format (08/03/2026) was being rejected by the DB comparison.
       const now = new Date();
-      const eatNowIso = now.toISOString(); 
+      const eatNowIso = now.toISOString();
 
       console.log('Frontend querying promotions with ISO time:', eatNowIso);
 
@@ -83,7 +74,6 @@ export const DB = {
       }
 
       if (!data) {
-        // Logging the raw data to see why the match failed
         const { data: debugRows } = await supabase.from('promotions').select('*').limit(3);
         console.log('No promo match. DB contents:', debugRows);
         return null;
@@ -109,7 +99,7 @@ export const DB = {
   },
 
   async saveMenuItem(item: MenuItem) {
-    const dbItem = {
+    await supabase.from('menu_items').upsert({
       id: item.id,
       name: item.name,
       price: item.price,
@@ -118,8 +108,7 @@ export const DB = {
       description: item.description,
       stock: item.stock,
       low_stock_threshold: item.lowStockThreshold
-    };
-    await supabase.from('menu_items').upsert(dbItem);
+    });
   },
 
   async deleteMenuItem(id: string) {
@@ -132,13 +121,17 @@ export const DB = {
   async getInventory(): Promise<InventoryItem[]> {
     const data = await safeFetch<any[]>(supabase.from('inventory').select('*'));
     return data.map((i: any) => ({
-      ...i,
-      lowStockThreshold: i.low_stock_threshold || i.lowStockThreshold || 0
+      id: i.id,
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit,
+      category: i.category,
+      lowStockThreshold: i.low_stock_threshold ?? i.lowStockThreshold ?? 0
     }));
   },
 
   async saveInventoryItem(item: InventoryItem) {
-    await supabase.from('inventory').upsert({
+    const { error } = await supabase.from('inventory').upsert({
       id: item.id,
       name: item.name,
       quantity: item.quantity,
@@ -146,23 +139,25 @@ export const DB = {
       category: item.category,
       low_stock_threshold: item.lowStockThreshold
     });
+    if (error) console.error('saveInventoryItem failed:', error.message);
   },
 
   async deleteInventoryItem(id: string) {
     await supabase.from('inventory').delete().eq('id', id);
   },
 
-  /**
-   * Deducts stock from inventory based on KITCHEN_RECIPES mapping
-   * BATCH UPDATED for reliability.
-   */
+  // FIXED: use .update() not .upsert() for deductions so partial rows never get inserted
   async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
     try {
-      const { data: currentInv } = await supabase.from('inventory').select('id, quantity');
+      const { data: currentInv, error: fetchError } = await supabase
+        .from('inventory')
+        .select('id, quantity');
+
+      if (fetchError) throw fetchError;
       if (!currentInv) return { success: false };
 
-      const updates: { id: string; quantity: number }[] = [];
       const invMap = new Map(currentInv.map(i => [i.id, i.quantity]));
+      const updates: { id: string; quantity: number }[] = [];
 
       for (const item of saleItems) {
         const recipes = KITCHEN_RECIPES[item.id] || [];
@@ -172,15 +167,24 @@ export const DB = {
           if (deductQty > 0) {
             const newQty = Math.max(0, currentQty - deductQty);
             updates.push({ id: rec.invId, quantity: newQty });
-            invMap.set(rec.invId, newQty); 
+            invMap.set(rec.invId, newQty);
           }
         }
       }
 
-      if (updates.length > 0) {
-        const { error } = await supabase.from('inventory').upsert(updates);
-        if (error) throw error;
+      // Use individual .update() calls to avoid partial-row upsert failures
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('inventory')
+          .update({ quantity: update.quantity })
+          .eq('id', update.id);
+        if (error) {
+          console.error(`Failed to deduct inventory for ${update.id}:`, error.message);
+          throw error;
+        }
       }
+
+      console.log(`Deducted ${updates.length} inventory items successfully`);
       return { success: true };
     } catch (err: any) {
       console.error('Supabase deduction failed:', err.message);
@@ -211,7 +215,7 @@ export const DB = {
   },
 
   async saveTransaction(transaction: SaleTransaction) {
-    const dbTx: any = {
+    const { error } = await supabase.from('transactions').upsert({
       id: transaction.id,
       date: transaction.date,
       total: transaction.total,
@@ -223,8 +227,8 @@ export const DB = {
       items: transaction.items,
       updated_by: transaction.updatedBy,
       updated_at: transaction.updatedAt
-    };
-    await supabase.from('transactions').upsert(dbTx);
+    });
+    if (error) console.error('saveTransaction failed:', error.message);
   },
 
   async updateTransactionDate(id: string, newDate: string) {
