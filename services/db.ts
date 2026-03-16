@@ -1,7 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { MenuItem, SaleTransaction, User, Expense, InventoryItem } from '../types';
 import { KITCHEN_RECIPES } from '../constants';
-import { supabase } from './supabase'; // ← FIXED: Added this import!
+import { supabase } from './supabase'; // ← FIXED: Added this import
 
 interface TropicalDB extends DBSchema {
   menu_items: { key: string; value: MenuItem };
@@ -13,13 +13,17 @@ interface TropicalDB extends DBSchema {
 }
 
 const DB_NAME = 'tropical-pos-db';
-const DB_VERSION = 4;
+const DB_VERSION = 4; // ← BUMPED TO 4 to force upgrade and create missing stores
 
 export const LocalDB = {
+  /**
+   * Opens or upgrades the IndexedDB database
+   */
   async getDB(): Promise<IDBPDatabase<TropicalDB>> {
     return openDB<TropicalDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         console.log(`Upgrading IndexedDB from v${oldVersion} to v${newVersion}`);
+        // Create or verify all stores
         if (!db.objectStoreNames.contains('menu_items')) {
           db.createObjectStore('menu_items', { keyPath: 'id' });
           console.log('Created store: menu_items');
@@ -56,7 +60,9 @@ export const LocalDB = {
       }
     });
   },
-
+  // ────────────────────────────────────────────────
+  // Utility: Reset local DB (call once if needed)
+  // ────────────────────────────────────────────────
   async resetLocalDB() {
     try {
       indexedDB.deleteDatabase(DB_NAME);
@@ -66,13 +72,11 @@ export const LocalDB = {
       console.error('Failed to delete local DB:', err);
     }
   },
-
   // ────────────────────────────────────────────────
   // Inventory
   // ────────────────────────────────────────────────
   async saveInventoryItem(item: InventoryItem) {
-    console.log('Attempting Supabase save:', item);
-
+    console.log('Attempting Supabase save:', item); // ← see what is sent
     const { data, error } = await supabase
       .from('inventory')
       .upsert({
@@ -84,26 +88,24 @@ export const LocalDB = {
         low_stock_threshold: item.lowStockThreshold // snake_case!
       })
       .select();
-
     if (error) {
       console.error('Supabase SAVE ERROR:', error.message, error.details, error.hint);
-      throw error;
+      throw error; // ← this will show in alert now
     }
-
     console.log('Supabase save SUCCESS:', data);
     return data;
   },
-
   async getInventory(): Promise<InventoryItem[]> {
     const db = await this.getDB();
     return db.getAll('inventory');
   },
-
   async updateInventoryItem(item: InventoryItem) {
     const db = await this.getDB();
     await db.put('inventory', item);
   },
-
+  /**
+   * Deducts stock based on KITCHEN_RECIPES mapping for the sold items
+   */
   async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
     const db = await this.getDB();
     const tx = db.transaction('inventory', 'readwrite');
@@ -124,7 +126,6 @@ export const LocalDB = {
     console.log('Local inventory deducted');
     return { success: true };
   },
-
   // ────────────────────────────────────────────────
   // Menu Items
   // ────────────────────────────────────────────────
@@ -138,12 +139,10 @@ export const LocalDB = {
     }
     await tx.done;
   },
-
   async getMenu(): Promise<MenuItem[]> {
     const db = await this.getDB();
     return db.getAll('menu_items');
   },
-
   // ────────────────────────────────────────────────
   // Users
   // ────────────────────────────────────────────────
@@ -157,12 +156,10 @@ export const LocalDB = {
     }
     await tx.done;
   },
-
   async getUsers(): Promise<User[]> {
     const db = await this.getDB();
     return db.getAll('users');
   },
-
   // ────────────────────────────────────────────────
   // Offline / Pending Orders
   // ────────────────────────────────────────────────
@@ -170,17 +167,14 @@ export const LocalDB = {
     const db = await this.getDB();
     await db.put('offline_orders', order);
   },
-
   async getPendingOrders(): Promise<SaleTransaction[]> {
     const db = await this.getDB();
     return db.getAll('offline_orders');
   },
-
   async removeOrderFromQueue(id: string) {
     const db = await this.getDB();
     await db.delete('offline_orders', id);
   },
-
   // ────────────────────────────────────────────────
   // Sales History
   // ────────────────────────────────────────────────
@@ -194,12 +188,10 @@ export const LocalDB = {
     }
     await tx.done;
   },
-
   async getSalesHistory(): Promise<SaleTransaction[]> {
     const db = await this.getDB();
     return db.getAll('sales_history');
   },
-
   // ────────────────────────────────────────────────
   // Expenses
   // ────────────────────────────────────────────────
@@ -213,7 +205,6 @@ export const LocalDB = {
     }
     await tx.done;
   },
-
   async getExpenses(): Promise<Expense[]> {
     const db = await this.getDB();
     return db.getAll('expenses');
