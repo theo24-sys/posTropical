@@ -98,20 +98,20 @@ const App: React.FC = () => {
         setAuditLogs(cloudLogs);
 
         const inventoryToSave = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
-        await Promise.all([
-          LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
-          LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
-          ...inventoryToSave.map(item => LocalDB.saveInventoryItem(item)), // FIXED
-          LocalDB.saveSalesHistory(cloudSales),
-          LocalDB.saveExpenses(cloudExpenses)
-        ]);
-      } else {
-        const [localUsers, localMenu, localInv, localSales, localExpenses] = await Promise.all([
-          LocalDB.getUsers(),
-          LocalDB.getMenu(),
-          LocalDB.getInventory(),
-          LocalDB.getSalesHistory(),
-          LocalDB.getExpenses(),
+setInventory(inventoryToSave);
+
+// SEED Supabase if inventory table was empty
+       if (cloudInv.length === 0 && navigator.onLine) {
+        console.log('Seeding Supabase inventory with initial data...');
+       await Promise.all(INITIAL_KITCHEN_INVENTORY.map(item => DB.saveInventoryItem(item)));
+       }
+ 
+      await Promise.all([
+      LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
+       LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
+       ...inventoryToSave.map(item => LocalDB.saveInventoryItem(item)),
+        LocalDB.saveSalesHistory(cloudSales),
+        LocalDB.saveExpenses(cloudExpenses)
         ]);
         setUsers(localUsers);
         setMenuItems(localMenu);
