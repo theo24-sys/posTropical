@@ -16,10 +16,8 @@ import {
   Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
 } from 'lucide-react';
 
-// Simple type for promotion (add this to types.ts later if needed)
 interface Promotion {
   discount_percent: number;
-  // add other fields if you have them
 }
 
 const App: React.FC = () => {
@@ -46,7 +44,9 @@ const App: React.FC = () => {
   const [activePromotion, setActivePromotion] = useState<Promotion | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const getNairobiISO = () => new Date().toISOString(); // UTC — good!
+
+  const getNairobiISO = () => new Date().toISOString();
+
   const formatEAT = (utcDateStr: string | Date, options: Intl.DateTimeFormatOptions = {}) => {
     const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
     return date.toLocaleString('en-KE', {
@@ -54,6 +54,7 @@ const App: React.FC = () => {
       ...options,
     });
   };
+
   const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
     if (!posUser) return;
     const log: AuditLog = {
@@ -68,12 +69,15 @@ const App: React.FC = () => {
     setAuditLogs(prev => [log, ...prev]);
     try { if (navigator.onLine) await DB.saveAuditLog(log); } catch (e) {}
   }, [posUser]);
+
   const sortedSalesHistory = useMemo(() => {
     return [...salesHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [salesHistory]);
+
   const isAdmin = (user: User | null) => {
     return user && (user.role || '').trim().toUpperCase() === 'ADMIN';
   };
+
   const fetchData = useCallback(async (isInitial = false) => {
     if (isInitial) setIsLoading(true);
     try {
@@ -92,10 +96,12 @@ const App: React.FC = () => {
         setSalesHistory(cloudSales);
         setExpenses(cloudExpenses);
         setAuditLogs(cloudLogs);
+
+        const inventoryToSave = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
         await Promise.all([
           LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
           LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
-          LocalDB.saveInventory(cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY),
+          ...inventoryToSave.map(item => LocalDB.saveInventoryItem(item)), // FIXED
           LocalDB.saveSalesHistory(cloudSales),
           LocalDB.saveExpenses(cloudExpenses)
         ]);
@@ -121,7 +127,7 @@ const App: React.FC = () => {
       if (isInitial) setIsLoading(false);
     }
   }, []);
-  // Fetch active promotion (useEffect is fine, no change)
+
   useEffect(() => {
     async function loadPromotion() {
       try {
@@ -134,6 +140,7 @@ const App: React.FC = () => {
     }
     loadPromotion();
   }, []);
+
   const attemptAutoSync = useCallback(async () => {
     if (!navigator.onLine || isSyncing) return;
     const pendingOrders = await LocalDB.getPendingOrders();
@@ -151,9 +158,11 @@ const App: React.FC = () => {
     setPendingSyncCount(remaining.length);
     setIsSyncing(false);
   }, [isSyncing]);
+
   useEffect(() => {
     fetchData(true);
   }, [fetchData]);
+
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); fetchData(); attemptAutoSync(); };
     const handleOffline = () => { setIsOnline(false); };
@@ -164,6 +173,7 @@ const App: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, [attemptAutoSync, fetchData]);
+
   const handleLogin = (user: User) => {
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
@@ -173,6 +183,7 @@ const App: React.FC = () => {
       navigate('/');
     }
   };
+
   const handleLogout = () => {
     if (posUser) {
       logActivity('LOGOUT', `User ${posUser.name} logged out`, 'low');
@@ -180,6 +191,7 @@ const App: React.FC = () => {
     setPosUser(null);
     navigate('/');
   };
+
   const addToCart = useCallback((item: MenuItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -188,6 +200,7 @@ const App: React.FC = () => {
         : [...prev, { ...item, quantity: 1 }];
     });
   }, []);
+
   const onResumeOrder = (tx: SaleTransaction) => {
     const reconstructed: CartItem[] = tx.items.map(i => {
       const orig = menuItems.find(m => m.id === i.id);
@@ -204,6 +217,7 @@ const App: React.FC = () => {
     setPrefilledOrderType(tx.orderType || 'Dine-in');
     navigate('/');
   };
+
   const handleCheckout = async (
     paymentMethod: PaymentMethod,
     orderType: 'Dine-in' | 'Take Away',
@@ -291,6 +305,7 @@ const App: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
   const handleUpdateStatus = async (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: PaymentMethod) => {
     const tx = salesHistory.find(t => t.id === id);
     if (!tx || !posUser) return;
@@ -342,6 +357,7 @@ const App: React.FC = () => {
       }
     }
   };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-beige-50">
@@ -349,6 +365,7 @@ const App: React.FC = () => {
       </div>
     );
   }
+
   if (!posUser) {
     const isAdminPath = location.pathname === '/admin';
     const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
@@ -357,6 +374,7 @@ const App: React.FC = () => {
       : users.filter(u => normalizeRole(u.role) !== 'ADMIN');
     return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
   }
+
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
       <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
@@ -534,8 +552,8 @@ const App: React.FC = () => {
                     if (item) {
                       const updated = { ...item, quantity: Math.max(0, item.quantity + delta) };
                       setInventory(prev => prev.map(i => (i.id === id ? updated : i)));
-                      if (navigator.onLine) await DB.saveInventoryItem(updated); // FIXED: saveInventory → saveInventoryItem
-                      await LocalDB.saveInventoryItem(updated); // FIXED: saveInventory → saveInventoryItem
+                      if (navigator.onLine) await DB.saveInventoryItem(updated);
+                      await LocalDB.saveInventoryItem(updated);
                     }
                   }}
                   onSaveInventoryItem={async (item: InventoryItem) => {
@@ -543,8 +561,8 @@ const App: React.FC = () => {
                       const exists = prev.find(i => i.id === item.id);
                       return exists ? prev.map(i => (i.id === item.id ? item : i)) : [item, ...prev];
                     });
-                    if (navigator.onLine) await DB.saveInventoryItem(item); // FIXED: saveInventory → saveInventoryItem
-                    await LocalDB.saveInventoryItem(item); // FIXED: saveInventory → saveInventoryItem
+                    if (navigator.onLine) await DB.saveInventoryItem(item);
+                    await LocalDB.saveInventoryItem(item);
                   }}
                   onDeleteInventoryItem={async (id: string) => {
                     setInventory(prev => prev.filter(i => i.id !== id));
