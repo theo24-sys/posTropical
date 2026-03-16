@@ -13,7 +13,7 @@ import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
 import {
-  Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
+  Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History
 } from 'lucide-react';
 
 interface Promotion {
@@ -49,13 +49,14 @@ const App: React.FC = () => {
 
   const formatEAT = (utcDateStr: string | Date, options: Intl.DateTimeFormatOptions = {}) => {
     const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
-    return date.toLocaleString('en-KE', {
-      timeZone: 'Africa/Nairobi',
-      ...options,
-    });
+    return date.toLocaleString('en-KE', { timeZone: 'Africa/Nairobi', ...options });
   };
 
-  const logActivity = useCallback(async (action: AuditLog['action'], details: string, severity: AuditLog['severity'] = 'low') => {
+  const logActivity = useCallback(async (
+    action: AuditLog['action'],
+    details: string,
+    severity: AuditLog['severity'] = 'low'
+  ) => {
     if (!posUser) return;
     const log: AuditLog = {
       id: `log-${Date.now()}-${Math.random()}`,
@@ -90,28 +91,53 @@ const App: React.FC = () => {
           DB.getExpenses(),
           DB.getAuditLogs()
         ]);
-        setUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS);
-        setMenuItems(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS);
-        setInventory(cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY);
+
+        const usersToUse = cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS;
+        const menuToUse = cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS;
+        const inventoryToUse = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
+
+        setUsers(usersToUse);
+        setMenuItems(menuToUse);
+        setInventory(inventoryToUse);
         setSalesHistory(cloudSales);
         setExpenses(cloudExpenses);
         setAuditLogs(cloudLogs);
 
-        const inventoryToSave = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
-setInventory(inventoryToSave);
+        // Seed Supabase if inventory table was empty
+        if (cloudInv.length === 0) {
+          console.log('Seeding Supabase inventory with initial data...');
+          await Promise.all(INITIAL_KITCHEN_INVENTORY.map(item => DB.saveInventoryItem(item)));
+        }
 
-// SEED Supabase if inventory table was empty
-       if (cloudInv.length === 0 && navigator.onLine) {
-        console.log('Seeding Supabase inventory with initial data...');
-       await Promise.all(INITIAL_KITCHEN_INVENTORY.map(item => DB.saveInventoryItem(item)));
-       }
- 
-      await Promise.all([
-      LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
-       LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
-       ...inventoryToSave.map(item => LocalDB.saveInventoryItem(item)),
-        LocalDB.saveSalesHistory(cloudSales),
-        LocalDB.saveExpenses(cloudExpenses)
+        // Seed Supabase if menu table was empty
+        if (cloudMenu.length === 0) {
+          console.log('Seeding Supabase menu with initial data...');
+          await Promise.all(MENU_ITEMS.map(item => DB.saveMenuItem(item)));
+        }
+
+        // Seed Supabase if users table was empty
+        if (cloudUsers.length === 0) {
+          console.log('Seeding Supabase users with initial data...');
+          await Promise.all(INITIAL_USERS.map(user => DB.saveUser(user)));
+        }
+
+        // Save everything to LocalDB for offline use
+        await Promise.all([
+          LocalDB.saveUsers(usersToUse),
+          LocalDB.saveMenu(menuToUse),
+          ...inventoryToUse.map(item => LocalDB.saveInventoryItem(item)),
+          LocalDB.saveSalesHistory(cloudSales),
+          LocalDB.saveExpenses(cloudExpenses)
+        ]);
+
+      } else {
+        // OFFLINE: load from IndexedDB
+        const [localUsers, localMenu, localInv, localSales, localExpenses] = await Promise.all([
+          LocalDB.getUsers(),
+          LocalDB.getMenu(),
+          LocalDB.getInventory(),
+          LocalDB.getSalesHistory(),
+          LocalDB.getExpenses(),
         ]);
         setUsers(localUsers);
         setMenuItems(localMenu);
@@ -119,6 +145,7 @@ setInventory(inventoryToSave);
         setSalesHistory(localSales);
         setExpenses(localExpenses);
       }
+
       const pendingOrders = await LocalDB.getPendingOrders();
       setPendingSyncCount(pendingOrders.length);
     } catch (e) {
@@ -178,7 +205,7 @@ setInventory(inventoryToSave);
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
     if (location.pathname === '/admin' && isAdmin(user)) {
-      // stay
+      // stay on admin
     } else {
       navigate('/');
     }
@@ -206,7 +233,8 @@ setInventory(inventoryToSave);
       const orig = menuItems.find(m => m.id === i.id);
       return {
         ...(orig || {
-          id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0
+          id: i.id, name: i.name, price: i.price,
+          category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0
         }),
         quantity: i.quantity
       };
@@ -235,7 +263,9 @@ setInventory(inventoryToSave);
     const timestamp = getNairobiISO();
     const sale: SaleTransaction = {
       id: orderId,
-      date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp,
+      date: editingTransactionId
+        ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp
+        : timestamp,
       total: finalTotal,
       paymentMethod,
       status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
@@ -248,12 +278,8 @@ setInventory(inventoryToSave);
     };
     try {
       const aiMsg = await generateReceiptMessage(
-        cart,
-        posUser.name,
-        discountPercent,
-        discountAmount,
-        finalTotal,
-        orderId);
+        cart, posUser.name, discountPercent, discountAmount, finalTotal, orderId
+      );
       setReceiptData({
         items: [...cart],
         subtotal,
@@ -274,11 +300,13 @@ setInventory(inventoryToSave);
       });
       setIsModalOpen(true);
       setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
+
       if (navigator.onLine) {
         await DB.saveTransaction(sale);
       } else {
         await LocalDB.queueOrder(sale);
       }
+
       if (sale.status === 'Paid') {
         try {
           const saleItems = cart.map(i => ({ id: i.id, quantity: i.quantity }));
@@ -296,6 +324,7 @@ setInventory(inventoryToSave);
           logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
         }
       }
+
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
       setCart([]);
       setEditingTransactionId(null);
@@ -319,10 +348,17 @@ setInventory(inventoryToSave);
     setSalesHistory(prev => prev.map(t => t.id === id ? updatedTx : t));
     if (navigator.onLine) await DB.saveTransaction(updatedTx);
     else await LocalDB.queueOrder(updatedTx);
+
     if (newStatus === 'Paid') {
       const reconstructed: CartItem[] = updatedTx.items.map(i => {
         const orig = menuItems.find(m => m.id === i.id);
-        return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
+        return {
+          ...(orig || {
+            id: i.id, name: i.name, price: i.price,
+            category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0
+          }),
+          quantity: i.quantity
+        };
       });
       const aiMsg = await generateReceiptMessage(reconstructed, posUser.name);
       setReceiptData({
@@ -415,7 +451,9 @@ setInventory(inventoryToSave);
           <button
             onClick={() => { setActiveCategory('All'); navigate('/'); }}
             className={`w-full flex items-center px-6 py-5 rounded-[20px] text-base font-black transition-all ${
-              activeCategory === 'All' && location.pathname === '/' ? 'bg-[#e0d4c4] text-[#4B3621] shadow-md' : 'text-gray-400 hover:bg-gray-50'
+              activeCategory === 'All' && location.pathname === '/'
+                ? 'bg-[#e0d4c4] text-[#4B3621] shadow-md'
+                : 'text-gray-400 hover:bg-gray-50'
             }`}
           >
             <div className="flex items-center gap-3"><LayoutGrid size={22} /> All Items</div>
@@ -428,7 +466,9 @@ setInventory(inventoryToSave);
               key={cat}
               onClick={() => { setActiveCategory(cat); navigate('/'); }}
               className={`w-full flex items-center px-6 py-4 rounded-[16px] text-xs font-black transition-all uppercase tracking-wide text-left ${
-                activeCategory === cat && location.pathname === '/' ? 'bg-beige-50 text-[#4B3621] shadow-sm' : 'text-gray-400 hover:bg-gray-50'
+                activeCategory === cat && location.pathname === '/'
+                  ? 'bg-beige-50 text-[#4B3621] shadow-sm'
+                  : 'text-gray-400 hover:bg-gray-50'
               }`}
             >
               {cat}
@@ -489,10 +529,9 @@ setInventory(inventoryToSave);
                   </header>
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 pb-8">
                     {menuItems
-                      .filter(
-                        i =>
-                          (activeCategory === 'All' || i.category === activeCategory) &&
-                          i.name.toLowerCase().includes(searchQuery.toLowerCase())
+                      .filter(i =>
+                        (activeCategory === 'All' || i.category === activeCategory) &&
+                        i.name.toLowerCase().includes(searchQuery.toLowerCase())
                       )
                       .map(item => (
                         <MenuItemCard key={item.id} item={item} onAdd={addToCart} />
@@ -503,13 +542,10 @@ setInventory(inventoryToSave);
                   <CartSidebar
                     cart={cart}
                     onUpdateQuantity={(id: string, delta: number) =>
-                      setCart(p => p.map(i => (i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)))
+                      setCart(p => p.map(i => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i))
                     }
                     onRemove={(id: string) => setCart(p => p.filter(i => i.id !== id))}
-                    onClear={() => {
-                      setCart([]);
-                      setEditingTransactionId(null);
-                    }}
+                    onClear={() => { setCart([]); setEditingTransactionId(null); }}
                     onCheckout={handleCheckout}
                     onHold={() => {}}
                     subtotal={cart.reduce((a, c) => a + c.price * c.quantity, 0)}
@@ -551,7 +587,7 @@ setInventory(inventoryToSave);
                     const item = inventory.find(i => i.id === id);
                     if (item) {
                       const updated = { ...item, quantity: Math.max(0, item.quantity + delta) };
-                      setInventory(prev => prev.map(i => (i.id === id ? updated : i)));
+                      setInventory(prev => prev.map(i => i.id === id ? updated : i));
                       if (navigator.onLine) await DB.saveInventoryItem(updated);
                       await LocalDB.saveInventoryItem(updated);
                     }
@@ -559,7 +595,7 @@ setInventory(inventoryToSave);
                   onSaveInventoryItem={async (item: InventoryItem) => {
                     setInventory(prev => {
                       const exists = prev.find(i => i.id === item.id);
-                      return exists ? prev.map(i => (i.id === item.id ? item : i)) : [item, ...prev];
+                      return exists ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev];
                     });
                     if (navigator.onLine) await DB.saveInventoryItem(item);
                     await LocalDB.saveInventoryItem(item);
@@ -573,7 +609,7 @@ setInventory(inventoryToSave);
                   onSaveItem={async (i: MenuItem) => {
                     setMenuItems(prev => {
                       const exists = prev.find(m => m.id === i.id);
-                      return exists ? prev.map(m => (m.id === i.id ? i : m)) : [i, ...prev];
+                      return exists ? prev.map(m => m.id === i.id ? i : m) : [i, ...prev];
                     });
                     await DB.saveMenuItem(i);
                   }}
@@ -584,7 +620,7 @@ setInventory(inventoryToSave);
                   onSaveUser={async (u: User) => {
                     setUsers(prev => {
                       const exists = prev.find(usr => usr.id === u.id);
-                      return exists ? prev.map(usr => (usr.id === u.id ? u : usr)) : [u, ...prev];
+                      return exists ? prev.map(usr => usr.id === u.id ? u : usr) : [u, ...prev];
                     });
                     await DB.saveUser(u);
                   }}
@@ -616,10 +652,7 @@ setInventory(inventoryToSave);
           <ReceiptModal
             data={receiptData}
             isOpen={isModalOpen}
-            onClose={() => {
-              setIsModalOpen(false);
-              setReceiptData(null);
-            }}
+            onClose={() => { setIsModalOpen(false); setReceiptData(null); }}
           />
         )}
       </div>
