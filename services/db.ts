@@ -77,16 +77,29 @@ export const LocalDB = {
   // ────────────────────────────────────────────────
   // Inventory
   // ────────────────────────────────────────────────
-  async saveInventory(items: InventoryItem[]) {
-    const db = await this.getDB();
-    const tx = db.transaction('inventory', 'readwrite');
-    const store = tx.objectStore('inventory');
-    for (const item of items) {
-      await store.put(item);
-    }
-    await tx.done;
-    console.log('Inventory saved locally');
-  },
+  async saveInventoryItem(item: InventoryItem) {
+  console.log('Attempting Supabase save:', item); // ← see what is sent
+
+  const { data, error } = await supabase
+    .from('inventory')
+    .upsert({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: item.category,
+      low_stock_threshold: item.lowStockThreshold // snake_case!
+    })
+    .select();
+
+  if (error) {
+    console.error('Supabase SAVE ERROR:', error.message, error.details, error.hint);
+    throw error; // ← this will show in alert now
+  }
+
+  console.log('Supabase save SUCCESS:', data);
+  return data;
+},
 
   async getInventory(): Promise<InventoryItem[]> {
     const db = await this.getDB();
