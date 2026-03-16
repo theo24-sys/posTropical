@@ -5,9 +5,8 @@ import {
   Plus, Trash2, Package, Users, BarChart3, PieChart, RefreshCw,
   DollarSign, ArrowLeft, Search, TrendingUp, TrendingDown,
   Activity, ShieldAlert, Edit3, Beef, Egg, Cake, GlassWater,
-  Wheat, Carrot, Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
-  Clock, ShieldCheck, DatabaseBackup, UploadCloud, Search as SearchIcon,
-  Wand2, Printer, Download, Trophy, Camera, Calendar, ListFilter
+  Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
+  Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DB } from '../services/supabase';
@@ -113,11 +112,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return tYMD >= customStart && tYMD <= customEnd;
     }
 
-    } catch (err: any) {
-   console.error('Full save error:', err);
-   alert(`Save failed: ${err.message || 'Unknown error - check console (F12)'}\n\nCheck if Supabase URL/key is correct and RLS allows writes.`);
-   }
-  
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
     if (dateRange === 'Week') return tYMD >= getNairobiYMD(weekAgo.toISOString());
@@ -184,7 +178,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleSaveInvItem = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSaving(true);
+    e.preventDefault();
+    setIsSaving(true);
     const formData = new FormData(e.target as HTMLFormElement);
     const item: InventoryItem = {
       id: editingInvItem?.id || `inv-${Date.now()}`,
@@ -194,8 +189,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       category: formData.get('category') as InventoryCategory,
       lowStockThreshold: Number(formData.get('threshold'))
     };
-    await onSaveInventoryItem(item);
-    setIsSaving(false); setIsInvModalOpen(false);
+
+    try {
+      await onSaveInventoryItem(item);
+      alert('Asset saved successfully!');
+      setIsInvModalOpen(false);
+      setEditingInvItem(null);
+    } catch (err: any) {
+      console.error('Inventory save failed:', err);
+      alert(`Save failed: ${err.message || 'Unknown error - check console (F12) for details'}\n\nPossible causes: wrong Supabase key, RLS blocking, or network issue.`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveMenuForm = async (e: React.FormEvent) => {
@@ -528,7 +533,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* MODALS - restored exactly as in your original */}
+        {/* MODALS */}
         {isInvModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-6">
             <div className="bg-white w-full max-w-2xl rounded-[64px] p-16 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] relative animate-in zoom-in-95 duration-300">
