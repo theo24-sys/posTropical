@@ -99,7 +99,6 @@ const App: React.FC = () => {
         setSalesHistory(cloudSales);
         setExpenses(cloudExpenses);
         setAuditLogs(cloudLogs);
-
         await Promise.all([
           LocalDB.saveUsers(cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS),
           LocalDB.saveMenu(cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS),
@@ -230,15 +229,12 @@ const App: React.FC = () => {
   ) => {
     if (cart.length === 0 || !posUser) return;
     setIsProcessing(true);
-
     const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
     const discountPercent = activePromotion?.discount_percent || 0;
     const discountAmount = subtotal * (discountPercent / 100);
     const finalTotal = subtotal - discountAmount;
-
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
-
     const sale: SaleTransaction = {
       id: orderId,
       date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp,
@@ -252,23 +248,21 @@ const App: React.FC = () => {
       updatedAt: editingTransactionId ? timestamp : undefined,
       updatedBy: editingTransactionId ? posUser.name : undefined
     };
-
     try {
       const aiMsg = await generateReceiptMessage(
-  cart, 
-  posUser.name, 
-  discountPercent, 
-  discountAmount, 
-  finalTotal, 
-  orderId);
-
+        cart,
+        posUser.name,
+        discountPercent,
+        discountAmount,
+        finalTotal,
+        orderId);
       setReceiptData({
         items: [...cart],
-        subtotal,                // original full amount (for display)
+        subtotal, // original full amount (for display)
         tax: 0,
-        total: finalTotal,       // discounted final total
-        discountAmount,          // for display
-        discountPercent,         // for display
+        total: finalTotal, // discounted final total
+        discountAmount, // for display
+        discountPercent, // for display
         amountTendered,
         change,
         date: sale.date,
@@ -280,16 +274,13 @@ const App: React.FC = () => {
         aiMessage: aiMsg,
         status: sale.status
       });
-
       setIsModalOpen(true);
       setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
-
       if (navigator.onLine) {
         await DB.saveTransaction(sale);
       } else {
         await LocalDB.queueOrder(sale);
       }
-
       // Deduct inventory only when paid
       if (sale.status === 'Paid') {
         try {
@@ -308,7 +299,6 @@ const App: React.FC = () => {
           logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
         }
       }
-
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
       setCart([]);
       setEditingTransactionId(null);
@@ -322,7 +312,6 @@ const App: React.FC = () => {
   const handleUpdateStatus = async (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: PaymentMethod) => {
     const tx = salesHistory.find(t => t.id === id);
     if (!tx || !posUser) return;
-
     const updatedTx: SaleTransaction = {
       ...tx,
       status: newStatus,
@@ -330,20 +319,15 @@ const App: React.FC = () => {
       updatedBy: posUser.name,
       updatedAt: getNairobiISO()
     };
-
     setSalesHistory(prev => prev.map(t => t.id === id ? updatedTx : t));
-
     if (navigator.onLine) await DB.saveTransaction(updatedTx);
     else await LocalDB.queueOrder(updatedTx);
-
     if (newStatus === 'Paid') {
       const reconstructed: CartItem[] = updatedTx.items.map(i => {
         const orig = menuItems.find(m => m.id === i.id);
         return { ...(orig || { id: i.id, name: i.name, price: i.price, category: Category.MAINS, image: '', stock: 0, lowStockThreshold: 0 }), quantity: i.quantity };
       });
-
       const aiMsg = await generateReceiptMessage(reconstructed, posUser.name);
-
       setReceiptData({
         items: reconstructed,
         subtotal: tx.total,
@@ -358,9 +342,7 @@ const App: React.FC = () => {
         tableNumber: tx.tableNumber,
         updatedAt: updatedTx.updatedAt
       });
-
       setIsModalOpen(true);
-
       try {
         const saleItems = updatedTx.items.map(i => ({ id: i.id, quantity: i.quantity }));
         if (saleItems.length > 0) {
@@ -412,7 +394,6 @@ const App: React.FC = () => {
             </span>
           </div>
         </div>
-
         <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#e0d4c4] rounded-full flex items-center justify-center font-bold text-[#4B3621] overflow-hidden border border-white shadow-sm">
@@ -433,7 +414,6 @@ const App: React.FC = () => {
             <LogOut size={24} />
           </button>
         </div>
-
         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin bg-white">
           <button
             onClick={() => { setActiveCategory('All'); navigate('/'); }}
@@ -443,11 +423,9 @@ const App: React.FC = () => {
           >
             <div className="flex items-center gap-3"><LayoutGrid size={22} /> All Items</div>
           </button>
-
           <div className="px-6 py-4 mt-6 mb-2 border-t border-gray-50">
             <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px]">Categories</p>
           </div>
-
           {Object.values(Category).map(cat => (
             <button
               key={cat}
@@ -460,7 +438,6 @@ const App: React.FC = () => {
             </button>
           ))}
         </div>
-
         <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2 shrink-0">
           <button
             onClick={() => navigate('/')}
@@ -525,7 +502,6 @@ const App: React.FC = () => {
                       ))}
                   </div>
                 </main>
-
                 <div className="w-[420px] shrink-0 h-full">
                   <CartSidebar
                     cart={cart}
@@ -577,10 +553,10 @@ const App: React.FC = () => {
                   onUpdateStock={async (id: string, delta: number) => {
                     const item = inventory.find(i => i.id === id);
                     if (item) {
-                      const updated = { ...item, quantity: item.quantity + delta };
+                      const updated = { ...item, quantity: Math.max(0, item.quantity + delta) };
                       setInventory(prev => prev.map(i => (i.id === id ? updated : i)));
                       if (navigator.onLine) await DB.saveInventoryItem(updated);
-                      await LocalDB.updateInventoryItem(updated);
+                      await LocalDB.saveInventoryItem(updated); // ← fixed: was saveInventory
                     }
                   }}
                   onSaveInventoryItem={async (item: InventoryItem) => {
@@ -589,7 +565,7 @@ const App: React.FC = () => {
                       return exists ? prev.map(i => (i.id === item.id ? item : i)) : [item, ...prev];
                     });
                     if (navigator.onLine) await DB.saveInventoryItem(item);
-                    await LocalDB.updateInventoryItem(item);
+                    await LocalDB.saveInventoryItem(item); // ← fixed: was updateInventoryItem (use save for consistency)
                   }}
                   onDeleteInventoryItem={async (id: string) => {
                     setInventory(prev => prev.filter(i => i.id !== id));
