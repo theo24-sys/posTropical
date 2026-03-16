@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem, PaymentMethod, UserRole, SaleTransaction } from '../types';
 import { CURRENCY } from '../constants';
-import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, AlertCircle, ReceiptText, ChevronRight, Clock } from 'lucide-react';
-import { DB } from '../services/supabase'; // Make sure this import exists
+import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, ReceiptText, ChevronRight, Clock } from 'lucide-react';
+import { DB } from '../services/supabase';
 
 interface CartSidebarProps {
   cart: CartItem[];
@@ -44,8 +44,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
 
-  const isWaiter = userRole === 'Waiter';
-
   // Fetch and calculate discount live
   useEffect(() => {
     const calculateDiscount = async () => {
@@ -53,7 +51,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         const promo = await DB.getActivePromotion();
         const pct = promo?.discount_percent || 0;
         setDiscountPercent(pct);
-
         const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const discAmt = subtotal * (pct / 100);
         setDiscountAmount(discAmt);
@@ -63,9 +60,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         setDiscountAmount(0);
       }
     };
-
     calculateDiscount();
-
     // Refresh discount every 5 minutes (in case promo starts/ends)
     const interval = setInterval(calculateDiscount, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -75,12 +70,10 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   const finalTotal = subtotal - discountAmount;
 
   const handleCheckoutClick = () => {
-    if (isWaiter) return;
     if (orderType === 'Dine-in' && !selectedTable) {
       alert("Please select a table number.");
       return;
     }
-    // Pass the discounted total to checkout if needed (optional - you can keep using props.total or override)
     onCheckout(
       paymentMethod,
       orderType,
@@ -107,17 +100,10 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
 
       {/* SCROLLABLE CONTENT AREA */}
       <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-thin">
-        {isWaiter && (
-          <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center gap-3 text-orange-700 font-bold text-sm">
-            <AlertCircle size={18} />
-            <span>Waiter Mode: Add items to pending bills below.</span>
-          </div>
-        )}
-
         {/* Cart Items Section */}
         <div className="space-y-4">
           {cart.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center opacity-10 space-y-4 text-center">
+            <div className="py-12 flex flex-col items-center justify-center opacity-70 space-y-4 text-center">
               <ShoppingBag size={80} />
               <p className="font-black text-xl text-[#4B3621]">Cart is empty</p>
             </div>
@@ -161,7 +147,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           )}
         </div>
 
-        {/* Order Configuration - Now Scrollable */}
+        {/* Order Configuration */}
         <div className="pt-8 border-t border-gray-100 space-y-8">
           {/* Dine-in / Take Away Toggle */}
           <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
@@ -272,7 +258,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         )}
       </div>
 
-      {/* FIXED FOOTER - NOW WITH DISCOUNT DISPLAY */}
+      {/* FIXED FOOTER */}
       <div className="p-8 bg-white border-t border-gray-100 space-y-6 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0">
         <div className="space-y-3">
           <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-6">
@@ -303,25 +289,30 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
 
         <button
           onClick={handleCheckoutClick}
-          disabled={cart.length === 0 || isProcessing || isWaiter}
+          disabled={cart.length === 0 || isProcessing}
           className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${
-            isWaiter
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : paymentMethod === 'Pay Later'
+            paymentMethod === 'Pay Later'
               ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10'
               : 'bg-[#4B3621] text-white hover:bg-[#3e2d1e]'
           } hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3`}
         >
-          {isProcessing
-            ? 'Processing...'
-            : isWaiter
-            ? 'Order Locked'
-            : paymentMethod === 'Pay Later'
-            ? <>
-                <ReceiptText size={22} /> Save & Print Bill
-              </>
-            : 'Process Payment'}
+          {isProcessing ? (
+            'Processing...'
+          ) : paymentMethod === 'Pay Later' ? (
+            <>
+              <ReceiptText size={22} /> Save & Print Bill
+            </>
+          ) : (
+            'Process Payment'
+          )}
         </button>
+
+        {/* Optional: If you want different text for waiters (uncomment if desired) */}
+        {/* {userRole === 'Waiter' && (
+          <p className="text-center text-sm text-gray-500 mt-2">
+            Waiter: This will save as pending bill
+          </p>
+        )} */}
       </div>
     </div>
   );
