@@ -16,10 +16,9 @@ import {
   Search, LayoutGrid, LogOut, Loader2, RefreshCw, BarChart3, LayoutList, History
 } from 'lucide-react';
 
-// Simple type for promotion (add this to types.ts later if needed)
+// Simple type for promotion
 interface Promotion {
   discount_percent: number;
-  // add other fields if you have them
 }
 
 const App: React.FC = () => {
@@ -48,7 +47,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getNairobiISO = () => new Date().toISOString(); // UTC — good!
+  const getNairobiISO = () => new Date().toISOString();
 
   const formatEAT = (utcDateStr: string | Date, options: Intl.DateTimeFormatOptions = {}) => {
     const date = typeof utcDateStr === 'string' ? new Date(utcDateStr) : utcDateStr;
@@ -129,11 +128,10 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fetch active promotion
   useEffect(() => {
     async function loadPromotion() {
       try {
-        const promo = await DB.getActivePromotion(); // assuming this returns Promotion | null
+        const promo = await DB.getActivePromotion();
         setActivePromotion(promo);
       } catch (err) {
         console.error('Failed to load promotion:', err);
@@ -238,7 +236,7 @@ const App: React.FC = () => {
     const sale: SaleTransaction = {
       id: orderId,
       date: editingTransactionId ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp : timestamp,
-      total: finalTotal, // discounted total saved to DB
+      total: finalTotal,
       paymentMethod,
       status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
       cashierName: posUser.name,
@@ -258,11 +256,11 @@ const App: React.FC = () => {
         orderId);
       setReceiptData({
         items: [...cart],
-        subtotal, // original full amount (for display)
+        subtotal,
         tax: 0,
-        total: finalTotal, // discounted final total
-        discountAmount, // for display
-        discountPercent, // for display
+        total: finalTotal,
+        discountAmount,
+        discountPercent,
         amountTendered,
         change,
         date: sale.date,
@@ -281,7 +279,6 @@ const App: React.FC = () => {
       } else {
         await LocalDB.queueOrder(sale);
       }
-      // Deduct inventory only when paid
       if (sale.status === 'Paid') {
         try {
           const saleItems = cart.map(i => ({ id: i.id, quantity: i.quantity }));
@@ -556,7 +553,7 @@ const App: React.FC = () => {
                       const updated = { ...item, quantity: Math.max(0, item.quantity + delta) };
                       setInventory(prev => prev.map(i => (i.id === id ? updated : i)));
                       if (navigator.onLine) await DB.saveInventoryItem(updated);
-                      await LocalDB.saveInventoryItem(updated); // ← fixed: was saveInventory
+                      await LocalDB.saveInventoryItem(updated); // ← FIXED HERE
                     }
                   }}
                   onSaveInventoryItem={async (item: InventoryItem) => {
@@ -565,7 +562,7 @@ const App: React.FC = () => {
                       return exists ? prev.map(i => (i.id === item.id ? item : i)) : [item, ...prev];
                     });
                     if (navigator.onLine) await DB.saveInventoryItem(item);
-                    await LocalDB.saveInventoryItem(item); // ← fixed: was updateInventoryItem (use save for consistency)
+                    await LocalDB.saveInventoryItem(item); // ← FIXED HERE
                   }}
                   onDeleteInventoryItem={async (id: string) => {
                     setInventory(prev => prev.filter(i => i.id !== id));
