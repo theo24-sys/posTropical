@@ -204,21 +204,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleSaveMenuForm = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSaving(true);
-    const formData = new FormData(e.target as HTMLFormElement);
-    const item: MenuItem = {
-      id: editingMenuItem?.id || `menu-${Date.now()}`,
-      name: formData.get('name') as string,
-      price: Number(formData.get('price')),
-      category: formData.get('category') as Category,
-      image: formData.get('image') as string,
-      description: formData.get('description') as string,
-      stock: Number(formData.get('stock')),
-      lowStockThreshold: Number(formData.get('threshold'))
-    };
-    await onSaveItem(item);
-    setIsSaving(false); setIsMenuModalOpen(false);
+  e.preventDefault();
+  setIsSaving(true);
+  const formData = new FormData(e.target as HTMLFormElement);
+  const item: MenuItem = {
+    id: editingMenuItem?.id || `menu-${Date.now()}`,
+    name: formData.get('name') as string,
+    price: Number(formData.get('price')),
+    category: formData.get('category') as Category,
+    image: formData.get('image') as string,
+    description: formData.get('description') as string,
+    stock: Number(formData.get('stock')),
+    lowStockThreshold: Number(formData.get('threshold'))
   };
+  await onSaveItem(item);
+  await onRefresh(); // ← ADD THIS
+  setIsSaving(false);
+  setIsMenuModalOpen(false);
+};
 
   const handleSaveExpenseForm = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSaving(true);
