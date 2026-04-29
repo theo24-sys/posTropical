@@ -92,7 +92,7 @@ const App: React.FC = () => {
           DB.getAuditLogs()
         ]);
 
-        const usersToUse = cloudUsers.length > 0 ? cloudUsers : INITIAL_USERS;
+        const usersToUse = cloudUsers; // trust Supabase; no fallback to mock data
         const menuToUse = cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS;
         const inventoryToUse = cloudInv.length > 0 ? cloudInv : INITIAL_KITCHEN_INVENTORY;
 
@@ -113,12 +113,6 @@ const App: React.FC = () => {
         if (cloudMenu.length === 0) {
           console.log('Seeding Supabase menu with initial data...');
           await Promise.all(MENU_ITEMS.map(item => DB.saveMenuItem(item)));
-        }
-
-        // Seed Supabase if users table was empty
-        if (cloudUsers.length === 0) {
-          console.log('Seeding Supabase users with initial data...');
-          await Promise.all(INITIAL_USERS.map(user => DB.saveUser(user)));
         }
 
         // Save everything to LocalDB for offline use
@@ -403,14 +397,16 @@ const App: React.FC = () => {
   }
 
   if (!posUser) {
-    const isAdminPath = location.pathname === '/admin';
-    const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
-    const visibleUsers = isAdminPath
-      ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
-      : users.filter(u => normalizeRole(u.role) !== 'ADMIN');
-    return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
-  }
-
+  const isAdminPath = location.pathname === '/admin';
+  const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
+  const MOCK_USER_IDS = new Set(['u1', 'u2', 'u3', 'u4', 'u5']);
+  const visibleUsers = (isAdminPath
+    ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
+    : users.filter(u => normalizeRole(u.role) !== 'ADMIN')
+  ).filter(u => !MOCK_USER_IDS.has(u.id));
+  return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
+}
+  
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
       <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
@@ -607,11 +603,13 @@ const App: React.FC = () => {
                     await db.delete('inventory', id);
                   }}
                   onSaveItem={async (i: MenuItem) => {
-                    setMenuItems(prev => {
+                 setMenuItems(prev => {
                       const exists = prev.find(m => m.id === i.id);
                       return exists ? prev.map(m => m.id === i.id ? i : m) : [i, ...prev];
-                    });
-                    await DB.saveMenuItem(i);
+                          });
+                       await DB.saveMenuItem(i);
+                       await LocalDB.saveMenu(menuItems.map(m => m.id === i.id ? i : m)); // ← ADD THIS
+                     }}
                   }}
                   onDeleteItem={async (id: string) => {
                     setMenuItems(prev => prev.filter(m => m.id !== id));
