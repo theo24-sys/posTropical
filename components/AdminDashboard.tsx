@@ -44,6 +44,15 @@ const getInventoryIcon = (cat: InventoryCategory) => {
     case 'MAIN COURSES': return <Beef size={20} />;
     case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
     case 'SOFT DRINKS': return <GlassWater size={20} />;
+    case 'COFFEE (DOUBLE)': return <GlassWater size={20} />;
+    case 'TEAS': return <GlassWater size={20} />;
+    case 'SHAKES': return <GlassWater size={20} />;
+    case 'SMOOTHIES': return <GlassWater size={20} />;
+    case 'FRESH JUICES': return <GlassWater size={20} />;
+    case 'LEMONADES': return <GlassWater size={20} />;
+    case 'MOCKTAILS': return <GlassWater size={20} />;
+    case 'BAKERY & PASTRIES': return <Cake size={20} />;
+    case 'DESSERTS': return <Cake size={20} />;
     default: return <Layers size={20} />;
   }
 };
@@ -547,11 +556,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Current Level</label><input name="quantity" type="number" step="0.01" defaultValue={editingInvItem?.quantity} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required /></div>
                 <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Unit (Kgs/Pcs)</label><input name="unit" defaultValue={editingInvItem?.unit} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required /></div>
                 <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Classification</label><select name="category" defaultValue={editingInvItem?.category || 'MAIN COURSES'} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest outline-none">
-                  <option>MAIN COURSES</option>
-                  <option>BITINGS</option>
-                  <option>BURGERS / BURRITOS & SANDWICHES</option>
                   <option>BREAKFAST</option>
+                  <option>SOUP & SALADS</option>
+                  <option>BITINGS</option>
+                  <option>COFFEE (DOUBLE)</option>
+                  <option>TEAS</option>
                   <option>SOFT DRINKS</option>
+                  <option>ICED COFFEE</option>
+                  <option>SHAKES</option>
+                  <option>SMOOTHIES</option>
+                  <option>FRESH JUICES</option>
+                  <option>LEMONADES</option>
+                  <option>MOCKTAILS</option>
+                  <option>BAKERY & PASTRIES</option>
+                  <option>MAIN COURSES</option>
+                  <option>BURGERS / BURRITOS & SANDWICHES</option>
+                  <option>DESSERTS</option>
                 </select></div>
                 <div><label className="text-[10px] font-black text-red-300 uppercase tracking-[4px] mb-4 block">Critical Warning</label><input name="threshold" type="number" defaultValue={editingInvItem?.lowStockThreshold} className="w-full p-6 bg-red-50/30 border-2 border-red-50 rounded-[28px] font-black text-red-500 text-lg outline-none" required /></div>
                 <div className="md:col-span-2 pt-10 flex gap-6"><button type="button" onClick={() => setIsInvModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-[4px] text-gray-300">Discard</button><button type="submit" disabled={isSaving} className="flex-[2] py-6 bg-[#4B3621] text-white rounded-[28px] font-black text-[10px] uppercase tracking-[4px] shadow-2xl hover:scale-105 active:scale-95 transition-all">Commit SKU</button></div>

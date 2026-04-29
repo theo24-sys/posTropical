@@ -329,7 +329,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'sp_nut',
     name: 'Spicy African Butternut Soup',
     price: 400,
-    category: Category.APPETIZERS,
+    category: Category.SOUP_SALADS,
     image: 'https://images.unsplash.com/photo-1547592166-23acbe3b624b?auto=format&fit=crop&w=600&q=80',
     stock: 20, lowStockThreshold: 5
   },
@@ -337,7 +337,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'sp_tom',
     name: 'Creamy Tomato Basil Soup',
     price: 400,
-    category: Category.APPETIZERS,
+    category: Category.SOUP_SALADS,
     image: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80',
     stock: 20, lowStockThreshold: 5
   },
@@ -345,7 +345,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'sld_hse',
     name: 'House Salad',
     price: 450,
-    category: Category.APPETIZERS,
+    category: Category.SOUP_SALADS,
     image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80',
     description: 'Lettuce, red cabbage, carrots, pickled onions, cucumber, tomatoes.',
     stock: 30, lowStockThreshold: 5
@@ -354,7 +354,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'sld_cjn',
     name: 'Cajun Chicken Salad',
     price: 600,
-    category: Category.APPETIZERS,
+    category: Category.SOUP_SALADS,
     image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?auto=format&fit=crop&w=600&q=80',
     description: 'House salad topped with spiced chicken.',
     stock: 25, lowStockThreshold: 5
@@ -805,7 +805,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'moc_moj',
     name: 'Virgin Mojito',
     price: 350,
-    category: Category.MOJITOS,
+    category: Category.MOCKTAILS,
     image: 'https://images.unsplash.com/photo-1551538827-9c037cb4f32d?auto=format&fit=crop&w=600&q=80',
     stock: 30, lowStockThreshold: 5
   },
@@ -813,7 +813,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'moc_pina',
     name: 'Virgin Pina colada',
     price: 450,
-    category: Category.MOJITOS,
+    category: Category.MOCKTAILS,
     image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80',
     stock: 30, lowStockThreshold: 5
   },
@@ -821,7 +821,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'moc_dd',
     name: 'Drink and Drive',
     price: 450,
-    category: Category.MOJITOS,
+    category: Category.MOCKTAILS,
     image: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=600&q=80',
     description: 'Passion, Orange, Pineapple, Syrup',
     stock: 30, lowStockThreshold: 5
@@ -830,7 +830,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'moc_str',
     name: 'Strawberry Mocktail',
     price: 450,
-    category: Category.MOJITOS,
+    category: Category.MOCKTAILS,
     image: 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e073?auto=format&fit=crop&w=600&q=80',
     stock: 30, lowStockThreshold: 5
   },

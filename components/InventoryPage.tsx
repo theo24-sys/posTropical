@@ -26,11 +26,22 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
   // ONLY the categories from your real 13 inventory items
   const categories: (InventoryCategory | 'All')[] = [
     'All',
+    'BREAKFAST',
+    'SOUP & SALADS',
     'BITINGS',
+    'COFFEE (DOUBLE)',
+    'TEAS',
+    'SOFT DRINKS',
+    'ICED COFFEE',
+    'SHAKES',
+    'SMOOTHIES',
+    'FRESH JUICES',
+    'LEMONADES',
+    'MOCKTAILS',
+    'BAKERY & PASTRIES',
     'MAIN COURSES',
     'BURGERS / BURRITOS & SANDWICHES',
-    'BREAKFAST',
-    'SOFT DRINKS'
+    'DESSERTS'
   ];
 
   const filteredInventory = inventory.filter(item => {
@@ -96,6 +107,15 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
       case 'MAIN COURSES': return <Beef size={20} />;
       case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
       case 'SOFT DRINKS': return <GlassWater size={20} />;
+      case 'COFFEE (DOUBLE)': return <GlassWater size={20} />;
+      case 'TEAS': return <GlassWater size={20} />;
+      case 'SHAKES': return <GlassWater size={20} />;
+      case 'SMOOTHIES': return <GlassWater size={20} />;
+      case 'FRESH JUICES': return <GlassWater size={20} />;
+      case 'LEMONADES': return <GlassWater size={20} />;
+      case 'MOCKTAILS': return <GlassWater size={20} />;
+      case 'BAKERY & PASTRIES': return <Cake size={20} />;
+      case 'DESSERTS': return <Cake size={20} />;
       default: return <Layers size={20} />;
     }
   };
