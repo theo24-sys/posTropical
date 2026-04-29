@@ -1,14 +1,12 @@
 
 export enum Category {
   BREAKFAST = 'BREAKFAST',
-  HEALTH_KICK = 'HEALTH KICK',
-  SOUP_SALADS = 'SOUP & SALADS', 
+  SOUP_SALADS = 'SOUP & SALADS',
   BITINGS = 'BITINGS',
   HOT_DRINKS = 'COFFEE (DOUBLE)',
   TEAS = 'TEAS',
   SOFT_DRINKS = 'SOFT DRINKS',
   ICED_COFFEE = 'ICED COFFEE',
-  COLD_DRINKS = 'COLD BEVERAGES',
   SHAKES = 'SHAKES',
   SMOOTHIES = 'SMOOTHIES',
   FRESH_JUICES = 'FRESH JUICES',
@@ -17,9 +15,9 @@ export enum Category {
   BAKERY = 'BAKERY & PASTRIES',
   MAINS = 'MAIN COURSES',
   BURGERS = 'BURGERS / BURRITOS & SANDWICHES',
-  PIZZA = 'Pizza',
-  SIDES = 'SIDES',
-  DESSERTS = 'DESSERTS'
+  SANDWICHES = 'SANDWICHES',
+  DESSERTS = 'DESSERTS',
+  SIDES = 'SIDES'
 }
 
 export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Pay Later';
@@ -47,14 +45,12 @@ export interface MenuItem {
 
 export type InventoryCategory = 
   | 'BREAKFAST'
-  | 'HEALTH KICK'
   | 'SOUP & SALADS'
   | 'BITINGS'
   | 'COFFEE (DOUBLE)'
   | 'TEAS'
   | 'SOFT DRINKS'
   | 'ICED COFFEE'
-  | 'COLD BEVERAGES'
   | 'SHAKES'
   | 'SMOOTHIES'
   | 'FRESH JUICES'
@@ -63,7 +59,7 @@ export type InventoryCategory =
   | 'BAKERY & PASTRIES'
   | 'MAIN COURSES'
   | 'BURGERS / BURRITOS & SANDWICHES'
-  | 'PIZZA'
+  | 'SANDWICHES'
   | 'SIDES'
   | 'DESSERTS';
 

@@ -43,6 +43,8 @@ const getInventoryIcon = (cat: InventoryCategory) => {
     case 'BITINGS': return <Beef size={20} />;
     case 'MAIN COURSES': return <Beef size={20} />;
     case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
+    case 'SANDWICHES': return <Layers size={20} />;
+    case 'SIDES': return <Layers size={20} />;
     case 'SOFT DRINKS': return <GlassWater size={20} />;
     case 'COFFEE (DOUBLE)': return <GlassWater size={20} />;
     case 'TEAS': return <GlassWater size={20} />;
@@ -571,6 +573,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <option>BAKERY & PASTRIES</option>
                   <option>MAIN COURSES</option>
                   <option>BURGERS / BURRITOS & SANDWICHES</option>
+                  <option>SANDWICHES</option>
+                  <option>SIDES</option>
                   <option>DESSERTS</option>
                 </select></div>
                 <div><label className="text-[10px] font-black text-red-300 uppercase tracking-[4px] mb-4 block">Critical Warning</label><input name="threshold" type="number" defaultValue={editingInvItem?.lowStockThreshold} className="w-full p-6 bg-red-50/30 border-2 border-red-50 rounded-[28px] font-black text-red-500 text-lg outline-none" required /></div>

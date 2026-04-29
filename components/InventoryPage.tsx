@@ -41,6 +41,8 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
     'BAKERY & PASTRIES',
     'MAIN COURSES',
     'BURGERS / BURRITOS & SANDWICHES',
+    'SANDWICHES',
+    'SIDES',
     'DESSERTS'
   ];
 
@@ -106,6 +108,8 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ inventory, onUpdat
       case 'BITINGS': return <Beef size={20} />;
       case 'MAIN COURSES': return <Beef size={20} />;
       case 'BURGERS / BURRITOS & SANDWICHES': return <Beef size={20} />;
+      case 'SANDWICHES': return <Layers size={20} />;
+      case 'SIDES': return <Layers size={20} />;
       case 'SOFT DRINKS': return <GlassWater size={20} />;
       case 'COFFEE (DOUBLE)': return <GlassWater size={20} />;
       case 'TEAS': return <GlassWater size={20} />;

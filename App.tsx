@@ -603,13 +603,14 @@ const App: React.FC = () => {
                     await db.delete('inventory', id);
                   }}
                   onSaveItem={async (i: MenuItem) => {
-                 setMenuItems(prev => {
+                    setMenuItems(prev => {
                       const exists = prev.find(m => m.id === i.id);
                       return exists ? prev.map(m => m.id === i.id ? i : m) : [i, ...prev];
-                          });
-                       await DB.saveMenuItem(i);
-                       await LocalDB.saveMenu(menuItems.map(m => m.id === i.id ? i : m)); // ← ADD THIS
-                     }}
+                    });
+                    await DB.saveMenuItem(i);
+                    const updatedMenu = menuItems.map(m => m.id === i.id ? i : m);
+                    if (!menuItems.find(m => m.id === i.id)) updatedMenu.push(i);
+                    await LocalDB.saveMenu(updatedMenu);
                   }}
                   onDeleteItem={async (id: string) => {
                     setMenuItems(prev => prev.filter(m => m.id !== id));
