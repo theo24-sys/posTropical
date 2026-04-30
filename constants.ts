@@ -122,6 +122,14 @@ export const INITIAL_KITCHEN_INVENTORY: InventoryItem[] = [
     unit: 'pcs', 
     category: 'SOFT DRINKS', 
     lowStockThreshold: 40 
+  },
+  { 
+    id: 'inv_sparkling_water', 
+    name: 'Sparkling Water', 
+    quantity: 100, 
+    unit: 'pcs', 
+    category: 'SOFT DRINKS', 
+    lowStockThreshold: 20 
   }
 ];
 
@@ -211,6 +219,9 @@ export const KITCHEN_RECIPES: Record<string, { invId: string; amount: number }[]
   // Keringet Water ─ from SOFT DRINKS
   'sd_wat': [
     { invId: 'inv_keringet_water', amount: 1 },
+  ],
+  'sd_spark': [
+    { invId: 'inv_sparkling_water', amount: 1 },
   ],
 };
 // --- MENU ITEMS WITH STOCK ---
@@ -404,6 +415,14 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 150,
     category: Category.SOFT_DRINKS,
     image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80',
+    stock: 100, lowStockThreshold: 20
+  },
+  {
+    id: 'sd_spark',
+    name: 'Sparkling Water',
+    price: 150,
+    category: Category.SOFT_DRINKS,
+    image: 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80',
     stock: 100, lowStockThreshold: 20
   },
 
