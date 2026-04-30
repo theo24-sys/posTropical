@@ -31,6 +31,9 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('t_herb', 'Herbal Tea', 200, 'TEAS', 'Green/Chamomile/Lemon/Hibiscus/Peppermint', 100, 10, 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80'),
 ('t_dawa', 'Dawa', 300, 'TEAS', '', 100, 10, 'https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?auto=format&fit=crop&w=600&q=80'),
 
+-- SOFT DRINKS
+('sd_wat', 'Water - Keringet 1L', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80'),
+('sd_spark', 'Sparkling Water', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
 
 -- ICED COFFEE
 ('ice_cof', 'Iced Coffee', 350, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80'),
