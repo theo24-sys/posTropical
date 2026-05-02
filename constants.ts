@@ -486,8 +486,24 @@ export const MENU_ITEMS: MenuItem[] = [
     stock: 40, lowStockThreshold: 10
   },
   {
-    id: 'sh_van_str_chc',
-    name: 'Vanilla/Strawberry/Chocolate Shake',
+    id: 'sh_van',
+    name: 'Vanilla Shake',
+    price: 450,
+    category: Category.SHAKES,
+    image: 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80',
+    stock: 40, lowStockThreshold: 10
+  },
+  {
+    id: 'sh_str',
+    name: 'Strawberry Shake',
+    price: 450,
+    category: Category.SHAKES,
+    image: 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80',
+    stock: 40, lowStockThreshold: 10
+  },
+  {
+    id: 'sh_chc',
+    name: 'Chocolate Shake',
     price: 450,
     category: Category.SHAKES,
     image: 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80',

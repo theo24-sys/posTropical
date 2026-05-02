@@ -45,7 +45,9 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 
 -- SHAKES
 ('sh_mnt', 'Mint Shake', 550, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80'),
-('sh_van_str_chc', 'Vanilla/Strawberry/Chocolate Shake', 450, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80'),
+('sh_van', 'Vanilla Shake', 450, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80'),
+('sh_str', 'Strawberry Shake', 450, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80'),
+('sh_chc', 'Chocolate Shake', 450, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80'),
 ('sh_ore', 'Oreo Shake', 500, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80'),
 ('sh_esp', 'Espresso Shake', 500, 'SHAKES', '', 40, 10, 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80'),
 
