@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
 import { KITCHEN_RECIPES } from '../constants';
 
@@ -168,13 +168,13 @@ export const DB = {
   subscribeToInventory(
     onUpdate: (item: InventoryItem) => void,
     onDelete?: (id: string) => void
-  ) {
+  ): () => void {
   const channel = supabase
     .channel('inventory-realtime')
     .on(
-      'postgres_changes',
+      'postgres_changes' as const,
       { event: '*', schema: 'public', table: 'inventory' },
-      (payload: InventoryRealtimePayload) => {
+      (payload: RealtimePostgresChangesPayload<InventoryRow>) => {
         if (payload.eventType === 'DELETE') {
           const deletedId = payload.old?.id;
           if (deletedId && onDelete) onDelete(deletedId);
@@ -198,7 +198,9 @@ export const DB = {
     .subscribe();
 
   // Return unsubscribe function
-  return () => supabase.removeChannel(channel);
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 },
 
   // FIXED: use .update() not .upsert() for deductions so partial rows never get inserted
