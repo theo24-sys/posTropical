@@ -242,7 +242,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
           fmtDateTime(e.date),
           e.supplierSource || '—',
           e.itemName || e.description,
-          e.quantity?.toString() || '—',
+          e.quantity != null ? `${e.quantity} ${e.quantityUnit || ''}`.trim() : '—',
           e.unitCost != null ? e.unitCost.toString() : '—',
           e.category,
           e.amount.toString(),
@@ -358,7 +358,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
     }
 
     if (reportType === 'expenses') {
-      const rows = filteredExpenses.map(e => `<tr><td>${fmtDateTime(e.date)}</td><td>${e.supplierSource || '—'}</td><td>${e.itemName || e.description}<div style="font-size:10px;color:#777;font-weight:700;margin-top:4px;">Qty: ${e.quantity ?? '—'} · Unit: ${e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}${e.note ? ` · ${e.note}` : ''}</div></td><td>${e.category}</td><td class="text-right">${CURRENCY} ${e.amount.toLocaleString()}</td><td>${e.recordedBy}</td></tr>`).join('');
+      const rows = filteredExpenses.map(e => `<tr><td>${fmtDateTime(e.date)}</td><td>${e.supplierSource || '—'}</td><td>${e.itemName || e.description}<div style="font-size:10px;color:#777;font-weight:700;margin-top:4px;">Qty: ${e.quantity ?? '—'} ${e.quantityUnit || ''} · Unit: ${e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}${e.note ? ` · ${e.note}` : ''}</div></td><td>${e.category}</td><td class="text-right">${CURRENCY} ${e.amount.toLocaleString()}</td><td>${e.recordedBy}</td></tr>`).join('');
       const catMap: Record<string, number> = {};
       filteredExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount; });
       const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>${c}</td><td class="text-right">${CURRENCY} ${v.toLocaleString()}</td></tr>`).join('');

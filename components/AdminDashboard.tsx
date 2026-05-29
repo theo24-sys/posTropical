@@ -599,7 +599,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <td className="px-12 py-10 min-w-[280px]">
                           <div className="font-black text-lg text-[#4B3621] leading-tight">{e.itemName || e.description}</div>
                           <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-gray-300">
-                            <span className="rounded-full border border-gray-100 bg-white px-3 py-1">Qty: {e.quantity ?? '—'}</span>
+                            <span className="rounded-full border border-gray-100 bg-white px-3 py-1">Qty: {e.quantity ?? '—'} {e.quantityUnit || ''}</span>
                             <span className="rounded-full border border-gray-100 bg-white px-3 py-1">Unit: {e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}</span>
                             {e.note && <span className="rounded-full border border-gray-100 bg-white px-3 py-1">{e.note}</span>}
                           </div>

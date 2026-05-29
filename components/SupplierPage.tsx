@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Expense, User } from '../types';
-import { CURRENCY } from '../constants';
-import { Bell, ChefHat, Clock3, LogOut, Plus, ReceiptText, Store, Truck, Warehouse } from 'lucide-react';
+import { ChefHat, LogOut, Plus, ReceiptText, Store, Truck, Warehouse } from 'lucide-react';
 
 interface SupplierPageProps {
   currentUser: User;
@@ -11,8 +10,10 @@ interface SupplierPageProps {
 }
 
 type SupplierSource = 'Supermarket' | 'Town' | 'Butchery' | 'Market';
+type QuantityUnit = 'Litres' | 'Kgs' | 'Pieces' | 'Bottles' | 'Dozens' | 'Bunches' | 'Sacks' | 'Cans' | 'Boxes' | 'Packets' | 'Cartons' | 'Other';
 
 const SOURCES: SupplierSource[] = ['Supermarket', 'Town', 'Butchery', 'Market'];
+const UNITS: QuantityUnit[] = ['Litres', 'Kgs', 'Pieces', 'Bottles', 'Dozens', 'Bunches', 'Sacks', 'Cans', 'Boxes', 'Packets', 'Cartons', 'Other'];
 
 const sourceMeta: Record<SupplierSource, { icon: React.ReactNode; label: string; accent: string }> = {
   Supermarket: { icon: <Store size={18} />, label: 'Supermarket', accent: 'from-emerald-500 to-teal-500' },
@@ -26,6 +27,7 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
   const [supplierSource, setSupplierSource] = useState<SupplierSource>('Supermarket');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [quantityUnit, setQuantityUnit] = useState<QuantityUnit>('Pieces');
   const [unitCost, setUnitCost] = useState('');
   const [note, setNote] = useState('');
   const [expenseDate, setExpenseDate] = useState(today);
@@ -37,10 +39,6 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [expenses, currentUser.name]);
 
-  const todayExpenses = useMemo(() => myExpenses.filter(exp => exp.date.slice(0, 10) === today), [myExpenses, today]);
-  const todayTotal = todayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const grandTotal = myExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
   const totalsBySource = useMemo(() => {
     return SOURCES.map(source => ({
       source,
@@ -51,6 +49,7 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
   const resetForm = () => {
     setItemName('');
     setQuantity('');
+    setQuantityUnit('Pieces');
     setUnitCost('');
     setNote('');
     setSupplierSource('Supermarket');
@@ -77,6 +76,7 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
       supplierSource,
       itemName: itemName.trim(),
       quantity: qty,
+      quantityUnit,
       unitCost: cost,
       note: note.trim() || undefined,
     });
@@ -124,7 +124,6 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
                       {sourceMeta[card.source].icon}
                       {card.source}
                     </div>
-                    <p className="mt-3 text-lg font-black">{CURRENCY} {card.amount.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
@@ -182,6 +181,17 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
                 </label>
 
                 <label className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-[4px] text-gray-300">Unit Type</span>
+                  <select
+                    value={quantityUnit}
+                    onChange={e => setQuantityUnit(e.target.value as QuantityUnit)}
+                    className="w-full rounded-[22px] border-2 border-gray-100 bg-gray-50 px-5 py-4 text-base font-black outline-none transition-all focus:border-amber-200 focus:bg-white"
+                  >
+                    {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
+                </label>
+
+                <label className="space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-[4px] text-gray-300">Unit Cost</span>
                   <input
                     value={unitCost}
@@ -219,10 +229,8 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
               </div>
 
               <div className="mt-5 rounded-[24px] bg-amber-50 px-5 py-4">
-                <p className="text-[10px] font-black uppercase tracking-[4px] text-amber-500">Batch total</p>
-                <p className="mt-1 text-3xl font-black text-[#3f2b1c]">
-                  {CURRENCY} {(Number(quantity || 0) * Number(unitCost || 0)).toLocaleString()}
-                </p>
+                <p className="text-[10px] font-black uppercase tracking-[4px] text-amber-500">Recording note</p>
+                <p className="mt-1 text-sm font-bold text-[#3f2b1c]">Totals are saved to the system, but not shown here.</p>
               </div>
 
               <button
@@ -238,8 +246,9 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
           <aside className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-[28px] bg-white p-5 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)]">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[3px] text-gray-300"><Bell size={14} /> Today</div>
-                <p className="mt-3 text-3xl font-black text-[#3f2b1c]">{CURRENCY} {todayTotal.toLocaleString()}</p>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[3px] text-gray-300"><ReceiptText size={14} /> Today</div>
+                <p className="mt-3 text-3xl font-black text-[#3f2b1c]">{todayExpenses.length}</p>
+                <p className="mt-1 text-[10px] font-black uppercase tracking-[3px] text-gray-300">Purchases logged</p>
               </div>
               <div className="rounded-[28px] bg-white p-5 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)]">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[3px] text-gray-300"><Clock3 size={14} /> Entries</div>
@@ -263,12 +272,11 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
                       <div>
                         <p className="text-sm font-black text-[#3f2b1c]">{expense.itemName || expense.description}</p>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-[3px] text-gray-300">
-                          {expense.supplierSource || 'Inventory'} · {expense.quantity ?? '—'} pcs
+                          {expense.supplierSource || 'Inventory'} · {expense.quantity ?? '—'} {expense.quantityUnit || 'Pieces'}
                         </p>
                         {expense.note && <p className="mt-2 text-xs font-medium text-gray-500">{expense.note}</p>}
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black text-rose-500">{CURRENCY} {expense.amount.toLocaleString()}</p>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-[3px] text-gray-300">{new Date(expense.date).toLocaleDateString('en-GB')}</p>
                       </div>
                     </div>

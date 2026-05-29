@@ -129,6 +129,7 @@ export interface Expense {
   supplierSource?: 'Supermarket' | 'Town' | 'Butchery' | 'Market';
   itemName?: string;
   quantity?: number;
+  quantityUnit?: 'Litres' | 'Kgs' | 'Pieces' | 'Bottles' | 'Dozens' | 'Bunches' | 'Sacks' | 'Cans' | 'Boxes' | 'Packets' | 'Cartons' | 'Other';
   unitCost?: number;
   note?: string;
 }
