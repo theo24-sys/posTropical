@@ -308,19 +308,44 @@ export const DB = {
       description: e.description,
       amount: e.amount,
       category: e.category,
-      recordedBy: e.recorded_by
+      recordedBy: e.recorded_by,
+      supplierSource: e.supplier_source || e.supplierSource || undefined,
+      itemName: e.item_name || e.itemName || undefined,
+      quantity: e.quantity ?? undefined,
+      unitCost: e.unit_cost ?? e.unitCost ?? undefined,
+      note: e.note || undefined
     }));
   },
 
   async saveExpense(expense: Expense) {
-    await supabase.from('expenses').insert({
+    const extendedPayload = {
+      id: expense.id,
+      date: expense.date,
+      description: expense.description,
+      amount: expense.amount,
+      category: expense.category,
+      recorded_by: expense.recordedBy,
+      supplier_source: expense.supplierSource,
+      item_name: expense.itemName,
+      quantity: expense.quantity,
+      unit_cost: expense.unitCost,
+      note: expense.note,
+    };
+
+    const legacyPayload = {
       id: expense.id,
       date: expense.date,
       description: expense.description,
       amount: expense.amount,
       category: expense.category,
       recorded_by: expense.recordedBy
-    });
+    };
+
+    const { error } = await supabase.from('expenses').insert(extendedPayload as any);
+    if (error) {
+      const legacyError = await supabase.from('expenses').insert(legacyPayload as any);
+      if (legacyError.error) console.error('saveExpense failed:', legacyError.error.message);
+    }
   },
 
   async deleteExpense(id: string) {

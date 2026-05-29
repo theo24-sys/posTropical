@@ -238,8 +238,17 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
     } else if (reportType === 'expenses') {
       downloadCSV(
         `tropical-expenses-${ts}.csv`,
-        filteredExpenses.map(e => [fmtDateTime(e.date), e.description, e.category, e.amount.toString(), e.recordedBy]),
-        ['Date', 'Description', 'Category', 'Amount (KES)', 'Recorded By']
+        filteredExpenses.map(e => [
+          fmtDateTime(e.date),
+          e.supplierSource || '—',
+          e.itemName || e.description,
+          e.quantity?.toString() || '—',
+          e.unitCost != null ? e.unitCost.toString() : '—',
+          e.category,
+          e.amount.toString(),
+          e.recordedBy
+        ]),
+        ['Date', 'Source', 'Purchase', 'Qty', 'Unit Cost (KES)', 'Category', 'Amount (KES)', 'Recorded By']
       );
     } else if (reportType === 'transactions') {
       downloadCSV(
@@ -349,7 +358,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
     }
 
     if (reportType === 'expenses') {
-      const rows = filteredExpenses.map(e => `<tr><td>${fmtDateTime(e.date)}</td><td>${e.description}</td><td>${e.category}</td><td class="text-right">${CURRENCY} ${e.amount.toLocaleString()}</td><td>${e.recordedBy}</td></tr>`).join('');
+      const rows = filteredExpenses.map(e => `<tr><td>${fmtDateTime(e.date)}</td><td>${e.supplierSource || '—'}</td><td>${e.itemName || e.description}<div style="font-size:10px;color:#777;font-weight:700;margin-top:4px;">Qty: ${e.quantity ?? '—'} · Unit: ${e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}${e.note ? ` · ${e.note}` : ''}</div></td><td>${e.category}</td><td class="text-right">${CURRENCY} ${e.amount.toLocaleString()}</td><td>${e.recordedBy}</td></tr>`).join('');
       const catMap: Record<string, number> = {};
       filteredExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount; });
       const catRows = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>${c}</td><td class="text-right">${CURRENCY} ${v.toLocaleString()}</td></tr>`).join('');
@@ -361,8 +370,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
         <div class="section-title">By Category</div>
         <table><thead><tr><th>Category</th><th class="text-right">Total</th></tr></thead><tbody>${catRows}</tbody></table>
         <div class="section-title">All Entries</div>
-        <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="text-right">Amount</th><th>By</th></tr></thead>
-        <tbody>${rows}<tr class="total-row"><td colspan="3">TOTAL</td><td class="text-right">${CURRENCY} ${summary.totalExp.toLocaleString()}</td><td></td></tr></tbody></table>
+        <table><thead><tr><th>Date</th><th>Source</th><th>Purchase</th><th>Category</th><th class="text-right">Amount</th><th>By</th></tr></thead>
+        <tbody>${rows}<tr class="total-row"><td colspan="4">TOTAL</td><td class="text-right">${CURRENCY} ${summary.totalExp.toLocaleString()}</td><td></td></tr></tbody></table>
       ` + footer;
     }
 
@@ -683,14 +692,21 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
             <div className="rounded-[24px] overflow-hidden border border-gray-100">
               <table className="w-full text-sm">
                 <thead className="bg-[#4B3621] text-white">
-                  <tr>{['Date', 'Description', 'Category', 'Amount', 'By'].map(h => <th key={h} className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest">{h}</th>)}</tr>
+                  <tr>{['Date', 'Source', 'Purchase', 'Category', 'Amount', 'By'].map(h => <th key={h} className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filteredExpenses.length === 0 && <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-300 italic font-bold">No expenses in this period</td></tr>}
+                  {filteredExpenses.length === 0 && <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-300 italic font-bold">No expenses in this period</td></tr>}
                   {filteredExpenses.map(e => (
                     <tr key={e.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 font-bold text-gray-500">{fmtDateTime(e.date)}</td>
-                      <td className="px-6 py-4 font-black text-[#4B3621]">{e.description}</td>
+                      <td className="px-6 py-4 font-black text-amber-600">{e.supplierSource || '—'}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-black text-[#4B3621]">{e.itemName || e.description}</div>
+                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-gray-300">
+                          Qty: {e.quantity ?? '—'} · Unit: {e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}
+                        </div>
+                        {e.note && <div className="mt-1 text-xs font-medium text-gray-400">{e.note}</div>}
+                      </td>
                       <td className="px-6 py-4"><span className="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">{e.category}</span></td>
                       <td className="px-6 py-4 font-black text-red-500">- {CURRENCY} {e.amount.toLocaleString()}</td>
                       <td className="px-6 py-4 font-bold text-gray-400">{e.recordedBy}</td>
@@ -698,7 +714,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
                   ))}
                   {filteredExpenses.length > 0 && (
                     <tr className="bg-[#f9f5f0]">
-                      <td colSpan={3} className="px-6 py-4 font-black text-[#4B3621] uppercase tracking-widest text-xs">Total</td>
+                      <td colSpan={4} className="px-6 py-4 font-black text-[#4B3621] uppercase tracking-widest text-xs">Total</td>
                       <td className="px-6 py-4 font-black text-red-500 text-lg">{CURRENCY} {summary.totalExp.toLocaleString()}</td>
                       <td />
                     </tr>

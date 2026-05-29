@@ -9,6 +9,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { AdminDashboard } from './components/AdminDashboard';
 import TransactionsPage from './components/TransactionsPage';
 import { InventoryPage } from './components/InventoryPage';
+import SupplierPage from './components/SupplierPage';
 import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
@@ -77,6 +78,10 @@ const App: React.FC = () => {
 
   const isAdmin = (user: User | null) => {
     return user && (user.role || '').trim().toUpperCase() === 'ADMIN';
+  };
+
+  const isSupplier = (user: User | null) => {
+    return user && (user.role || '').trim().toUpperCase() === 'SUPPLIER';
   };
 
   const applyInventoryDeductionLocally = (saleItems: { id: string; quantity: number }[]) => {
@@ -240,7 +245,9 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
-    if (location.pathname === '/admin' && isAdmin(user)) {
+    if (isSupplier(user)) {
+      navigate('/supplier');
+    } else if (location.pathname === '/admin' && isAdmin(user)) {
       // stay on admin
     } else {
       navigate('/');
@@ -253,6 +260,11 @@ const App: React.FC = () => {
     }
     setPosUser(null);
     navigate('/');
+  };
+
+  const handleSaveExpense = async (expense: Expense) => {
+    setExpenses(prev => [expense, ...prev]);
+    await DB.saveExpense(expense);
   };
 
   const addToCart = useCallback((item: MenuItem) => {
@@ -450,6 +462,17 @@ const App: React.FC = () => {
   ).filter(u => !MOCK_USER_IDS.has(u.id));
   return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
 }
+
+  if (isSupplier(posUser)) {
+    return (
+      <SupplierPage
+        currentUser={posUser}
+        expenses={expenses}
+        onSaveExpense={handleSaveExpense}
+        onLogout={handleLogout}
+      />
+    );
+  }
   
   return (
     <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
@@ -672,8 +695,7 @@ const App: React.FC = () => {
                     await DB.deleteUser(id);
                   }}
                   onSaveExpense={async (e: Expense) => {
-                    setExpenses(prev => [e, ...prev]);
-                    await DB.saveExpense(e);
+                    await handleSaveExpense(e);
                   }}
                   onDeleteExpense={async (id: string) => {
                     setExpenses(prev => prev.filter(e => e.id !== id));

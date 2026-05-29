@@ -23,7 +23,7 @@ export enum Category {
 
 export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Pay Later';
 
-export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista';
+export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista' | 'Supplier';
 
 export interface User {
   id: string;
@@ -126,6 +126,11 @@ export interface Expense {
   amount: number;
   category: 'Rent' | 'Utilities' | 'Inventory Restock' | 'Salaries' | 'Wastage/Loss' | 'Maintenance' | 'Other';
   recordedBy: string;
+  supplierSource?: 'Supermarket' | 'Town' | 'Butchery' | 'Market';
+  itemName?: string;
+  quantity?: number;
+  unitCost?: number;
+  note?: string;
 }
 
 export interface AuditLog {

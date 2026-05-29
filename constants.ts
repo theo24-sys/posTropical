@@ -12,6 +12,7 @@ export const INITIAL_USERS: User[] = [
   { id: 'u3', name: 'Sarah Waiter', role: 'Waiter', pin: '1111' },
   { id: 'u4', name: 'Gordon Chef', role: 'Chef', pin: '2222' },
   { id: 'u5', name: 'Barry Barista', role: 'Barista', pin: '3333' },
+  { id: 'u6', name: 'Silas', role: 'Supplier', pin: '8888' },
 ];
 
 // --- NECESSARY STAFF & KITCHEN INVENTORY ---

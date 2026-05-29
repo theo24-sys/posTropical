@@ -38,6 +38,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
     if (role === 'Cashier') return 'bg-blue-100 text-blue-600';
     if (role === 'Chef') return 'bg-green-100 text-green-600';
     if (role === 'Barista') return 'bg-teal-100 text-teal-600';
+    if (role === 'Supplier') return 'bg-amber-100 text-amber-700';
     return 'bg-orange-100 text-orange-600'; // Waiter
   };
 

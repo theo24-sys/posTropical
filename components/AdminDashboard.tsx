@@ -584,8 +584,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-50">
                     <tr>
                       <th className="px-12 py-6">Date Lodged</th>
+                      <th className="px-12 py-6">Source</th>
+                      <th className="px-12 py-6">Purchase Details</th>
                       <th className="px-12 py-6">Classification</th>
-                      <th className="px-12 py-6">Description</th>
                       <th className="px-12 py-6">Recorded By</th>
                       <th className="px-12 py-6 text-right">KES Amount</th>
                     </tr>
@@ -594,13 +595,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {filteredExpenses.map(e => (
                       <tr key={e.id} className="hover:bg-gray-50/50 transition-colors group">
                         <td className="px-12 py-10 font-bold text-gray-500 whitespace-nowrap">{new Date(e.date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-12 py-10 text-sm font-black text-amber-600 whitespace-nowrap">{e.supplierSource || '—'}</td>
+                        <td className="px-12 py-10 min-w-[280px]">
+                          <div className="font-black text-lg text-[#4B3621] leading-tight">{e.itemName || e.description}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-gray-300">
+                            <span className="rounded-full border border-gray-100 bg-white px-3 py-1">Qty: {e.quantity ?? '—'}</span>
+                            <span className="rounded-full border border-gray-100 bg-white px-3 py-1">Unit: {e.unitCost != null ? `${CURRENCY} ${e.unitCost.toLocaleString()}` : '—'}</span>
+                            {e.note && <span className="rounded-full border border-gray-100 bg-white px-3 py-1">{e.note}</span>}
+                          </div>
+                        </td>
                         <td className="px-12 py-10"><span className="px-6 py-2.5 rounded-full bg-white border border-gray-100 shadow-sm text-[9px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">{e.category}</span></td>
-                        <td className="px-12 py-10 font-black text-lg text-[#4B3621] min-w-[220px]">{e.description}</td>
                         <td className="px-12 py-10 text-sm font-bold text-gray-400 whitespace-nowrap">{e.recordedBy}</td>
                         <td className="px-12 py-10 text-right"><div className="flex justify-end items-center gap-4"><span className="text-2xl font-black text-red-500 tracking-tighter">-{e.amount.toLocaleString()}</span><button onClick={() => onDeleteExpense(e.id)} className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button></div></td>
                       </tr>
                     ))}
-                    {filteredExpenses.length === 0 && <tr><td colSpan={5} className="text-center py-40 text-gray-300 italic font-bold">No financial outflows recorded in this window.</td></tr>}
+                    {filteredExpenses.length === 0 && <tr><td colSpan={6} className="text-center py-40 text-gray-300 italic font-bold">No financial outflows recorded in this window.</td></tr>}
                   </tbody>
                 </table>
               </div>
