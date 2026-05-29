@@ -3,6 +3,7 @@ import { InventoryItem, InventoryCategory } from '../types';
 import {
   Search, Plus, Minus, Package, Beef, Egg, Cake,
   GlassWater, RefreshCw, Layers, Edit3, Trash2, X, Save,
+  Leaf, Fish, Coffee, Wheat,
   AlertTriangle, Zap, ChevronRight
 } from 'lucide-react';
 import { DB } from '../services/supabase';

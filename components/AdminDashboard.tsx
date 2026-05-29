@@ -6,6 +6,7 @@ import {
   DollarSign, ArrowLeft, Search, TrendingUp, TrendingDown,
   Activity, ShieldAlert, Edit3, Beef, Egg, Cake, GlassWater,
   Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
+  Leaf, Fish, Coffee, Wheat,
   Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
