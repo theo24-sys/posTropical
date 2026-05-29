@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Expense, User } from '../types';
-import { ChefHat, LogOut, Plus, ReceiptText, Store, Truck, Warehouse } from 'lucide-react';
+import { ChefHat, Clock3, LogOut, Plus, ReceiptText, Store, Truck, Warehouse } from 'lucide-react';
 
 interface SupplierPageProps {
   currentUser: User;
@@ -38,6 +38,10 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
       .filter(exp => exp.recordedBy === currentUser.name)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [expenses, currentUser.name]);
+
+  const todayExpenses = useMemo(() => {
+    return myExpenses.filter(exp => exp.date.slice(0, 10) === today);
+  }, [myExpenses, today]);
 
   const totalsBySource = useMemo(() => {
     return SOURCES.map(source => ({
