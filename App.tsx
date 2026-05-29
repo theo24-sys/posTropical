@@ -259,7 +259,7 @@ const App: React.FC = () => {
       logActivity('LOGOUT', `User ${posUser.name} logged out`, 'low');
     }
     setPosUser(null);
-    navigate('/');
+    navigate(isSupplier(posUser) ? '/supplier' : '/');
   };
 
   const handleSaveExpense = async (expense: Expense) => {
@@ -454,11 +454,14 @@ const App: React.FC = () => {
 
   if (!posUser) {
   const isAdminPath = location.pathname === '/admin';
+  const isSupplierPath = location.pathname === '/supplier';
   const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
   const MOCK_USER_IDS = new Set(['u1', 'u2', 'u3', 'u4', 'u5']);
   const visibleUsers = (isAdminPath
     ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
-    : users.filter(u => normalizeRole(u.role) !== 'ADMIN')
+    : isSupplierPath
+      ? users.filter(u => normalizeRole(u.role) === 'SUPPLIER')
+      : users.filter(u => normalizeRole(u.role) !== 'ADMIN' && normalizeRole(u.role) !== 'SUPPLIER')
   ).filter(u => !MOCK_USER_IDS.has(u.id));
   return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
 }
