@@ -10,9 +10,11 @@ interface SupplierPageProps {
   onLogout: () => void;
 }
 
-const SOURCES: Expense['supplierSource'][] = ['Supermarket', 'Town', 'Butchery', 'Market'];
+type SupplierSource = 'Supermarket' | 'Town' | 'Butchery' | 'Market';
 
-const sourceMeta: Record<NonNullable<Expense['supplierSource']>, { icon: React.ReactNode; label: string; accent: string }> = {
+const SOURCES: SupplierSource[] = ['Supermarket', 'Town', 'Butchery', 'Market'];
+
+const sourceMeta: Record<SupplierSource, { icon: React.ReactNode; label: string; accent: string }> = {
   Supermarket: { icon: <Store size={18} />, label: 'Supermarket', accent: 'from-emerald-500 to-teal-500' },
   Town: { icon: <Truck size={18} />, label: 'Town', accent: 'from-sky-500 to-cyan-500' },
   Butchery: { icon: <ChefHat size={18} />, label: 'Butchery', accent: 'from-rose-500 to-red-500' },
@@ -21,7 +23,7 @@ const sourceMeta: Record<NonNullable<Expense['supplierSource']>, { icon: React.R
 
 export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expenses, onSaveExpense, onLogout }) => {
   const today = new Date().toISOString().slice(0, 10);
-  const [supplierSource, setSupplierSource] = useState<NonNullable<Expense['supplierSource']>>('Supermarket');
+  const [supplierSource, setSupplierSource] = useState<SupplierSource>('Supermarket');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
