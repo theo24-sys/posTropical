@@ -478,8 +478,8 @@ const App: React.FC = () => {
   }
   
   return (
-    <div className="flex h-screen bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
-      <aside className="w-[280px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
+    <div className="flex min-h-screen lg:h-screen flex-col lg:flex-row bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
+      <aside className="hidden lg:flex w-[280px] bg-white border-r border-gray-200 flex-col shrink-0 z-50 shadow-2xl overflow-hidden">
         <div className="bg-[#4B3621] p-10 text-center shrink-0 relative">
           <div className="w-24 h-24 bg-white rounded-full mx-auto mb-4 flex items-center justify-center p-2 shadow-xl border border-white/20">
             <img src={LOGO_URL} alt="Tropical Dreams" className="w-full h-full object-contain" />
@@ -574,26 +574,78 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
+        <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-[#F5F4EF]/95 backdrop-blur-xl px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                <img src={LOGO_URL} alt="Tropical Dreams" className="w-full h-full object-contain" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[3px] text-gray-300">Tropical Dreams</p>
+                <p className="text-sm font-black truncate">{posUser.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/transactions')}
+                className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 shadow-sm"
+                title="Orders History"
+              >
+                <History size={18} />
+              </button>
+              {isAdmin(posUser) && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 shadow-sm"
+                  title="Management"
+                >
+                  <BarChart3 size={18} />
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-red-500 shadow-sm"
+                title="Logout"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
         <Routes>
           <Route
             path="/"
             element={
-              <div className="flex flex-1 overflow-hidden h-full">
-                <main className="flex-1 overflow-y-auto p-8">
-                  <header className="mb-10 flex items-center justify-between shrink-0">
+              <div className="flex flex-1 flex-col lg:flex-row overflow-hidden h-full min-h-0">
+                <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:p-8 min-h-0">
+                  <header className="mb-4 sm:mb-6 lg:mb-10 flex items-center justify-between gap-3 shrink-0">
                     <div className="relative w-full max-w-3xl">
-                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
+                      <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                       <input
                         type="text"
                         placeholder="Search menu..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-16 pr-6 py-5 bg-white border-2 border-gray-100 rounded-[28px] text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
+                        className="w-full pl-12 sm:pl-16 pr-4 sm:pr-6 py-4 sm:py-5 bg-white border-2 border-gray-100 rounded-[22px] sm:rounded-[28px] text-base sm:text-lg focus:ring-4 focus:ring-teal-50 outline-none transition-all placeholder:text-gray-200 font-medium shadow-sm"
                       />
                     </div>
                   </header>
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 pb-8">
+                  <div className="mb-4 lg:hidden -mx-4 sm:-mx-6 overflow-x-auto px-4 sm:px-6 pb-2 scrollbar-hide">
+                    <div className="flex gap-2 min-w-max">
+                      {['All', ...Object.values(Category)].map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => { setActiveCategory(cat as any); navigate('/'); }}
+                          className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-[#4B3621] text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100'}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 pb-8">
                     {menuItems
                       .filter(i =>
                         (activeCategory === 'All' || i.category === activeCategory) &&
@@ -604,7 +656,7 @@ const App: React.FC = () => {
                       ))}
                   </div>
                 </main>
-                <div className="w-[420px] shrink-0 h-full">
+                <div className="w-full lg:w-[420px] shrink-0 h-auto lg:h-full border-t lg:border-t-0 lg:border-l border-gray-100 bg-white/70 lg:bg-transparent">
                   <CartSidebar
                     cart={cart}
                     onUpdateQuantity={(id: string, delta: number) =>
