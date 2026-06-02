@@ -1,6 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { Expense, User } from '../types';
-import { ChefHat, Clock3, LogOut, Plus, ReceiptText, Store, Truck, Warehouse, Trash2, PlusCircle, X, History } from 'lucide-react';
+import {
+  ChefHat,
+  LogOut,
+  Plus,
+  Store,
+  Truck,
+  Warehouse,
+  Trash2,
+  PlusCircle,
+  X,
+  History,
+  ChevronDown,
+} from 'lucide-react';
 
 interface SupplierPageProps {
   currentUser: User;
@@ -10,16 +22,57 @@ interface SupplierPageProps {
 }
 
 type SupplierSource = 'Supermarket' | 'Town' | 'Butchery' | 'Market';
-type QuantityUnit = 'Litres' | 'Kgs' | 'Pieces' | 'Bottles' | 'Dozens' | 'Bunches' | 'Sacks' | 'Cans' | 'Boxes' | 'Packets' | 'Cartons' | 'Other';
+type QuantityUnit =
+  | 'Litres'
+  | 'Kgs'
+  | 'Pieces'
+  | 'Bottles'
+  | 'Dozens'
+  | 'Bunches'
+  | 'Sacks'
+  | 'Cans'
+  | 'Boxes'
+  | 'Packets'
+  | 'Cartons'
+  | 'Other';
 
 const SOURCES: SupplierSource[] = ['Supermarket', 'Town', 'Butchery', 'Market'];
-const UNITS: QuantityUnit[] = ['Pieces', 'Litres', 'Kgs', 'Bottles', 'Dozens', 'Bunches', 'Sacks', 'Cans', 'Boxes', 'Packets', 'Cartons', 'Other'];
+const UNITS: QuantityUnit[] = [
+  'Pieces',
+  'Litres',
+  'Kgs',
+  'Bottles',
+  'Dozens',
+  'Bunches',
+  'Sacks',
+  'Cans',
+  'Boxes',
+  'Packets',
+  'Cartons',
+  'Other',
+];
 
-const sourceMeta: Record<SupplierSource, { icon: React.ReactNode; label: string }> = {
-  Supermarket: { icon: <Store size={20} />, label: 'Supermarket' },
-  Town: { icon: <Truck size={20} />, label: 'Town' },
-  Butchery: { icon: <ChefHat size={20} />, label: 'Butchery' },
-  Market: { icon: <Warehouse size={20} />, label: 'Market' },
+const sourceMeta: Record<SupplierSource, { icon: React.ReactNode; color: string; bg: string }> = {
+  Supermarket: {
+    icon: <Store size={22} />,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50 border-blue-200',
+  },
+  Town: {
+    icon: <Truck size={22} />,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50 border-purple-200',
+  },
+  Butchery: {
+    icon: <ChefHat size={22} />,
+    color: 'text-red-600',
+    bg: 'bg-red-50 border-red-200',
+  },
+  Market: {
+    icon: <Warehouse size={22} />,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50 border-emerald-200',
+  },
 };
 
 interface PurchaseItem {
@@ -37,83 +90,236 @@ interface PurchaseGroup {
   items: PurchaseItem[];
 }
 
-export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expenses, onSaveExpense, onLogout }) => {
+/* ─── Reusable mobile-friendly input ─────────────────────────────────────── */
+const MobileInput: React.FC<{
+  label: string;
+  value: string | number;
+  type?: string;
+  placeholder?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  onChange: (val: string) => void;
+  className?: string;
+}> = ({ label, value, type = 'text', placeholder, inputMode, onChange, className = '' }) => (
+  <div className={`flex flex-col gap-1 ${className}`}>
+    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</label>
+    <input
+      type={type}
+      inputMode={inputMode}
+      value={value === 0 ? '' : value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-4 text-base font-semibold text-[#3f2b1c] placeholder-gray-300 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100 transition-all min-h-[54px]"
+    />
+  </div>
+);
+
+/* ─── Reusable mobile-friendly select ────────────────────────────────────── */
+const MobileSelect: React.FC<{
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+  className?: string;
+}> = ({ label, value, options, onChange, className = '' }) => (
+  <div className={`flex flex-col gap-1 ${className}`}>
+    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</label>
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-4 pr-10 text-base font-semibold text-[#3f2b1c] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100 transition-all min-h-[54px]"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={18}
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+      />
+    </div>
+  </div>
+);
+
+/* ─── Single item card (mobile-first, no table) ───────────────────────────── */
+const ItemCard: React.FC<{
+  item: PurchaseItem;
+  groupId: string;
+  index: number;
+  onUpdate: (groupId: string, itemId: string, updates: Partial<PurchaseItem>) => void;
+  onRemove: (groupId: string, itemId: string) => void;
+}> = ({ item, groupId, index, onUpdate, onRemove }) => {
+  return (
+    <div className="relative rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+      {/* Item number badge + delete */}
+      <div className="mb-3 flex items-center justify-between">
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">
+          Item #{index + 1}
+        </span>
+        <button
+          onClick={() => onRemove(groupId, item.id)}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-400 active:bg-red-100 transition-colors"
+          aria-label="Remove item"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+
+      {/* Item name — full width */}
+      <MobileInput
+        label="Item Name"
+        value={item.itemName}
+        placeholder="e.g. AneeK Coconut Cream"
+        onChange={(v) => onUpdate(groupId, item.id, { itemName: v })}
+        className="mb-3"
+      />
+
+      {/* Quantity + Unit — side by side */}
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        <MobileInput
+          label="Quantity"
+          value={item.quantity}
+          type="number"
+          inputMode="decimal"
+          placeholder="0"
+          onChange={(v) =>
+            onUpdate(groupId, item.id, { quantity: parseFloat(v) || 0 })
+          }
+        />
+        <MobileSelect
+          label="Unit"
+          value={item.quantityUnit}
+          options={UNITS}
+          onChange={(v) => onUpdate(groupId, item.id, { quantityUnit: v as QuantityUnit })}
+        />
+      </div>
+
+      {/* Unit cost — full width */}
+      <MobileInput
+        label="Unit Cost (KES)"
+        value={item.unitCost}
+        type="number"
+        inputMode="decimal"
+        placeholder="0.00"
+        onChange={(v) =>
+          onUpdate(groupId, item.id, { unitCost: parseFloat(v) || 0 })
+        }
+        className="mb-4"
+      />
+
+      {/* Subtotal pill */}
+      <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3">
+        <span className="text-xs font-black uppercase tracking-widest text-emerald-600">Subtotal</span>
+        <span className="text-xl font-black text-emerald-700">
+          KES {(item.subtotal || 0).toLocaleString()}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Main component ──────────────────────────────────────────────────────── */
+export const SupplierPage: React.FC<SupplierPageProps> = ({
+  currentUser,
+  expenses,
+  onSaveExpense,
+  onLogout,
+}) => {
   const today = new Date().toISOString().slice(0, 10);
   const [expenseDate, setExpenseDate] = useState(today);
   const [note, setNote] = useState('');
   const [groups, setGroups] = useState<PurchaseGroup[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-  const myExpenses = useMemo(() => {
-    return expenses
-      .filter(exp => exp.recordedBy === currentUser.name)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, currentUser.name]);
+  const myExpenses = useMemo(
+    () =>
+      expenses
+        .filter((exp) => exp.recordedBy === currentUser.name)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [expenses, currentUser.name]
+  );
 
-  const todayExpenses = useMemo(() => {
-    return myExpenses.filter(exp => exp.date.slice(0, 10) === today);
-  }, [myExpenses, today]);
-
-  const totalItems = groups.reduce((sum, group) => sum + group.items.length, 0);
-  const totalCost = groups.reduce((sum, group) => {
-    return sum + group.items.reduce((itemSum, item) => itemSum + (item.subtotal || 0), 0);
-  }, 0);
+  const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
+  const totalCost = groups.reduce(
+    (sum, g) => sum + g.items.reduce((s, i) => s + (i.subtotal || 0), 0),
+    0
+  );
 
   const addNewGroup = (source: SupplierSource) => {
-    const newGroup: PurchaseGroup = { id: `group-${Date.now()}`, source, items: [] };
-    setGroups([...groups, newGroup]);
-  };
-
-  const addItemToGroup = (groupId: string) => {
-    setGroups(groups.map(group => {
-      if (group.id === groupId) {
-        return {
-          ...group,
-          items: [...group.items, {
+    setGroups((prev) => [
+      ...prev,
+      {
+        id: `group-${Date.now()}`,
+        source,
+        items: [
+          {
             id: `item-${Date.now()}`,
             itemName: '',
             quantity: 0,
             quantityUnit: 'Pieces',
             unitCost: 0,
-            subtotal: 0
-          }]
-        };
-      }
-      return group;
-    }));
+            subtotal: 0,
+          },
+        ],
+      },
+    ]);
+    setShowCategoryPicker(false);
+  };
+
+  const addItemToGroup = (groupId: string) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              items: [
+                ...g.items,
+                {
+                  id: `item-${Date.now()}`,
+                  itemName: '',
+                  quantity: 0,
+                  quantityUnit: 'Pieces',
+                  unitCost: 0,
+                  subtotal: 0,
+                },
+              ],
+            }
+          : g
+      )
+    );
   };
 
   const updateItem = (groupId: string, itemId: string, updates: Partial<PurchaseItem>) => {
-    setGroups(groups.map(group => {
-      if (group.id === groupId) {
-        const updatedItems = group.items.map(item => {
-          if (item.id === itemId) {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          items: g.items.map((item) => {
+            if (item.id !== itemId) return item;
             const updated = { ...item, ...updates };
-            if (updated.quantity !== undefined && updated.unitCost !== undefined) {
-              updated.subtotal = updated.quantity * updated.unitCost;
-            }
+            updated.subtotal = (updated.quantity || 0) * (updated.unitCost || 0);
             return updated;
-          }
-          return item;
-        });
-        return { ...group, items: updatedItems };
-      }
-      return group;
-    }));
+          }),
+        };
+      })
+    );
   };
 
   const removeItem = (groupId: string, itemId: string) => {
-    setGroups(prev => prev.map(group => {
-      if (group.id === groupId) {
-        return { ...group, items: group.items.filter(item => item.id !== itemId) };
-      }
-      return group;
-    }));
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId ? { ...g, items: g.items.filter((i) => i.id !== itemId) } : g
+      )
+    );
   };
 
   const removeGroup = (groupId: string) => {
-    setGroups(prev => prev.filter(g => g.id !== groupId));
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
   };
 
   const handleSubmit = async () => {
@@ -123,10 +329,8 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
     for (const group of groups) {
       for (const item of group.items) {
         if (!item.itemName.trim() || item.quantity <= 0 || item.unitCost <= 0) continue;
-
         const total = item.quantity * item.unitCost;
         const purchaseDate = new Date(`${expenseDate}T12:00:00.000Z`).toISOString();
-
         await onSaveExpense({
           id: `exp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           date: purchaseDate,
@@ -150,206 +354,312 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
     setIsSaving(false);
   };
 
-  const clearAll = () => setGroups([]);
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fef7ed,_#fff_42%,_#f8fafc_100%)] text-[#3f2b1c]">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-20 mb-4 rounded-[28px] border border-white/70 bg-white/85 px-5 py-4 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.2)] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[4px] text-amber-500">Supplier intake</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight">Silas Purchases</h1>
+      {/* ── Sticky Header ─────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 border-b border-white/60 bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[4px] text-amber-500">
+              Supplier Intake
+            </p>
+            <h1 className="text-xl font-black leading-tight tracking-tight sm:text-2xl">
+              Silas Purchases
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex h-11 items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 text-xs font-black text-gray-500 active:bg-amber-50 sm:px-4"
+            >
+              <History size={15} />
+              <span className="hidden xs:inline">History</span>
+            </button>
+            <button
+              onClick={onLogout}
+              className="flex h-11 items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 text-xs font-black text-gray-500 active:bg-red-50 sm:px-4"
+            >
+              <LogOut size={15} />
+              <span className="hidden xs:inline">Logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Main content ──────────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-2xl px-4 pb-36 pt-4 sm:px-6">
+
+        {/* Hero banner */}
+        <div className="mb-4 overflow-hidden rounded-[28px] bg-[#3f2b1c] px-6 py-5 text-white shadow-lg">
+          <h2 className="text-2xl font-black sm:text-3xl">Batch Entry</h2>
+          <p className="mt-0.5 text-sm text-white/70">Add many items at once across categories</p>
+        </div>
+
+        {/* Date + Note row */}
+        <div className="mb-4 rounded-3xl border border-white/60 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Purchase Date
+              </label>
+              <input
+                type="date"
+                value={expenseDate}
+                onChange={(e) => setExpenseDate(e.target.value)}
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-4 text-base font-semibold text-[#3f2b1c] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100 min-h-[54px]"
+              />
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setShowHistory(true)} className="flex items-center gap-2 rounded-full border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-black text-gray-500 hover:bg-amber-50">
-                <History size={16} /> History
-              </button>
-              <button onClick={onLogout} className="flex items-center gap-2 rounded-full border border-gray-100 bg-gray-50 px-4 py-3 text-xs font-black text-gray-500 hover:bg-red-50">
-                <LogOut size={16} /> Logout
-              </button>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Note (optional)
+              </label>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. Weekly restock"
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-4 text-base font-semibold text-[#3f2b1c] placeholder-gray-300 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100 min-h-[54px]"
+              />
             </div>
           </div>
-        </header>
+        </div>
 
-        <main className="flex-1 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <section className="space-y-4">
-            {/* Header Banner */}
-            <div className="overflow-hidden rounded-[32px] bg-[#3f2b1c] p-6 text-white shadow-lg">
-              <h2 className="text-3xl font-black">Batch Entry</h2>
-              <p className="text-white/75 mt-1">Add many items at once</p>
+        {/* Running totals bar */}
+        <div className="mb-4 flex items-center justify-between rounded-2xl bg-gradient-to-r from-amber-50 to-emerald-50 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              Total Items
+            </p>
+            <p className="text-2xl font-black text-[#3f2b1c]">{totalItems}</p>
+          </div>
+          <div className="h-10 w-px bg-gray-200" />
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+              Total Cost
+            </p>
+            <p className="text-2xl font-black text-emerald-700">
+              KES {totalCost.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Groups */}
+        <div className="space-y-5">
+          {groups.length === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-amber-200 bg-amber-50/40 py-16 text-center">
+              <PlusCircle size={52} className="mb-3 text-amber-300" />
+              <p className="text-base font-black text-gray-500">No items yet</p>
+              <p className="mt-1 text-sm text-gray-400">
+                Tap <strong>+ Add Category</strong> below to start
+              </p>
             </div>
+          )}
 
-            {/* Category Buttons - Mobile Optimized */}
-            <div className="rounded-3xl bg-white border border-white/60 p-5">
-              <p className="mb-4 text-xs font-black uppercase tracking-widest text-amber-500">Select Category</p>
-              <div className="grid grid-cols-2 gap-3">
-                {SOURCES.map(source => (
+          {groups.map((group, gIdx) => {
+            const meta = sourceMeta[group.source];
+            const groupTotal = group.items.reduce((s, i) => s + (i.subtotal || 0), 0);
+
+            return (
+              <div
+                key={group.id}
+                className={`rounded-3xl border-2 p-4 ${meta.bg}`}
+              >
+                {/* Group header */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div className={`flex items-center gap-2 ${meta.color}`}>
+                    {meta.icon}
+                    <span className="text-base font-black">
+                      {group.source}
+                      <span className="ml-1 text-xs font-bold text-gray-400">
+                        — Group {gIdx + 1}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeGroup(group.id)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-red-400 shadow-sm active:bg-red-50"
+                    aria-label="Remove group"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+
+                {/* Item cards */}
+                <div className="space-y-3">
+                  {group.items.map((item, iIdx) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      groupId={group.id}
+                      index={iIdx}
+                      onUpdate={updateItem}
+                      onRemove={removeItem}
+                    />
+                  ))}
+                </div>
+
+                {/* Add item button */}
+                <button
+                  onClick={() => addItemToGroup(group.id)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-white/60 py-4 text-sm font-black text-gray-500 active:bg-white transition-colors"
+                >
+                  <Plus size={18} />
+                  Add Another Item
+                </button>
+
+                {/* Group total */}
+                <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/70 px-5 py-3">
+                  <span className="text-xs font-black uppercase tracking-widest text-gray-400">
+                    Group Total
+                  </span>
+                  <span className={`text-xl font-black ${meta.color}`}>
+                    KES {groupTotal.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      {/* ── Floating bottom action bar ─────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-100 bg-white/95 px-4 pb-safe pt-3 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-2xl flex-col gap-2">
+          <button
+            onClick={() => setShowCategoryPicker(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 py-4 text-base font-black text-amber-700 active:bg-amber-100 transition-colors"
+          >
+            <Plus size={20} />
+            Add Category
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGroups([])}
+              className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-sm font-black text-gray-600 active:bg-gray-100 transition-colors"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={groups.length === 0 || isSaving}
+              className="flex h-14 flex-[2] items-center justify-center rounded-2xl bg-[#3f2b1c] text-base font-black text-white shadow-lg disabled:opacity-50 active:scale-[0.98] transition-all"
+            >
+              {isSaving ? 'Saving…' : `Save All (${totalItems})`}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Category picker bottom sheet ──────────────────────────────────── */}
+      {showCategoryPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/60"
+          onClick={() => setShowCategoryPicker(false)}
+        >
+          <div
+            className="w-full rounded-t-[32px] bg-white p-5 pb-safe"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-black">Select Category</h2>
+              <button
+                onClick={() => setShowCategoryPicker(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {SOURCES.map((source) => {
+                const meta = sourceMeta[source];
+                return (
                   <button
                     key={source}
                     onClick={() => addNewGroup(source)}
-                    className="flex flex-col items-center justify-center rounded-2xl border-2 border-gray-100 py-6 hover:border-amber-300 active:bg-amber-50 transition-all"
+                    className={`flex flex-col items-center justify-center rounded-3xl border-2 py-7 transition-all active:scale-95 ${meta.bg} ${meta.color}`}
                   >
-                    {sourceMeta[source].icon}
-                    <span className="mt-2 font-black text-base">{source}</span>
+                    {meta.icon}
+                    <span className="mt-2 text-base font-black">{source}</span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Main Batch Form */}
-            <div className="rounded-[32px] border border-white/60 bg-white p-5 shadow-xl flex flex-col h-[calc(100vh-220px)] lg:h-auto lg:max-h-[calc(100vh-160px)] overflow-hidden">
-              <div className="flex justify-between items-center mb-5">
-                <div>
-                  <p className="text-xs font-black uppercase text-amber-500">CURRENT BATCH</p>
-                  <h3 className="font-black text-2xl">Items</h3>
-                </div>
-                <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="rounded-xl border px-4 py-3 text-sm" />
-              </div>
-
-              <div className="mb-5 bg-gradient-to-r from-amber-50 to-emerald-50 p-4 rounded-2xl flex justify-between items-center font-black text-lg">
-                <div>Items: {totalItems}</div>
-                <div className="text-emerald-700 text-xl">KES {totalCost.toLocaleString()}</div>
-              </div>
-
-              {/* Scrollable Area - Mobile Optimized */}
-              <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-8 overscroll-y-contain touch-pan-y custom-scroll">
-                {groups.length === 0 && (
-                  <div className="text-center py-20 text-gray-400">
-                    <PlusCircle size={60} className="mx-auto mb-4 text-amber-200" />
-                    <p className="text-lg">Tap a category above to start</p>
-                  </div>
-                )}
-
-                {groups.map((group, index) => (
-                  <div key={group.id} className="bg-gray-50 rounded-3xl p-5 border border-gray-100">
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-3">
-                        {sourceMeta[group.source].icon}
-                        <span className="font-black text-lg">{group.source} — Group {index + 1}</span>
-                      </div>
-                      <button onClick={() => removeGroup(group.id)} className="text-red-500 p-2">
-                        <Trash2 size={22} />
-                      </button>
-                    </div>
-
-                    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white pb-2">
-                      <table className="w-full min-w-[680px]">
-                        <thead>
-                          <tr className="text-xs font-black text-gray-400 border-b">
-                            <th className="pl-5 pr-3 py-4 text-left">ITEM NAME</th>
-                            <th className="px-3 py-4 w-24">QTY</th>
-                            <th className="px-3 py-4 w-28">UNIT</th>
-                            <th className="px-3 py-4 w-32">UNIT COST</th>
-                            <th className="px-5 py-4 text-right">SUBTOTAL</th>
-                            <th className="w-12"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.items.map(item => (
-                            <tr key={item.id} className="border-b last:border-0">
-                              <td className="pl-5 pr-3 py-4">
-                                <input
-                                  value={item.itemName}
-                                  onChange={(e) => updateItem(group.id, item.id, { itemName: e.target.value })}
-                                  placeholder="e.g. AneeK Coconut Cream"
-                                  className="w-full rounded-2xl border border-gray-200 px-5 py-5 text-base font-medium focus:border-amber-400"
-                                />
-                              </td>
-                              <td className="px-3 py-4">
-                                <input
-                                  type="number"
-                                  value={item.quantity || ''}
-                                  onChange={(e) => updateItem(group.id, item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                                  className="w-full rounded-2xl border border-gray-200 px-5 py-5 text-center text-base font-medium"
-                                />
-                              </td>
-                              <td className="px-3 py-4">
-                                <select
-                                  value={item.quantityUnit}
-                                  onChange={(e) => updateItem(group.id, item.id, { quantityUnit: e.target.value as QuantityUnit })}
-                                  className="w-full rounded-2xl border border-gray-200 px-5 py-5 text-base font-medium"
-                                >
-                                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                              </td>
-                              <td className="px-3 py-4">
-                                <input
-                                  type="number"
-                                  value={item.unitCost || ''}
-                                  onChange={(e) => updateItem(group.id, item.id, { unitCost: parseFloat(e.target.value) || 0 })}
-                                  className="w-full rounded-2xl border border-gray-200 px-5 py-5 text-base font-medium"
-                                />
-                              </td>
-                              <td className="px-5 py-4 text-right font-black text-emerald-600 text-lg">
-                                KES {(item.subtotal || 0).toLocaleString()}
-                              </td>
-                              <td className="py-4">
-                                <button onClick={() => removeItem(group.id, item.id)} className="p-2 text-gray-400 hover:text-red-500">
-                                  <Trash2 size={22} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <button
-                      onClick={() => addItemToGroup(group.id)}
-                      className="mt-5 w-full py-5 rounded-2xl border border-dashed border-gray-300 text-base font-black flex items-center justify-center gap-3 hover:bg-white"
-                    >
-                      <PlusCircle size={24} /> Add Another Item
-                    </button>
-
-                    <div className="mt-5 text-right text-2xl font-black text-emerald-700">
-                      Group Total: KES {group.items.reduce((sum, i) => sum + (i.subtotal || 0), 0).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bottom Action Bar */}
-              <div className="mt-6 flex gap-3 pt-6 border-t border-gray-100">
-                <button onClick={clearAll} className="flex-1 py-5 rounded-2xl border border-gray-300 font-black text-gray-600 active:bg-gray-100">Clear</button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={groups.length === 0 || isSaving}
-                  className="flex-[2] py-5 rounded-2xl bg-[#3f2b1c] text-white font-black disabled:opacity-60 active:scale-95 transition"
-                >
-                  {isSaving ? 'Saving...' : `SAVE ALL (${totalItems})`}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Desktop Sidebar */}
-          <aside className="hidden lg:block space-y-4">
-            {/* Your existing sidebar */}
-          </aside>
-        </main>
-      </div>
-
-      {/* Mobile History Modal */}
+      {/* ── History bottom sheet ───────────────────────────────────────────── */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-end lg:hidden">
-          <div className="bg-white w-full rounded-t-3xl max-h-[85vh] flex flex-col">
-            <div className="p-5 border-b flex justify-between items-center">
-              <h2 className="text-2xl font-black">Purchase History</h2>
-              <button onClick={() => setShowHistory(false)}><X size={28} /></button>
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/60"
+          onClick={() => setShowHistory(false)}
+        >
+          <div
+            className="flex max-h-[88vh] w-full flex-col rounded-t-[32px] bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sheet header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h2 className="text-xl font-black">Purchase History</h2>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <div className="overflow-y-auto flex-1 p-5">
-              {myExpenses.map(exp => (
-                <div key={exp.id} className="border-b py-5">
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-black text-lg">{exp.itemName}</p>
-                      <p className="text-gray-500">{exp.supplierSource} • {new Date(exp.date).toLocaleDateString()}</p>
-                    </div>
-                    <p className="font-black text-xl text-emerald-600">KES {exp.amount}</p>
-                  </div>
+
+            {/* Scrollable list */}
+            <div
+              className="flex-1 overflow-y-auto overscroll-contain px-5 py-3"
+              style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
+              {myExpenses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+                  <History size={44} className="mb-3 text-gray-200" />
+                  <p className="font-black">No history yet</p>
                 </div>
-              ))}
+              ) : (
+                myExpenses.map((exp) => {
+                  const src = exp.supplierSource as SupplierSource | undefined;
+                  const meta = src ? sourceMeta[src] : null;
+                  return (
+                    <div
+                      key={exp.id}
+                      className="flex items-start justify-between border-b border-gray-100 py-4 last:border-0"
+                    >
+                      <div className="flex items-start gap-3">
+                        {meta && (
+                          <div
+                            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.bg} ${meta.color}`}
+                          >
+                            {meta.icon}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-black text-[#3f2b1c]">{exp.itemName}</p>
+                          <p className="mt-0.5 text-xs text-gray-400">
+                            {exp.supplierSource} •{' '}
+                            {new Date(exp.date).toLocaleDateString('en-KE', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          {exp.quantity && exp.quantityUnit && (
+                            <p className="mt-0.5 text-xs text-gray-400">
+                              {exp.quantity} {exp.quantityUnit} @ KES {exp.unitCost}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <p className="ml-4 shrink-0 text-base font-black text-emerald-600">
+                        KES {Number(exp.amount).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
