@@ -106,17 +106,22 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({ currentUser, expense
   };
 
   const removeItem = (groupId: string, itemId: string) => {
-    setGroups(groups.map(group => {
+  setGroups(prevGroups => 
+    prevGroups.map(group => {
       if (group.id === groupId) {
-        return { ...group, items: group.items.filter(item => item.id !== itemId) };
+        return { 
+          ...group, 
+          items: group.items.filter(item => item.id !== itemId) 
+        };
       }
       return group;
-    })).filter(group => group.items.length > 0 || true); // Allow empty groups for now
-  };
+    })
+  );
+};
 
   const removeGroup = (groupId: string) => {
-    setGroups(groups.filter(g => g.id !== groupId));
-  };
+  setGroups(prevGroups => prevGroups.filter(g => g.id !== groupId));
+};
 
   const handleSubmit = async () => {
     if (groups.length === 0) return;
