@@ -34,6 +34,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         // Fix: Removed CacheFirst strategy for external images (Unsplash) 
         // because they often return opaque responses which break Workbox caching.
         runtimeCaching: [

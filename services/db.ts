@@ -12,7 +12,7 @@ interface TropicalDB extends DBSchema {
 }
 
 const DB_NAME = 'tropical-pos-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export const LocalDB = {
   async getDB(): Promise<IDBPDatabase<TropicalDB>> {
