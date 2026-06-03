@@ -10,7 +10,7 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('bf_pan_combo', 'Pancakes Combo', 950, 'BREAKFAST', 'Three medium pancakes, beef sausage, freshly cut fruit and hot beverage or juice.', 50, 10, 'https://images.unsplash.com/photo-1528198622811-0842b4e54791?auto=format&fit=crop&w=600&q=80'),
 ('bf_fr_combo', 'French Toast Combo', 800, 'BREAKFAST', 'French toast, two scrambled eggs, hot beverage or juice, 2 beef sausages.', 40, 10, 'https://images.unsplash.com/photo-1639744186596-3c224328222f?auto=format&fit=crop&w=600&q=80'),
 ('bf_waf', 'Classic Waffles', 750, 'BREAKFAST', 'Two waffles, served with bacon or sausages and 2 eggs (scrambled/fried/omelet)', 50, 10, 'https://images.unsplash.com/photo-1568051243851-f9b136146e97?auto=format&fit=crop&w=600&q=80'),
-('bf_span', 'Spanish Omelette', 300, 'BREAKFAST', 'Eggs, Bell Pepper, Onions, Tomatoes', 50, 10, 'https://images.unsplash.com/photo-1510629954389-c1e0da47d4ec?auto=format&fit=crop&w=600&q=80'),
+('bf_span', 'Spanish Omelette', 450, 'BREAKFAST', 'Eggs, Bell Pepper, Onions, Tomatoes', 50, 10, 'https://images.unsplash.com/photo-1510629954389-c1e0da47d4ec?auto=format&fit=crop&w=600&q=80'),
 ('bf_extras', 'Extras (Breakfast)', 200, 'BREAKFAST', 'Baked Beans, Toast, Fried Eggs, Bacon, Beef Sausages, Home Fries, Sautéed Vegetables', 100, 20, 'https://images.unsplash.com/photo-1598511796318-7b825662bbf6?auto=format&fit=crop&w=600&q=80'),
 
 -- COFFEE BAR (COFFEE (DOUBLE))
@@ -18,23 +18,24 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('cf_cap', 'Cappuccino', 300, 'COFFEE (DOUBLE)', '', 500, 50, 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'),
 ('cf_amer', 'Americano', 250, 'COFFEE (DOUBLE)', '', 500, 50, 'https://images.unsplash.com/photo-1551030173-122f525e675f?auto=format&fit=crop&w=600&q=80'),
 ('cf_lat', 'Café Latte', 400, 'COFFEE (DOUBLE)', '', 500, 50, 'https://images.unsplash.com/photo-1556484687-30636164638a?auto=format&fit=crop&w=600&q=80'),
-('cf_moc', 'Mocha', 450, 'COFFEE (DOUBLE)', '', 200, 20, 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80'),
+('cf_moc', 'Mocha', 400, 'COFFEE (DOUBLE)', '', 200, 20, 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80'),
 ('cf_latmac', 'Latte Macchiato', 400, 'COFFEE (DOUBLE)', '', 200, 20, 'https://images.unsplash.com/photo-1593443320739-97f8732d4a38?auto=format&fit=crop&w=600&q=80'),
 ('cf_carmac', 'Caramel Macchiato', 450, 'COFFEE (DOUBLE)', '', 200, 20, 'https://images.unsplash.com/photo-1485808191679-5f8c7c8f31e7?auto=format&fit=crop&w=600&q=80'),
 
 -- TEAS
 ('cf_hotc', 'Hot Chocolate', 300, 'TEAS', '', 200, 30, 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80'),
-('t_afr', 'African Tea', 200, 'TEAS', '', 500, 50, 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80'),
+('t_afr', 'African Tea', 250, 'TEAS', '', 500, 50, 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80'),
 ('t_mas', 'Masala Tea', 250, 'TEAS', '', 200, 20, 'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?auto=format&fit=crop&w=600&q=80'),
 ('t_pot', 'Tea Pot', 400, 'TEAS', '', 50, 10, 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80'),
 ('t_maspot', 'Masala Tea Pot', 450, 'TEAS', '', 50, 10, 'https://images.unsplash.com/photo-1596710629170-16e93229370d?auto=format&fit=crop&w=600&q=80'),
-('t_herb', 'Herbal Tea', 200, 'TEAS', 'Green/Chamomile/Lemon/Hibiscus/Peppermint', 100, 10, 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80'),
+('t_herb', 'Herbal Tea', 250, 'TEAS', 'Green/Chamomile/Lemon/Hibiscus/Peppermint', 100, 10, 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80'),
 ('t_dawa', 'Dawa', 300, 'TEAS', '', 100, 10, 'https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?auto=format&fit=crop&w=600&q=80'),
-('t_matcha', 'Hot Matcha Latte', 500, 'TEAS', '', 50, 10, 'https://images.unsplash.com/photo-1515823662972-da6a2e4d3002?auto=format&fit=crop&w=600&q=80'),
+('t_matcha', 'Hot Matcha Latte', 400, 'TEAS', '', 50, 10, 'https://images.unsplash.com/photo-1515823662972-da6a2e4d3002?auto=format&fit=crop&w=600&q=80'),
 
 -- SOFT DRINKS
 ('sd_wat', 'Water - Keringet 1L', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80'),
-('sd_spark', 'Sparkling Water 500ML', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
+('sd_spark_500', 'Sparkling Water 500ML', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
+('sd_spark_1l', 'Sparkling Water 1L', 250, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
 
 -- ICED COFFEE
 ('ice_cof', 'Iced Coffee', 350, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80'),
@@ -43,7 +44,7 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('ice_van', 'Iced Vanilla Latte', 450, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1461023058943-48dbf1399f98?auto=format&fit=crop&w=600&q=80'),
 ('ice_car', 'Iced Caramel Latte', 450, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1574914569527-38e9c9c855a0?auto=format&fit=crop&w=600&q=80'),
 ('ice_haz', 'Iced Hazelnut Latte', 450, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1629899321523-a1288219c623?auto=format&fit=crop&w=600&q=80'),
-('ice_mat_cla', 'Classic Iced Matcha Latte', 500, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1536555198118-21915ea621fa?auto=format&fit=crop&w=600&q=80'),
+('ice_mat_cla', 'Classic Iced Matcha Latte', 400, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1536555198118-21915ea621fa?auto=format&fit=crop&w=600&q=80'),
 ('ice_mat_van', 'Vanilla Matcha Latte', 500, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1536555198118-21915ea621fa?auto=format&fit=crop&w=600&q=80'),
 ('ice_mat_str', 'Strawberry Matcha Latte', 500, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1536555198118-21915ea621fa?auto=format&fit=crop&w=600&q=80'),
 ('ice_mat_frap', 'TDs Matcha Frappe', 600, 'ICED COFFEE', '', 50, 10, 'https://images.unsplash.com/photo-1536555198118-21915ea621fa?auto=format&fit=crop&w=600&q=80'),
@@ -89,27 +90,27 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('bit_sam', 'Beef Samosa (Pair)', 200, 'BITINGS', '', 100, 20, 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80'),
 ('bit_w6', 'Chicken Wings (6pcs)', 700, 'BITINGS', '', 40, 10, 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=600&q=80'),
 ('bit_w12', 'Chicken Wings (12pcs)', 1100, 'BITINGS', '', 20, 5, 'https://images.unsplash.com/photo-1527477396000-64ca9c00173f?auto=format&fit=crop&w=600&q=80'),
-('bit_fish', 'Breaded Fish Fingers', 800, 'BITINGS', 'Served with tartar sauce', 20, 5, 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80'),
+('bit_fish', 'Breaded Fish Fingers', 900, 'BITINGS', 'Served with tartar sauce', 20, 5, 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80'),
 ('bit_nug', 'Chicken Nuggets', 600, 'BITINGS', '', 30, 5, 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80'),
 ('bit_saus', 'Sausage (Pair)', 200, 'BITINGS', '', 100, 20, 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'),
 
 -- BAKERY & PASTRIES
-('bk_cake', 'Cake Slice (Lemon/Marble)', 300, 'BAKERY & PASTRIES', '', 12, 4, 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=600&q=80'),
+('bk_cake', 'Cake Slice (Lemon/Marble)', 400, 'BAKERY & PASTRIES', '', 12, 4, 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=600&q=80'),
 ('bk_for', 'Black/White Forest Cake', 400, 'BAKERY & PASTRIES', '', 12, 4, 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80'),
 
 -- MAIN COURSES
 ('mn_fil', 'Grilled Fillet Steak', 950, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=600&q=80'),
-('mn_med', 'Beef Medallion Steak', 1050, 'MAIN COURSES', '', 12, 3, 'https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=600&q=80'),
+('mn_med', 'Beef Medallion Steak', 950, 'MAIN COURSES', '', 12, 3, 'https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=600&q=80'),
 ('mn_pep', 'Pepper Steak', 900, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'),
-('mn_sbeef', 'Stir Fried Beef', 700, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80'),
+('mn_sbeef', 'Stir Fried Beef', 950, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80'),
 ('mn_lamb', 'Lamb Chops', 1200, 'MAIN COURSES', '', 10, 3, 'https://images.unsplash.com/photo-1603360946369-dc9bb6f54262?auto=format&fit=crop&w=600&q=80'),
 ('mn_lrib', 'Lamb Ribs', 800, 'MAIN COURSES', '', 10, 3, 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'),
 ('mn_gbreast', 'Grilled Chicken Breast', 1000, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=600&q=80'),
-('mn_ccur_sp', 'TDs Special Chicken Curry', 850, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80'),
+('mn_ccur_sp', 'TDs Special Chicken Curry', 900, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80'),
 ('mn_cpep', 'Chicken Pepper Steak', 900, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80'),
-('mn_bbq', 'BBQ Roast Chicken', 800, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80'),
+('mn_bbq', 'BBQ Roast Chicken', 850, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80'),
 ('mn_ctik', 'Chicken Tikka', 900, 'MAIN COURSES', '', 20, 5, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80'),
-('mn_gfish', 'Grilled Fish Fillet', 1150, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1519708227418-c8fd9a3a277d?auto=format&fit=crop&w=600&q=80'),
+('mn_gfish', 'Grilled Fish Fillet', 1000, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1519708227418-c8fd9a3a277d?auto=format&fit=crop&w=600&q=80'),
 ('mn_stf_chick', 'Stuffed Chicken', 1200, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80'),
 ('mn_til', 'Whole Fish (Tomato Gravy/Dry)', 950, 'MAIN COURSES', '', 10, 3, 'https://images.unsplash.com/photo-1535914254981-9663acf426da?auto=format&fit=crop&w=600&q=80'),
 ('mn_fcoc', 'Fish in Coconut', 950, 'MAIN COURSES', '', 15, 5, 'https://images.unsplash.com/photo-1467003909585-2f8a7270028d?auto=format&fit=crop&w=600&q=80'),
@@ -117,10 +118,10 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('mn_spag_pom', 'Spaghetti Pomodoro', 800, 'MAIN COURSES', '', 25, 5, 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=600&q=80'),
 
 -- BURGERS / BURRITOS & SANDWICHES
-('bg_beef', 'Beef Burger', 700, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 30, 5, 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'),
-('bg_chick', 'Chicken Burger', 750, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 30, 5, 'https://images.unsplash.com/photo-1615297928064-24977384d0f9?auto=format&fit=crop&w=600&q=80'),
-('bur_beef', 'Beef Burrito', 600, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 20, 5, 'https://images.unsplash.com/photo-1562059390-a761a084768e?auto=format&fit=crop&w=600&q=80'),
-('bur_chick', 'Chicken Burrito', 700, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 20, 5, 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=600&q=80'),
+('bg_beef', 'Beef Burger', 800, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 30, 5, 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'),
+('bg_chick', 'Chicken Burger', 800, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 30, 5, 'https://images.unsplash.com/photo-1615297928064-24977384d0f9?auto=format&fit=crop&w=600&q=80'),
+('bur_beef', 'Beef Burrito', 800, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 20, 5, 'https://images.unsplash.com/photo-1562059390-a761a084768e?auto=format&fit=crop&w=600&q=80'),
+('bur_chick', 'Chicken Burrito', 800, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 20, 5, 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=600&q=80'),
 ('bur_veg', 'Vegetable Burrito', 500, 'BURGERS / BURRITOS & SANDWICHES', 'Served with fries or salad', 20, 5, 'https://images.unsplash.com/photo-1511285229362-bf5a3717208d?auto=format&fit=crop&w=600&q=80'),
 ('bg_extras', 'Burger Extras', 200, 'BURGERS / BURRITOS & SANDWICHES', 'Cheese, Bacon, Coated Onion rings/Fries', 50, 10, 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80'),
 
