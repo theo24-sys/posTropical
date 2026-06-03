@@ -349,7 +349,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 't_matcha', name: 'Hot Matcha Latte', price: 500, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1515823662972-da6a2e4d3002?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
 
   // ================= SOFT DRINKS =================
-  { id: 'sd_wat', name: 'Water - Keringet 1L', price: 150, category: Category.SOFT_DRINKS, image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
+  { id: 'sd_wat', name: 'Water - Keringet 1L', price: 200, category: Category.SOFT_DRINKS, image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
   { id: 'sd_spark', name: 'Sparkling Water 500ML', price: 150, category: Category.SOFT_DRINKS, image: 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
 
   // ================= ICED COFFEE =================
