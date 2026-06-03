@@ -33,7 +33,7 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('t_matcha', 'Hot Matcha Latte', 400, 'TEAS', '', 50, 10, 'https://images.unsplash.com/photo-1515823662972-da6a2e4d3002?auto=format&fit=crop&w=600&q=80'),
 
 -- SOFT DRINKS
-('sd_wat', 'Water - Keringet 1L', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80'),
+('sd_wat', 'Water - Keringet 1L', 200, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80'),
 ('sd_spark_500', 'Sparkling Water 500ML', 150, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
 ('sd_spark_1l', 'Sparkling Water 1L', 250, 'SOFT DRINKS', '', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
 
