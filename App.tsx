@@ -121,22 +121,18 @@ const App: React.FC = () => {
           DB.getAuditLogs()
         ]);
 
-        const usersToUse = cloudUsers; // trust Supabase; no fallback to mock data
-        const menuToUse = cloudMenu.length > 0 ? cloudMenu : MENU_ITEMS;
-        const inventoryToUse = cloudInv;
+       const usersToUse = cloudUsers; // trust Supabase; no fallback to mock data
+       const menuToUse = cloudMenu; // trust Supabase menu as source of truth — no auto-seed
+       const inventoryToUse = cloudInv;
 
-        setUsers(usersToUse);
-        setMenuItems(menuToUse);
-        setInventory(inventoryToUse);
-        setSalesHistory(cloudSales);
-        setExpenses(cloudExpenses);
-        setAuditLogs(cloudLogs);
+       setUsers(usersToUse);
+       setMenuItems(menuToUse);
+       setInventory(inventoryToUse);
+       setSalesHistory(cloudSales);
+       setExpenses(cloudExpenses);
+       setAuditLogs(cloudLogs);
 
-        // Seed Supabase if menu table was empty
-        if (cloudMenu.length === 0) {
-          console.log('Seeding Supabase menu with initial data...');
-          await Promise.all(MENU_ITEMS.map(item => DB.saveMenuItem(item)));
-        }
+
 
         // Save everything to LocalDB for offline use
         await LocalDB.clearInventory();
