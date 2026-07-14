@@ -99,6 +99,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [customEnd, setCustomEnd] = useState('');
   const [invSearchTerm, setInvSearchTerm] = useState('');
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
 
   // Modals
   const [isInvModalOpen, setIsInvModalOpen] = useState(false);
@@ -157,6 +158,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const filteredExpenses = useMemo(() => expenses.filter(e => isDateInFilter(e.date)), [expenses, dateRange, customStart, customEnd]);
   const filteredInventory = useMemo(() => inventory.filter(i => i.name.toLowerCase().includes(invSearchTerm.toLowerCase())), [inventory, invSearchTerm]);
   const filteredMenuItems = useMemo(() => menuItems.filter(i => i.name.toLowerCase().includes(menuSearchTerm.toLowerCase())), [menuItems, menuSearchTerm]);
+  const filteredUsers = useMemo(() => users.filter(u => u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.role.toLowerCase().includes(userSearchTerm.toLowerCase())), [users, userSearchTerm]);
 
   const fastSellingItems = useMemo(() => {
     const counts: Record<string, { name: string; quantity: number; total: number }> = {};
@@ -190,7 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   }, [filteredSales, filteredExpenses, menuItems]);
 
   const handleSyncMenu = async () => {
-    if (!confirm("Overwrite local menu with system defaults?")) return;
+    if (!confirm("Overwrite local menu with system defaults? This will replace your current menu with the hardcoded fallback in constants.ts.")) return;
     setIsSyncingMenu(true);
     await LocalDB.saveMenu(MENU_ITEMS);
     await onRefresh();
@@ -256,6 +258,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   setIsSaving(false);
   setIsMenuModalOpen(false);
 };
+
+  const handleSaveUserForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const formData = new FormData(e.target as HTMLFormElement);
+    const user: User = {
+      id: editingUser?.id || `u-${Date.now()}`,
+      name: formData.get('name') as string,
+      role: formData.get('role') as UserRole,
+      pin: (formData.get('pin') as string) || editingUser?.pin || '0000',
+      avatar: (formData.get('avatar') as string) || editingUser?.avatar || undefined,
+    };
+    try {
+      await onSaveUser(user);
+      await onRefresh();
+      setIsUserModalOpen(false);
+      setEditingUser(null);
+    } catch (err: any) {
+      console.error('User save failed:', err);
+      alert(`Save failed: ${err.message || 'Unknown error - check console (F12) for details'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveExpenseForm = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSaving(true);
@@ -327,6 +353,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>}
             {activeTab === 'menu' && <button onClick={() => { setEditingMenuItem(null); setIsMenuModalOpen(true); }} className="bg-[#4B3621] text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <Plus size={22} /> New Product
+            </button>}
+            {activeTab === 'users' && <button onClick={() => { setEditingUser(null); setIsUserModalOpen(true); }} className="bg-[#4B3621] text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
+              <UserPlus size={22} /> New Staff
             </button>}
             {activeTab === 'finances' && <button onClick={() => { setExpenseDate(new Date().toISOString().slice(0, 10)); setIsExpenseModalOpen(true); }} className="bg-red-500 text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <DollarSign size={22} /> Record Outflow
@@ -525,6 +554,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             )}
 
+            {activeTab === 'users' && (
+              <div className="bg-white rounded-[56px] shadow-sm border border-gray-50 overflow-hidden">
+                <div className="p-12 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
+                  <div className="relative w-[400px]">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={22} />
+                    <input type="text" placeholder="Filter staff by name or role..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="w-full pl-16 pr-8 py-5 border-2 border-gray-100 rounded-[28px] outline-none focus:ring-4 focus:ring-teal-50 transition-all font-bold text-lg bg-white" />
+                  </div>
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-[3px]">Staff On File: {users.length}</p>
+                </div>
+                <table className="w-full text-left">
+                  <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-50">
+                    <tr><th className="px-12 py-6">Team Member</th><th className="px-12 py-6">Role</th><th className="px-12 py-6 text-right">Maintenance</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredUsers.map(u => (
+                      <tr key={u.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-12 py-10">
+                          <div className="flex items-center gap-8">
+                            <div className="w-20 h-20 rounded-[32px] bg-gray-100 border border-gray-100 overflow-hidden shadow-sm flex items-center justify-center text-gray-300 font-black text-2xl group-hover:shadow-2xl group-hover:scale-110 transition-all">
+                              {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" alt={u.name} /> : u.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-black text-2xl text-[#4B3621] leading-none mb-2 tracking-tighter">{u.name}</p>
+                              <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest">PIN: {u.pin}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-12 py-10">
+                          <span className="px-6 py-2.5 rounded-full bg-gray-50 border border-gray-100 text-xs font-black uppercase tracking-widest text-[#4B3621]">{u.role}</span>
+                        </td>
+                        <td className="px-12 py-10 text-right">
+                          <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                            <button onClick={() => { setEditingUser(u); setIsUserModalOpen(true); }} className="p-5 bg-[#4B3621] text-white rounded-[24px] shadow-2xl hover:scale-105 active:scale-95 transition-all"><Edit3 size={22}/></button>
+                            <button onClick={() => { if (confirm(`Remove ${u.name} from staff?`)) onDeleteUser(u.id); }} className="p-5 bg-red-50 text-red-500 rounded-[24px] hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={22}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredUsers.length === 0 && <tr><td colSpan={3} className="text-center py-40 text-gray-300 italic font-bold">No matching staff found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {activeTab === 'finances' && (
               <div className="bg-white rounded-[56px] shadow-sm border border-gray-50 overflow-hidden">
                 <div className="p-12 border-b border-gray-50 bg-gray-50/20 space-y-8">
@@ -626,7 +699,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <div className="bg-white p-12 rounded-[56px] border border-blue-50 shadow-sm group hover:shadow-2xl transition-all">
                   <h3 className="text-2xl font-black mb-6 flex items-center gap-4 text-blue-900 tracking-tighter"><DatabaseBackup size={28}/> System Integrity</h3>
-                  <p className="text-sm text-blue-700/60 font-bold mb-10 leading-relaxed">Restore standard menu items if the local database is out of sync or missing core products from the Tropical Dreams collection.</p>
+                  <p className="text-sm text-blue-700/60 font-bold mb-10 leading-relaxed">Restore standard menu items if the local database is out of sync or missing core products from the Tropical Dreams collection. This overwrites your current local menu with the hardcoded defaults in constants.ts — keep that file's MENU_ITEMS in sync with your live menu before using this.</p>
                   <button onClick={handleSyncMenu} disabled={isSyncingMenu} className="w-full py-6 bg-blue-600 text-white rounded-[28px] font-black uppercase text-xs tracking-[4px] shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-4">
                     {isSyncingMenu ? <RefreshCw className="animate-spin" /> : <DatabaseBackup />} Restore Defaults
                   </button>
@@ -702,6 +775,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="md:col-span-2"><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">High-Res Image URL</label><input name="image" defaultValue={editingMenuItem?.image} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required /></div>
                 <div className="md:col-span-2"><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Brief Description</label><textarea name="description" defaultValue={editingMenuItem?.description} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-bold text-lg outline-none h-32" /></div>
                 <div className="md:col-span-2 pt-10 flex gap-6"><button type="button" onClick={() => setIsMenuModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-[4px] text-gray-300">Abort</button><button type="submit" disabled={isSaving} className="flex-[2] py-6 bg-[#4B3621] text-white rounded-[28px] font-black text-[10px] uppercase tracking-[4px] shadow-2xl hover:scale-105 active:scale-95 transition-all">Save Changes</button></div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {isUserModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-6">
+            <div className="bg-white w-full max-w-xl rounded-[64px] p-16 shadow-2xl relative animate-in zoom-in-95 duration-300">
+              <button onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="absolute top-10 right-10 text-gray-300 hover:text-[#4B3621] transition-all p-3 hover:bg-gray-50 rounded-full"><X size={32}/></button>
+              <h3 className="font-serif text-4xl font-black mb-10 text-[#4B3621] tracking-tighter">{editingUser ? 'Edit Staff Member' : 'New Staff Member'}</h3>
+              <form onSubmit={handleSaveUserForm} className="space-y-10">
+                <div>
+                  <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Full Name</label>
+                  <input name="name" defaultValue={editingUser?.name} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none focus:ring-8 focus:ring-teal-50 transition-all" required />
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Role</label>
+                    <select name="role" defaultValue={editingUser?.role || 'Cashier'} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest outline-none">
+                      <option value="Admin">Admin</option>
+                      <option value="Cashier">Cashier</option>
+                      <option value="Waiter">Waiter</option>
+                      <option value="Chef">Chef</option>
+                      <option value="Barista">Barista</option>
+                      <option value="Supplier">Supplier</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">PIN</label>
+                    <input name="pin" defaultValue={editingUser?.pin} placeholder="4-digit PIN" maxLength={6} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Avatar URL (optional)</label>
+                  <input name="avatar" defaultValue={editingUser?.avatar} onChange={(e) => setAvatarPreview(e.target.value)} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-bold text-lg outline-none" />
+                  {avatarPreview && <img src={avatarPreview} alt="preview" className="w-16 h-16 rounded-[20px] object-cover mt-4 border border-gray-100" />}
+                </div>
+                <div className="pt-6 flex gap-6">
+                  <button type="button" onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-[4px] text-gray-300">Cancel</button>
+                  <button type="submit" disabled={isSaving} className="flex-[2] py-6 bg-[#4B3621] text-white rounded-[28px] font-black text-[10px] uppercase tracking-[4px] shadow-2xl hover:scale-105 active:scale-95 transition-all">{editingUser ? 'Save Changes' : 'Add Staff Member'}</button>
+                </div>
               </form>
             </div>
           </div>
