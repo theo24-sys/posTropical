@@ -1,6 +1,3 @@
--- TDs July Menu Update
--- Clears existing menu items and inserts the new July menu
-
 DELETE FROM public.menu_items;
 
 INSERT INTO public.menu_items (id, name, price, category, description, stock, low_stock_threshold, image) VALUES
