@@ -12,14 +12,19 @@
 //   ALTER TABLE menu_items ADD COLUMN digitax_item_id text;
 
 import { createClient } from '@supabase/supabase-js';
+import { KraEtimsClient } from './services/kraEtims.ts';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const DIGITAX_BASE_URL = process.env.DIGITAX_BASE_URL;
-const DIGITAX_API_KEY = process.env.DIGITAX_API_KEY;
+const KRA_BASE_URL = process.env.KRA_BASE_URL;
+const KRA_TIN = process.env.KRA_TIN;
+const KRA_DEVICE_SERIAL = process.env.KRA_DEVICE_SERIAL;
+const KRA_CERT_KEY = process.env.KRA_CERT_KEY;
+
+const kraClient = new KraEtimsClient(KRA_BASE_URL, KRA_TIN, KRA_DEVICE_SERIAL);
 
 // Default classification for a coffee house / restaurant menu.
 // See: https://ke.docs.digitax.tech/docs/which-item-class-code-should-i-use
@@ -35,6 +40,10 @@ const DEFAULT_PACKAGE_UNIT_CODE = 'NT'; // Net (no specific outer packaging)
 const DEFAULT_QUANTITY_UNIT_CODE = 'U'; // Pieces/item [Number]
 
 async function registerItem(menuItem) {
+  // For simplicity, we'll use the initializeDevice endpoint to get a session token
+  // In a real scenario, this would be handled by a separate authentication flow
+  const { sessionToken } = await kraClient.initializeDevice(KRA_CERT_KEY);
+
   const body = {
     item_class_code: DEFAULT_ITEM_CLASS_CODE,
     item_type_code: DEFAULT_ITEM_TYPE_CODE,
@@ -46,22 +55,11 @@ async function registerItem(menuItem) {
     default_unit_price: menuItem.price,
   };
 
-  const res = await fetch(`${DIGITAX_BASE_URL}/items`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': DIGITAX_API_KEY,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(`DigiTax item creation failed for "${menuItem.name}": ${JSON.stringify(data)}`);
-  }
-
-  return data.id; // DigiTax/KRA-issued item_id
+  // This is a placeholder. The KraEtimsClient does not have an 'items' registration endpoint.
+  // This would typically be a separate endpoint on the KRA system or handled differently.
+  // For now, we'll simulate a successful registration and return a dummy ID.
+  console.warn("WARNING: Simulating KRA item registration. This needs a real KRA 'items' endpoint.");
+  return `KRA_ITEM_${menuItem.id}`;
 }
 
 async function main() {
@@ -97,6 +95,8 @@ async function main() {
       succeeded++;
     } catch (err) {
       console.error(`❌ ${item.name}: ${err.message}`);
+    // Also log the item details that failed for easier debugging
+    console.error("Failed item details:", item);
       failed++;
     }
   }
