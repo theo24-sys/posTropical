@@ -21,6 +21,34 @@ interface Promotion {
   discount_percent: number;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ETIMS SYNC HELPER
+// ═══════════════════════════════════════════════════════════════
+// Calls the server's /api/sync-etims endpoint (implemented in server.js)
+// for a given transaction id. Returns the parsed response shape:
+//   { success: true, invoice_number, qr_code_url } on success
+//   { error, detail } on failure
+async function syncEtims(transactionId: string) {
+  try {
+    const res = await fetch('/api/sync-etims', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transaction_id: transactionId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { ok: false as const, error: data.error || 'eTIMS sync failed' };
+    }
+    return {
+      ok: true as const,
+      invoiceNumber: data.invoice_number as string,
+      qrUrl: data.qr_code_url as string
+    };
+  } catch (err: any) {
+    return { ok: false as const, error: err?.message || 'eTIMS sync request failed' };
+  }
+}
+
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -340,7 +368,9 @@ const App: React.FC = () => {
         tableNumber,
         orderType,
         aiMessage: aiMsg,
-        status: sale.status
+        status: sale.status,
+        // eTIMS only applies to actually-paid sales; mark pending until the sync call resolves below
+        etimsSyncStatus: sale.status === 'Paid' ? 'pending' : undefined
       });
       setIsModalOpen(true);
       setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
@@ -367,6 +397,26 @@ const App: React.FC = () => {
         } catch (deductErr: any) {
           console.error('Inventory deduction failed:', deductErr);
           logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
+        }
+
+        // --- ETIMS SYNC (fire only for actually-paid sales, only when online) ---
+        if (navigator.onLine) {
+          const result = await syncEtims(orderId);
+          if (result.ok) {
+            setReceiptData(prev => (prev && prev.orderId === orderId) ? {
+              ...prev,
+              etimsInvoiceNumber: result.invoiceNumber,
+              etimsQrUrl: result.qrUrl,
+              etimsSyncStatus: 'success'
+            } : prev);
+          } else {
+            console.error('eTIMS sync failed:', result.error);
+            setReceiptData(prev => (prev && prev.orderId === orderId) ? {
+              ...prev,
+              etimsSyncStatus: 'failed'
+            } : prev);
+            logActivity('SALE', `eTIMS sync failed for order ${orderId}: ${result.error}`, 'high');
+          }
         }
       }
 
@@ -418,7 +468,9 @@ const App: React.FC = () => {
         cashierName: tx.cashierName,
         aiMessage: aiMsg,
         tableNumber: tx.tableNumber,
-        updatedAt: updatedTx.updatedAt
+        updatedAt: updatedTx.updatedAt,
+        // A "Pay Later" bill settling to Paid is the real eTIMS-triggering event
+        etimsSyncStatus: 'pending'
       });
       setIsModalOpen(true);
       try {
@@ -436,6 +488,26 @@ const App: React.FC = () => {
       } catch (deductErr: any) {
         console.error('Deduction failed on settle:', deductErr);
         logActivity('STOCK_UPDATE', `Deduction failed for settled order ${id}: ${deductErr?.message || 'Unknown error'}`, 'high');
+      }
+
+      // --- ETIMS SYNC on settling a Pay Later bill ---
+      if (navigator.onLine) {
+        const result = await syncEtims(id);
+        if (result.ok) {
+          setReceiptData(prev => (prev && prev.orderId === id) ? {
+            ...prev,
+            etimsInvoiceNumber: result.invoiceNumber,
+            etimsQrUrl: result.qrUrl,
+            etimsSyncStatus: 'success'
+          } : prev);
+        } else {
+          console.error('eTIMS sync failed:', result.error);
+          setReceiptData(prev => (prev && prev.orderId === id) ? {
+            ...prev,
+            etimsSyncStatus: 'failed'
+          } : prev);
+          logActivity('SALE', `eTIMS sync failed for settled order ${id}: ${result.error}`, 'high');
+        }
       }
     }
   };
