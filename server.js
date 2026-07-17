@@ -83,6 +83,7 @@ app.post('/api/sync-etims', async (req, res) => {
       customer_pin: 'P000000000Z', // generic KRA pin — SaleTransaction has no customer_pin field
       customer_name: 'Walk-in Customer',
       items: (txn.items || []).map((item) => ({
+        id: item.id, // required by DigiTax's SalesPostReq schema — was previously omitted, causing 400s
         name: item.name,
         quantity: item.quantity,
         unit_price: item.price,
