@@ -75,22 +75,22 @@ app.post('/api/sync-etims', async (req, res) => {
     }
 
     // 2. Build the DigiTax payload
-    // NOTE: adjust field names below (txn.items, txn.total_amount, etc.)
-    // to match your actual transactions table columns.
+    // Matches the real SaleTransaction shape: items = { id, name, quantity, price }[]
+    // total_amount is on `total`, not `total_amount`; date is on `date`, not `created_at`.
     const payload = {
       business_id: DIGITAX_BUSINESS_ID,
-      transaction_date: txn.created_at,
-      customer_pin: txn.customer_pin || 'P000000000Z',
-      customer_name: txn.customer_name || 'Walk-in Customer',
+      transaction_date: txn.date,
+      customer_pin: 'P000000000Z', // generic KRA pin — SaleTransaction has no customer_pin field
+      customer_name: 'Walk-in Customer',
       items: (txn.items || []).map((item) => ({
-        name: item.item_name,
+        name: item.name,
         quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_amount: item.total,
-        tax_rate: item.tax_rate ?? 16,
+        unit_price: item.price,
+        total_amount: item.price * item.quantity,
+        tax_rate: 16, // VAT — adjust here if any items are zero-rated/exempt
       })),
-      total_amount: txn.total_amount,
-      payment_method: txn.payment_method || 'CASH',
+      total_amount: txn.total,
+      payment_method: (txn.paymentMethod || 'CASH').toUpperCase().replace('-', ''),
     };
 
     // 3. Call DigiTax
