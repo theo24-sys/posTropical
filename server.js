@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import { KraEtimsClient } from './services/kraEtims.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,8 +19,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const DIGITAX_BASE_URL = process.env.DIGITAX_BASE_URL;
-const DIGITAX_API_KEY = process.env.DIGITAX_API_KEY;
+const KRA_BASE_URL = process.env.KRA_BASE_URL;
+const KRA_TIN = process.env.KRA_TIN;
+const KRA_DEVICE_SERIAL = process.env.KRA_DEVICE_SERIAL;
+const KRA_CERT_KEY = process.env.KRA_CERT_KEY;
+
+const kraClient = new KraEtimsClient(KRA_BASE_URL, KRA_TIN, KRA_DEVICE_SERIAL);
 
 // 1. Serve logo.png specifically from the ROOT directory (main dir)
 // This handles the case where the user put the logo in the main folder instead of public
@@ -67,6 +72,48 @@ function mapPaymentTypeCode(paymentMethod) {
   }
 }
 
+async function getKraPayload(txn) {
+  const { data: dbItems, error } = await supabase
+    .from('menu_items')
+    .select('id, name, item_class_code, package_unit_code, quantity_unit_code, price, tax_type_code, digitax_item_id')
+    .in('id', txn.items.map(i => i.id));
+
+  if (error || !dbItems) throw new Error('Failed to fetch menu items for KRA mapping');
+
+  const kraItemList = txn.items.map((item, index) => {
+    const dbItem = dbItems.find(db => db.id === item.id);
+    const lineTotal = item.price * item.quantity;
+
+    return {
+      itemSeq: index + 1,
+      itemCd: dbItem?.digitax_item_id || dbItem?.item_class_code || '50000000',
+      itemNm: item.name,
+      pkgUnitCd: dbItem?.package_unit_code || 'NT',
+      qtyUnitCd: dbItem?.quantity_unit_code || 'U',
+      unitPrice: item.price,
+      qty: item.quantity,
+      totAmt: lineTotal,
+      taxTyCd: dbItem?.tax_type_code || 'B'
+    };
+  });
+
+  const totAmt = kraItemList.reduce((sum, item) => sum + item.totAmt, 0);
+  const totTaxblAmt = totAmt / 1.16;
+  const totTaxAmt = totAmt - totTaxblAmt;
+
+  return {
+    trnsNo: Date.now(),
+    docNo: `INV-${txn.id}`,
+    receiptTypeCode: 'S',
+    paymentTypeCode: mapPaymentTypeCode(txn.paymentMethod),
+    totItemCnt: kraItemList.length,
+    totTaxblAmt: parseFloat(totTaxblAmt.toFixed(2)),
+    totTaxAmt: parseFloat(totTaxAmt.toFixed(2)),
+    totAmt: parseFloat(totAmt.toFixed(2)),
+    itemList: kraItemList
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ETIMS SYNC ENDPOINT: Push a transaction to DigiTax / KRA eTIMS
 // ═══════════════════════════════════════════════════════════════
@@ -106,35 +153,18 @@ app.post('/api/sync-etims', async (req, res) => {
     //       the returned item_id alongside it in Supabase.
     // Until that mapping exists, `item.id` below is a placeholder using your
     // internal id, which may cause a new validation error from DigiTax.
-    const payload = {
-      trader_invoice_number: txn.id,               // your own invoice/order number
-      sale_date: txn.date,                          // date of the sale
-      receipt_type_code: 'S',                       // "S" = Sale (vs "R" = Credit Note)
-      payment_type_code: mapPaymentTypeCode(txn.paymentMethod),
-      invoice_status_code: '02',                    // "02" = Approved
-      items: (txn.items || []).map((item) => ({
-        id: item.id,                                // ⚠️ must be a DigiTax item_id — see note above
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_amount: item.price * item.quantity,
-        tax_rate: 16, // VAT — adjust here if any items are zero-rated/exempt
-      })),
-    };
+    // Use the KRA payload builder
+    const payload = await getKraPayload(txn);
 
-    // 3. Call DigiTax
-    const digitaxRes = await fetch(`${DIGITAX_BASE_URL}/sales`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': DIGITAX_API_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
+    // 3. Call KRA eTIMS
+    // First, initialize device to get a session token (in a real scenario, this would be cached/managed)
+    const { sessionToken } = await kraClient.initializeDevice(KRA_CERT_KEY);
 
-    const digitaxData = await digitaxRes.json();
+    const kraRes = await kraClient.transmitInvoice(payload, sessionToken);
 
-    if (!digitaxRes.ok) {
+    // Assuming kraRes contains a success indicator or throws on failure
+    // For now, we'll check for a specific field that indicates success
+    if (!kraRes || kraRes.responseCode !== '00') {
       await supabase
         .from('transactions')
         .update({
@@ -150,24 +180,24 @@ app.post('/api/sync-etims', async (req, res) => {
     const { error: updateError } = await supabase
       .from('transactions')
       .update({
-        etims_invoice_number: digitaxData.invoice_number,
-        etims_control_number: digitaxData.kra_control_number,
-        etims_qr_url: digitaxData.qr_code_url,
-        etims_signature: digitaxData.invoice_signature,
-        etims_sync_status: 'success',
-        etims_synced_at: new Date().toISOString(),
-        etims_sync_error: null,
-      })
-      .eq('id', transaction_id);
+          etims_invoice_number: kraRes.invoiceNo,
+          etims_control_number: kraRes.controlCode,
+          etims_qr_url: kraRes.qrCodeUrl,
+          etims_signature: kraRes.signature,
+          etims_sync_status: 'success',
+          etims_synced_at: new Date().toISOString(),
+          etims_sync_error: null,
+        })
+        .eq('id', transaction_id);
 
     if (updateError) {
-      return res.status(500).json({ error: 'Synced to DigiTax but failed to update transaction row', detail: updateError.message });
+      return res.status(500).json({ error: 'Synced to KRA eTIMS but failed to update transaction row', detail: updateError.message });
     }
 
     return res.json({
       success: true,
-      invoice_number: digitaxData.invoice_number,
-      qr_code_url: digitaxData.qr_code_url,
+      invoice_number: kraRes.invoiceNo,
+      qr_code_url: kraRes.qrCodeUrl,
     });
   } catch (err) {
     console.error('eTIMS sync failed:', err);
