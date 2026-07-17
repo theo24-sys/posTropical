@@ -1,4 +1,3 @@
-
 export enum Category {
   BREAKFAST = 'BREAKFAST',
   SOUP_SALADS = 'SOUP & SALADS',
@@ -22,7 +21,6 @@ export enum Category {
 }
 
 export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Pay Later';
-
 export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista' | 'Supplier';
 
 export interface User {
@@ -44,7 +42,7 @@ export interface MenuItem {
   lowStockThreshold: number;
 }
 
-export type InventoryCategory = 
+export type InventoryCategory =
   | 'BREAKFAST'
   | 'SOUP & SALADS'
   | 'BITINGS'
@@ -87,6 +85,9 @@ export interface HeldOrder {
   tableNumber?: number;
 }
 
+// --- ETIMS SYNC STATUS (shared shape) ---
+export type EtimsSyncStatus = 'success' | 'failed' | 'pending';
+
 export interface ReceiptData {
   items: CartItem[];
   subtotal: number;
@@ -103,6 +104,13 @@ export interface ReceiptData {
   tableNumber?: number;
   orderType?: 'Dine-in' | 'Take Away';
   status: 'Paid' | 'Pending';
+  discountAmount?: number;
+  discountPercent?: number;
+  // eTIMS / DigiTax fields
+  etimsInvoiceNumber?: string;
+  etimsControlNumber?: string;
+  etimsQrUrl?: string;
+  etimsSyncStatus?: EtimsSyncStatus;
 }
 
 export interface SaleTransaction {
@@ -117,6 +125,13 @@ export interface SaleTransaction {
   items: { id: string; name: string; quantity: number; price: number }[];
   updatedBy?: string;
   updatedAt?: string;
+  // eTIMS / DigiTax fields
+  etimsInvoiceNumber?: string;
+  etimsControlNumber?: string;
+  etimsQrUrl?: string;
+  etimsSignature?: string;
+  etimsSyncStatus?: EtimsSyncStatus;
+  etimsSyncedAt?: string;
 }
 
 export interface Expense {
@@ -151,11 +166,4 @@ export interface Promotion {
   start_datetime: string;
   end_datetime: string;
   is_active: boolean;
-}
-
-// Also update ReceiptData to include discount info
-export interface ReceiptData {
-  // ... existing fields
-  discountAmount?: number;
-  discountPercent?: number;
 }
