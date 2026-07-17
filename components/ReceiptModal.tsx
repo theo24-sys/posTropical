@@ -27,6 +27,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const isPending = data.status === 'Pending';
   const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
 
+  // --- ETIMS STATUS ---
+  const etimsStatus = data.etimsSyncStatus; // 'success' | 'failed' | 'pending' | undefined
+  const hasEtims = etimsStatus === 'success' && !!data.etimsInvoiceNumber;
+  const etimsFailed = etimsStatus === 'failed';
+
   const handlePrint = () => {
     setIsPrinting(true);
     const printWindow = window.open('', 'ReceiptPrint', 'height=700,width=420');
@@ -64,6 +69,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
       </div>
     ` : '';
+
+    // --- ETIMS PRINT BLOCK ---
+    const etimsPrintHtml = !isPending ? (
+      hasEtims ? `
+        <div class="divider"></div>
+        <div class="center" style="margin-top: 8px;">
+          <p style="font-size: 16px; font-weight: bold; letter-spacing: 0.4px; margin: 4px 0;">KRA eTIMS VERIFIED</p>
+          <p style="font-size: 15px; margin: 2px 0;">Invoice No: ${data.etimsInvoiceNumber}</p>
+          ${data.etimsControlNumber ? `<p style="font-size: 15px; margin: 2px 0;">Control No: ${data.etimsControlNumber}</p>` : ''}
+          ${data.etimsQrUrl ? `<img src="${data.etimsQrUrl}" alt="KRA QR" style="width: 120px; height: 120px; margin-top: 8px;" />` : ''}
+        </div>
+      ` : etimsFailed ? `
+        <div class="divider"></div>
+        <div class="center" style="margin-top: 8px;">
+          <p style="font-size: 15px; font-weight: bold;">eTIMS verification pending — retry sync before filing</p>
+        </div>
+      ` : ''
+    ) : '';
 
     printWindow.document.write(`
       <html>
@@ -108,6 +131,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">KES ${data.total.toLocaleString()}</td>
           </tr>
         </table>
+        ${etimsPrintHtml}
         <div class="divider"></div>
         <div class="footer">
           <p style="font-size: 18px;">Served by: ${data.cashierName}</p>
@@ -163,7 +187,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
              
               <div className="flex justify-between pt-4 border-t border-gray-100 font-bold text-gray-600">
                 <span>Subtotal</span>
-                <span>KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
+                <span>KES {(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
               </div>
               {data.discountAmount && data.discountAmount > 0 && (
                 <div className="flex justify-between text-green-700 font-black italic">
@@ -176,6 +200,31 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               <span className="text-2xl">{isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
               <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
             </div>
+
+            {/* --- ETIMS SECTION --- */}
+            {!isPending && (
+              <div className="mt-8">
+                {hasEtims ? (
+                  <div className="p-6 rounded-[28px] bg-gray-50 border border-gray-100 text-center">
+                    <p className="text-xs font-black uppercase tracking-widest text-[#4B3621] mb-3">KRA eTIMS Verified</p>
+                    {data.etimsQrUrl && (
+                      <img src={data.etimsQrUrl} alt="KRA verification QR" className="w-28 h-28 mx-auto mb-3" />
+                    )}
+                    <p className="text-sm font-bold text-gray-700">Invoice: {data.etimsInvoiceNumber}</p>
+                    {data.etimsControlNumber && (
+                      <p className="text-sm text-gray-500">Control No: {data.etimsControlNumber}</p>
+                    )}
+                  </div>
+                ) : etimsFailed ? (
+                  <div className="p-4 rounded-[20px] bg-yellow-50 border border-yellow-200 text-center">
+                    <p className="text-xs font-black uppercase tracking-widest text-yellow-800">
+                      eTIMS verification pending — retry sync before filing
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             <div className="text-center mt-10">
               <p className="font-medium text-lg">Served by: {data.cashierName}</p>
               {data.aiMessage && <p className="italic mt-4 text-gray-600">"{data.aiMessage}"</p>}
