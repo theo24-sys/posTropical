@@ -123,7 +123,12 @@ export const DB = {
       image: item.image,
       description: item.description,
       stock: item.stock,
-      low_stock_threshold: item.lowStockThreshold
+      low_stock_threshold: item.lowStockThreshold,
+      digitax_item_id: item.digitax_item_id,
+      item_class_code: item.item_class_code,
+      package_unit_code: item.package_unit_code,
+      quantity_unit_code: item.quantity_unit_code,
+      tax_type_code: item.tax_type_code
     });
   },
 
