@@ -20,7 +20,6 @@ const supabase = createClient(
 
 const DIGITAX_BASE_URL = process.env.DIGITAX_BASE_URL;
 const DIGITAX_API_KEY = process.env.DIGITAX_API_KEY;
-const DIGITAX_BUSINESS_ID = process.env.DIGITAX_BUSINESS_ID;
 
 // 1. Serve logo.png specifically from the ROOT directory (main dir)
 // This handles the case where the user put the logo in the main folder instead of public
@@ -49,6 +48,25 @@ app.post('/api/migrate', async (req, res) => {
   }
 });
 
+// Maps your internal PaymentMethod values to DigiTax's payment_type_code
+// See: https://ke.docs.digitax.tech/docs/invoice-attributes#payment-type-codes
+function mapPaymentTypeCode(paymentMethod) {
+  const normalized = (paymentMethod || '').toUpperCase().replace('-', '').trim();
+  switch (normalized) {
+    case 'CASH':
+      return '01';
+    case 'MPESA':
+      return '06'; // Mobile Money
+    case 'CARD':
+      return '05'; // Debit & Credit Card
+    case 'PENDING':
+    case 'PAYLATER':
+      return '02'; // Credit
+    default:
+      return '07'; // Other
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ETIMS SYNC ENDPOINT: Push a transaction to DigiTax / KRA eTIMS
 // ═══════════════════════════════════════════════════════════════
@@ -75,23 +93,33 @@ app.post('/api/sync-etims', async (req, res) => {
     }
 
     // 2. Build the DigiTax payload
-    // Matches the real SaleTransaction shape: items = { id, name, quantity, price }[]
-    // total_amount is on `total`, not `total_amount`; date is on `date`, not `created_at`.
+    // Field names below match DigiTax's documented Sale schema:
+    // https://ke.docs.digitax.tech/docs/invoice-attributes
+    //
+    // ⚠️ IMPORTANT — still needs attention before this will fully work:
+    // DigiTax requires each line item's `id` to be a DigiTax/KRA-issued item_id,
+    // obtained by first registering the item via POST /items. Passing your own
+    // menu item id (e.g. "sd_wat") directly here will likely fail once the
+    // field-name issues below are resolved. You'll need either:
+    //   (a) a stored mapping of { your_menu_item_id -> digitax_item_id }, or
+    //   (b) to register each menu item with DigiTax on creation/edit and store
+    //       the returned item_id alongside it in Supabase.
+    // Until that mapping exists, `item.id` below is a placeholder using your
+    // internal id, which may cause a new validation error from DigiTax.
     const payload = {
-      business_id: DIGITAX_BUSINESS_ID,
-      transaction_date: txn.date,
-      customer_pin: 'P000000000Z', // generic KRA pin — SaleTransaction has no customer_pin field
-      customer_name: 'Walk-in Customer',
+      trader_invoice_number: txn.id,               // your own invoice/order number
+      sale_date: txn.date,                          // date of the sale
+      receipt_type_code: 'S',                       // "S" = Sale (vs "R" = Credit Note)
+      payment_type_code: mapPaymentTypeCode(txn.paymentMethod),
+      invoice_status_code: '02',                    // "02" = Approved
       items: (txn.items || []).map((item) => ({
-        id: item.id, // required by DigiTax's SalesPostReq schema — was previously omitted, causing 400s
+        id: item.id,                                // ⚠️ must be a DigiTax item_id — see note above
         name: item.name,
         quantity: item.quantity,
         unit_price: item.price,
         total_amount: item.price * item.quantity,
         tax_rate: 16, // VAT — adjust here if any items are zero-rated/exempt
       })),
-      total_amount: txn.total,
-      payment_method: (txn.paymentMethod || 'CASH').toUpperCase().replace('-', ''),
     };
 
     // 3. Call DigiTax
