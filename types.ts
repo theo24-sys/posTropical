@@ -40,6 +40,12 @@ export interface MenuItem {
   description?: string;
   stock: number;
   lowStockThreshold: number;
+  // eTIMS / KRA fields
+  digitax_item_id?: string;
+  item_class_code?: string;
+  package_unit_code?: string;
+  quantity_unit_code?: string;
+  tax_type_code?: string;
 }
 
 export type InventoryCategory =
@@ -167,3 +173,30 @@ export interface Promotion {
   end_datetime: string;
   is_active: boolean;
 }
+
+// --- KRA eTIMS Types ---
+export interface KraItemPayload {
+  itemSeq: number;
+  itemCd: string;       // maps to item_class_code
+  itemNm: string;       // maps to item_name
+  pkgUnitCd: string;    // maps to package_unit_code
+  qtyUnitCd: string;    // maps to quantity_unit_code
+  unitPrice: number;    // maps to default_unit_price
+  qty: number;          // transactional quantity
+  totAmt: number;       // total price before tax validations
+  taxTyCd: string;      // maps to tax_type_code (e.g., 'D')
+}
+
+export interface eTimsInvoicePayload {
+  trnsNo: number;
+  docNo: string;
+  customerPin?: string;
+  receiptTypeCode: 'S' | 'R'; // S = Sale, R = Refund
+  paymentTypeCode: string;     // '01' = Cash, '02' = M-Pesa/Mobile, etc.
+  totItemCnt: number;
+  totTaxblAmt: number;
+  totTaxAmt: number;
+  totAmt: number;
+  itemList: KraItemPayload[];
+}
+
