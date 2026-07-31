@@ -261,9 +261,25 @@ export const DB = {
   // Transactions
   // ────────────────────────────────────────────────
  async getTransactions(): Promise<SaleTransaction[]> {
-  const data = await safeFetch<any[]>(
-    supabase.from('transactions').select('*').order('date', { ascending: false })
-  );
+    const PAGE_SIZE = 1000;
+    let allRows: any[] = [];
+    let from = 0;
+
+    while (true) {
+      const page = await safeFetch<any[]>(
+        supabase
+          .from('transactions')
+          .select('*')
+          .order('date', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1)
+      );
+      if (!page || page.length === 0) break;
+      allRows = allRows.concat(page);
+      if (page.length < PAGE_SIZE) break; // last page
+      from += PAGE_SIZE;
+    }
+
+    const data = allRows;
     return data.map((t: any) => ({
       id: t.id,
       date: t.date,
