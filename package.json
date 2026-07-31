@@ -1,4 +1,3 @@
-
 {
   "name": "tropical-dreams-pos",
   "private": true,
@@ -13,6 +12,7 @@
   "dependencies": {
     "@google/genai": "*",
     "@supabase/supabase-js": "^2.45.0",
+    "axios": "^1.7.9",
     "express": "^4.18.2",
     "idb": "^8.0.0",
     "lucide-react": "^0.473.0",
