@@ -17,7 +17,7 @@ const DB_VERSION = 6;
 export const LocalDB = {
   async getDB(): Promise<IDBPDatabase<TropicalDB>> {
     return openDB<TropicalDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion, newVersion, transaction) {
+      upgrade(db, oldVersion, newVersion) {
         console.log(`Upgrading IndexedDB from v${oldVersion} to v${newVersion}`);
         if (!db.objectStoreNames.contains('menu_items')) {
           db.createObjectStore('menu_items', { keyPath: 'id' });
@@ -70,7 +70,7 @@ export const LocalDB = {
   },
 
   // ────────────────────────────────────────────────
-  // Inventory — FIXED: saves to IndexedDB, not Supabase
+  // Inventory
   // ────────────────────────────────────────────────
   async saveInventoryItem(item: InventoryItem): Promise<void> {
     try {
@@ -103,7 +103,6 @@ export const LocalDB = {
     await db.delete('inventory', id);
   },
 
-  // Deducts stock from local IndexedDB based on KITCHEN_RECIPES
   async deductKitchenInventory(saleItems: { id: string; quantity: number }[]) {
     const db = await this.getDB();
     const tx = db.transaction('inventory', 'readwrite');
