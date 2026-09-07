@@ -1,40 +1,48 @@
 import axios from 'axios';
 
 export class KraEtimsClient {
-  constructor(baseUrl, tin, deviceSerial) {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl, tin, deviceSerial, cmcKey = '') {
+    this.baseUrl = baseUrl || 'https://etims-api-sbx.kra.go.ke/etims-api';
     this.tin = tin;
     this.deviceSerial = deviceSerial;
+    this.cmcKey = cmcKey;
   }
 
   /**
-   * Performs VSCU/OSCU terminal binding initialization step
+   * Initializes OSCU device and retrieves the cmcKey directly from KRA
    */
-  async initializeDevice(certKey) {
-    const endpoint = `${this.baseUrl}/initializer/selectDeviceInfo`;
+  async selectInitInfo(branchId = '00') {
+    const endpoint = `${this.baseUrl}/selectInitInfo`;
     const payload = {
       tin: this.tin,
-      bhfId: '00', // Default Headquarter branch index allocation
-      dvcSrlNo: this.deviceSerial,
-      certKey: certKey
+      bhfId: branchId,
+      dvcSrlNo: this.deviceSerial
     };
 
     const { data } = await axios.post(endpoint, payload, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'cmcKey': this.cmcKey || '' 
+      }
     });
+
+    if (data?.data?.info?.cmcKey) {
+      this.cmcKey = data.data.info.cmcKey;
+    }
+
     return data;
   }
 
   /**
-   * Transmits realtime transactions directly to KRA ledger systems
+   * Transmits real-time OSCU transaction payloads to KRA
    */
-  async transmitInvoice(invoice, sessionToken) {
-    const endpoint = `${this.baseUrl}/trnsSales/saveTrnsSales`;
+  async saveTrnsSalesOsdc(salesPayload) {
+    const endpoint = `${this.baseUrl}/saveTrnsSalesOsdc`;
 
-    const { data } = await axios.post(endpoint, invoice, {
+    const { data } = await axios.post(endpoint, salesPayload, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`
+        'cmcKey': this.cmcKey
       }
     });
     return data;
