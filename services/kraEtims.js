@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const DEFAULT_BASE_URL = "https://etims-api-sbx.kra.go.ke/etims-api";
+const DEFAULT_BASE_URL = "https://etims-api-sbx.kra.go.ke";
 
 function responsePreview(value) {
   try {
