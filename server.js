@@ -1,60 +1,56 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { KraEtimsClient } from "./services/kraEtims.js";
-dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-const PORT = process.env.PORT || 10000;
+const PORT = Number(process.env.PORT || 10000);
+const branchId = String(process.env.KRA_BRANCH_ID || "00").padStart(2, "0");
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-function requireEnvironmentVariables() {
-  const required = [
-    "SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "KRA_BASE_URL",
-    "KRA_TIN",
-    "KRA_DEVICE_SERIAL",
-    "KRA_BRANCH_ID",
-  ];
-
-  const missing = required.filter((key) => !process.env[key]);
-
-  if (missing.length > 0) {
-    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
-  }
+function required(name) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Missing environment variable: ${name}`);
+  return value;
 }
 
-async function getMenuItemsForKraMapping() {
-  /*
-    Change "menu_items" and the selected columns if your table has
-    a different name.
+function getSupabase() {
+  return createClient(
+    required("SUPABASE_URL"),
+    required("SUPABASE_SERVICE_ROLE_KEY")
+  );
+}
 
-    Expected example columns:
-      id
-      name
-      price
-      kra_item_code
-      kra_tax_type
-  */
+function roundMoney(value) {
+  return Number(Number(value).toFixed(2));
+}
 
+function formatKraDate(value = new Date()) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return formatKraDate(new Date());
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("");
+}
+
+function paymentTypeCode(paymentMethod) {
+  return {
+    Cash: "01",
+    "M-Pesa": "02",
+    Card: "03",
+    "Pay Later": "04",
+  }[paymentMethod] || String(paymentMethod || "01");
+}
+
+async function getMenuItemsForKraMapping(itemIds) {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from("menu_items")
-    .select(
-      `
-        id,
-        name,
-        price,
-        kra_item_code,
-        kra_tax_type
-      `
-    )
-    .eq("active", true);
+    // These are the columns present in this repository's db_setup.sql.
+    .select("id, name, price")
+    .in("id", itemIds);
 
   if (error) {
     console.error("Failed to fetch local menu items", {
@@ -63,192 +59,112 @@ async function getMenuItemsForKraMapping() {
       details: error.details,
       hint: error.hint,
     });
-
-    throw new Error("Failed to fetch local menu items");
+    throw new Error("Failed to fetch menu items for KRA mapping");
   }
 
-  if (!Array.isArray(data)) {
-    throw new Error("Menu-items query did not return an array");
-  }
-
-  return data;
+  return Array.isArray(data) ? data : [];
 }
 
 async function getKraPayload(order) {
-  if (!order || !Array.isArray(order.items)) {
-    throw new Error("Order must contain an items array");
+  if (!order || !Array.isArray(order.items) || order.items.length === 0) {
+    throw new Error("Order must contain a non-empty items array");
   }
 
-  const menuItems = await getMenuItemsForKraMapping();
+  const itemIds = order.items.map((item) => String(item.id ?? item.menuItemId));
+  const menuItems = await getMenuItemsForKraMapping(itemIds);
+  const menuById = new Map(menuItems.map((item) => [String(item.id), item]));
 
-  const menuById = new Map(
-    menuItems.map((item) => [String(item.id), item])
-  );
+  const details = order.items.map((orderItem, index) => {
+    const id = String(orderItem.id ?? orderItem.menuItemId);
+    const menuItem = menuById.get(id);
+    if (!menuItem) throw new Error(`Menu item ${id} was not found`);
 
-  const details = order.items.map((orderItem) => {
-    const menuItem = menuById.get(String(orderItem.menuItemId));
-
-    if (!menuItem) {
-      throw new Error(
-        `No KRA mapping found for menu item ${orderItem.menuItemId}`
-      );
-    }
-
-    const quantity = Number(orderItem.quantity || 1);
-    const unitPrice = Number(
-      orderItem.unitPrice ?? menuItem.price ?? 0
-    );
-
+    const quantity = Number(orderItem.quantity ?? 1);
+    const unitPrice = Number(orderItem.price ?? orderItem.unitPrice ?? menuItem.price);
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      throw new Error(`Invalid quantity for menu item ${menuItem.id}`);
+      throw new Error(`Invalid quantity for menu item ${id}`);
+    }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new Error(`Invalid price for menu item ${id}`);
     }
 
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      throw new Error(`Invalid price for menu item ${menuItem.id}`);
-    }
+    const total = roundMoney(quantity * unitPrice);
+    // The database currently has no KRA item-code columns. Use the stable
+    // menu id until KRA item registration fields are added to menu_items.
+    const itemCode = orderItem.item_class_code || orderItem.digitax_item_id || id;
 
     return {
-      itemSeq: orderItem.itemSeq || 1,
-      itemCd: menuItem.kra_item_code,
+      itemSeq: index + 1,
+      itemCd: itemCode,
       itemNm: menuItem.name,
       qty: quantity,
       prc: unitPrice,
-      taxTyCd: menuItem.kra_tax_type || "B",
+      taxTyCd: orderItem.tax_type_code || "B",
       dcRt: 0,
       dcAmt: 0,
-      splyAmt: quantity * unitPrice,
+      splyAmt: total,
+      taxblAmt: total,
       taxAmt: 0,
-      totAmt: quantity * unitPrice,
+      totAmt: total,
     };
   });
 
+  const total = roundMoney(details.reduce((sum, item) => sum + item.totAmt, 0));
+
   return {
-    /*
-      These field names must match the KRA OSCU API specification
-      for your registered transaction format.
-    */
-    tin: process.env.KRA_TIN,
-    bhfId: process.env.KRA_BRANCH_ID || "00",
-    cmcKey: process.env.KRA_CMC_KEY || undefined,
-    orgInvcNo: order.invoiceNumber || order.id,
-    custTin: order.customerTin || null,
+    tin: required("KRA_TIN"),
+    bhfId: branchId,
+    orgInvcNo: String(order.invoiceNumber || order.orderId || order.id || Date.now()),
+    custTin: order.customerTin || order.customerPin || null,
     custNm: order.customerName || null,
-    salesDt: formatKraDate(new Date()),
+    salesDt: formatKraDate(order.date),
     salesTyCd: "N",
     rcptTyCd: "S",
-    pmtTyCd: order.paymentMethod || "01",
+    pmtTyCd: paymentTypeCode(order.paymentMethod),
     salesSttsCd: "02",
     totItemCnt: details.length,
-    totTaxblAmt: details.reduce(
-      (sum, item) => sum + Number(item.splyAmt || 0),
-      0
-    ),
-    totTaxAmt: details.reduce(
-      (sum, item) => sum + Number(item.taxAmt || 0),
-      0
-    ),
-    totAmt: details.reduce(
-      (sum, item) => sum + Number(item.totAmt || 0),
-      0
-    ),
+    totTaxblAmt: total,
+    totTaxAmt: 0,
+    totAmt: total,
     itemList: details,
   };
-}
-
-function formatKraDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}${month}${day}`;
 }
 
 const kra = new KraEtimsClient();
 
 app.get("/", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    service: "posTropical",
-    status: "running",
-  });
+  res.json({ success: true, service: "posTropical", status: "running" });
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    status: "healthy",
-  });
+  res.json({ success: true, status: "healthy", kraInitialized: Boolean(kra.cmcKey) });
 });
 
 app.post("/kra/init", async (_req, res) => {
   try {
-    const result = await kra.selectInitInfo(
-      process.env.KRA_BRANCH_ID || "00"
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "KRA device initialized successfully",
-      data: result.data,
-    });
+    const result = await kra.selectInitInfo(branchId);
+    res.json({ success: true, message: "KRA device initialized successfully", data: result.data });
   } catch (error) {
-    console.error("KRA initialization failed:", error);
-
-    res.status(502).json({
-      success: false,
-      error: error.message,
-    });
+    console.error("KRA initialization failed:", error.message);
+    res.status(502).json({ success: false, error: error.message });
   }
 });
 
 app.post("/kra/sales", async (req, res) => {
   try {
-    if (!kra.cmcKey) {
-      await kra.selectInitInfo(process.env.KRA_BRANCH_ID || "00");
-    }
-
-    const kraPayload = await getKraPayload(req.body);
-    const kraResponse = await kra.saveTrnsSalesOsdc(kraPayload);
-
-    res.status(200).json({
-      success: true,
-      data: kraResponse,
-    });
+    if (!kra.cmcKey) await kra.selectInitInfo(branchId);
+    const payload = await getKraPayload(req.body);
+    const data = await kra.saveTrnsSalesOsdc(payload);
+    res.json({ success: true, data });
   } catch (error) {
-    console.error("KRA sales submission failed:", error);
-
-    res.status(502).json({
-      success: false,
-      error: error.message,
-    });
+    console.error("KRA sales submission failed:", error.message);
+    res.status(502).json({ success: false, error: error.message });
   }
 });
 
-async function startServer() {
-  try {
-    requireEnvironmentVariables();
-
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-
-    /*
-      Initialize KRA after the server has started.
-      A KRA failure should not stop the Render web service.
-    */
-    try {
-      await kra.selectInitInfo(process.env.KRA_BRANCH_ID || "00");
-      console.log("KRA device initialized successfully");
-    } catch (error) {
-      console.error("Initial KRA sync failed:", error.message);
-      console.error(
-        "The server is still running. KRA initialization will be retried on the next sales request."
-      );
-    }
-  } catch (error) {
-    console.error("Server startup failed:", error);
-    process.exit(1);
-  }
-}
-
-startServer();
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+  kra.selectInitInfo(branchId)
+    .then(() => console.log("KRA device initialized successfully"))
+    .catch((error) => console.error("Initial eTIMS sync failed:", error.message));
+});
