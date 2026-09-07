@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { KraEtimsClient } from "./kraEtimsClient.js";
+import { KraEtimsClient } from "./kraEtims.js";
 
 dotenv.config();
 
