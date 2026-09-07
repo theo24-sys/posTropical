@@ -69,30 +69,36 @@ export class KraEtimsClient {
   }
 
   async selectInitInfo(branchId = process.env.KRA_BRANCH_ID || "00") {
-    if (!this.integrationToken && !this.cmcKey) {
-      throw new Error(
-        "KRA_INTEGRATION_TOKEN is missing; add the token supplied by KRA"
-      );
-    }
+  if (!this.integrationToken && !this.cmcKey) {
+    throw new Error(
+      "KRA_INTEGRATION_TOKEN is missing; add the token supplied by KRA"
+    );
+  }
 
-    const data = await this.post("selectInitInfo", {
+  // OSCU specification calls selectInitOsdcInfo
+  const data = await this.post(
+    "selectInitOsdcInfo", 
+    {
       tin: this.tin,
       bhfId: String(branchId).padStart(2, "0"),
       dvcSrlNo: this.deviceSerial,
-    }, this.integrationToken || this.cmcKey);
+      cmcKey: this.integrationToken || this.cmcKey, // Pass token in body as fallback
+    }, 
+    this.integrationToken || this.cmcKey
+  );
 
-    const returnedCmcKey =
-      data?.data?.info?.cmcKey || data?.data?.cmcKey || data?.cmcKey;
+  const returnedCmcKey =
+    data?.data?.info?.cmcKey || data?.data?.cmcKey || data?.cmcKey;
 
-    if (!returnedCmcKey) {
-      throw new Error(
-        `KRA selectInitInfo returned no cmcKey: ${responsePreview(data)}`
-      );
-    }
-
-    this.cmcKey = returnedCmcKey;
-    return { data, cmcKey: this.cmcKey };
+  if (!returnedCmcKey) {
+    throw new Error(
+      `KRA selectInitOsdcInfo returned no cmcKey: ${responsePreview(data)}`
+    );
   }
+
+  this.cmcKey = returnedCmcKey;
+  return { data, cmcKey: this.cmcKey };
+}
 
   async saveTrnsSalesOsdc(salesPayload) {
     if (!this.cmcKey) {
