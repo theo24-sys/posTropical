@@ -1,218 +1,256 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { createClient } from '@supabase/supabase-js';
-import { KraEtimsClient } from './services/kraEtims.js';
+import express from "express";
+import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
+import { KraEtimsClient } from "./kraEtimsClient.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
+
 const app = express();
 app.use(express.json());
 
-// Use the PORT environment variable provided by Render/Railway, or default to 3000 for local dev
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Service-role Supabase client — server-side only, bypasses RLS.
-// Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set in Render env vars.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const KRA_BASE_URL = process.env.KRA_BASE_URL;
-const KRA_TIN = process.env.KRA_TIN;
-const KRA_DEVICE_SERIAL = process.env.KRA_DEVICE_SERIAL;
-const KRA_CERT_KEY = process.env.KRA_CERT_KEY;
+function requireEnvironmentVariables() {
+  const required = [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "KRA_BASE_URL",
+    "KRA_TIN",
+    "KRA_DEVICE_SERIAL",
+    "KRA_BRANCH_ID",
+  ];
 
-const kraClient = new KraEtimsClient(KRA_BASE_URL, KRA_TIN, KRA_DEVICE_SERIAL);
+  const missing = required.filter((key) => !process.env[key]);
 
-// 1. Serve logo.png specifically from the ROOT directory (main dir)
-// This handles the case where the user put the logo in the main folder instead of public
-app.get('/logo.png', (req, res) => {
-  res.sendFile(path.join(__dirname, 'logo.png'));
-});
-
-// ═══════════════════════════════════════════════════════════════
-// MIGRATION ENDPOINT: Trigger database sync from latest code
-// ═══════════════════════════════════════════════════════════════
-app.post('/api/migrate', async (req, res) => {
-  try {
-    console.log('🔄 Migration triggered: Syncing constants to database...');
-    res.json({
-      success: true,
-      message: 'Migration endpoint ready. See server.js for implementation instructions.',
-      instructions: [
-        'Update Supabase menu_items table directly with new pricing',
-        'Or run: UPDATE menu_items SET price = 200 WHERE id = "sd_wat"',
-        'Then restart server and refresh client to clear cache'
-      ]
-    });
-  } catch (err) {
-    console.error('Migration failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Maps your internal PaymentMethod values to DigiTax's payment_type_code
-// See: https://ke.docs.digitax.tech/docs/invoice-attributes#payment-type-codes
-function mapPaymentTypeCode(paymentMethod) {
-  const normalized = (paymentMethod || '').toUpperCase().replace('-', '').trim();
-  switch (normalized) {
-    case 'CASH':
-      return '01';
-    case 'MPESA':
-      return '06'; // Mobile Money
-    case 'CARD':
-      return '05'; // Debit & Credit Card
-    case 'PENDING':
-    case 'PAYLATER':
-      return '02'; // Credit
-    default:
-      return '07'; // Other
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
   }
 }
 
-async function getKraPayload(txn) {
-  const { data: dbItems, error } = await supabase
-    .from('menu_items')
-    .select('id, name, item_class_code, package_unit_code, quantity_unit_code, price, tax_type_code, digitax_item_id')
-    .in('id', txn.items.map(i => i.id));
+async function getMenuItemsForKraMapping() {
+  /*
+    Change "menu_items" and the selected columns if your table has
+    a different name.
 
-  if (error || !dbItems) throw new Error('Failed to fetch menu items for KRA mapping');
+    Expected example columns:
+      id
+      name
+      price
+      kra_item_code
+      kra_tax_type
+  */
 
-  const kraItemList = txn.items.map((item, index) => {
-    const dbItem = dbItems.find(db => db.id === item.id);
-    const lineTotal = item.price * item.quantity;
+  const { data, error } = await supabase
+    .from("menu_items")
+    .select(
+      `
+        id,
+        name,
+        price,
+        kra_item_code,
+        kra_tax_type
+      `
+    )
+    .eq("active", true);
+
+  if (error) {
+    console.error("Failed to fetch local menu items", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    throw new Error("Failed to fetch local menu items");
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error("Menu-items query did not return an array");
+  }
+
+  return data;
+}
+
+async function getKraPayload(order) {
+  if (!order || !Array.isArray(order.items)) {
+    throw new Error("Order must contain an items array");
+  }
+
+  const menuItems = await getMenuItemsForKraMapping();
+
+  const menuById = new Map(
+    menuItems.map((item) => [String(item.id), item])
+  );
+
+  const details = order.items.map((orderItem) => {
+    const menuItem = menuById.get(String(orderItem.menuItemId));
+
+    if (!menuItem) {
+      throw new Error(
+        `No KRA mapping found for menu item ${orderItem.menuItemId}`
+      );
+    }
+
+    const quantity = Number(orderItem.quantity || 1);
+    const unitPrice = Number(
+      orderItem.unitPrice ?? menuItem.price ?? 0
+    );
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error(`Invalid quantity for menu item ${menuItem.id}`);
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw new Error(`Invalid price for menu item ${menuItem.id}`);
+    }
 
     return {
-      itemSeq: index + 1,
-      itemCd: dbItem?.digitax_item_id || dbItem?.item_class_code || '50000000',
-      itemNm: item.name,
-      pkgUnitCd: dbItem?.package_unit_code || 'NT',
-      qtyUnitCd: dbItem?.quantity_unit_code || 'U',
-      unitPrice: item.price,
-      qty: item.quantity,
-      totAmt: lineTotal,
-      taxTyCd: dbItem?.tax_type_code || 'B'
+      itemSeq: orderItem.itemSeq || 1,
+      itemCd: menuItem.kra_item_code,
+      itemNm: menuItem.name,
+      qty: quantity,
+      prc: unitPrice,
+      taxTyCd: menuItem.kra_tax_type || "B",
+      dcRt: 0,
+      dcAmt: 0,
+      splyAmt: quantity * unitPrice,
+      taxAmt: 0,
+      totAmt: quantity * unitPrice,
     };
   });
 
-  const totAmt = kraItemList.reduce((sum, item) => sum + item.totAmt, 0);
-  const totTaxblAmt = totAmt / 1.16;
-  const totTaxAmt = totAmt - totTaxblAmt;
-
   return {
-    trnsNo: Date.now(),
-    docNo: `INV-${txn.id}`,
-    receiptTypeCode: 'S',
-    paymentTypeCode: mapPaymentTypeCode(txn.paymentMethod),
-    totItemCnt: kraItemList.length,
-    totTaxblAmt: parseFloat(totTaxblAmt.toFixed(2)),
-    totTaxAmt: parseFloat(totTaxAmt.toFixed(2)),
-    totAmt: parseFloat(totAmt.toFixed(2)),
-    itemList: kraItemList
+    /*
+      These field names must match the KRA OSCU API specification
+      for your registered transaction format.
+    */
+    tin: process.env.KRA_TIN,
+    bhfId: process.env.KRA_BRANCH_ID || "00",
+    cmcKey: process.env.KRA_CMC_KEY || undefined,
+    orgInvcNo: order.invoiceNumber || order.id,
+    custTin: order.customerTin || null,
+    custNm: order.customerName || null,
+    salesDt: formatKraDate(new Date()),
+    salesTyCd: "N",
+    rcptTyCd: "S",
+    pmtTyCd: order.paymentMethod || "01",
+    salesSttsCd: "02",
+    totItemCnt: details.length,
+    totTaxblAmt: details.reduce(
+      (sum, item) => sum + Number(item.splyAmt || 0),
+      0
+    ),
+    totTaxAmt: details.reduce(
+      (sum, item) => sum + Number(item.taxAmt || 0),
+      0
+    ),
+    totAmt: details.reduce(
+      (sum, item) => sum + Number(item.totAmt || 0),
+      0
+    ),
+    itemList: details,
   };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ETIMS SYNC ENDPOINT: Push a transaction to DigiTax / KRA eTIMS
-// ═══════════════════════════════════════════════════════════════
-// Call this from the frontend right after a transaction is finalized:
-//   fetch('/api/sync-etims', { method: 'POST', headers: {'Content-Type':'application/json'},
-//     body: JSON.stringify({ transaction_id }) })
-app.post('/api/sync-etims', async (req, res) => {
-  const { transaction_id } = req.body;
+function formatKraDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
-  if (!transaction_id) {
-    return res.status(400).json({ error: 'transaction_id is required' });
-  }
+  return `${year}${month}${day}`;
+}
 
+const kra = new KraEtimsClient();
+
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    service: "posTropical",
+    status: "running",
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "healthy",
+  });
+});
+
+app.post("/kra/init", async (_req, res) => {
   try {
-    // 1. Fetch the transaction record
-    const { data: txn, error: fetchError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('id', transaction_id)
-      .single();
+    const result = await kra.selectInitInfo(
+      process.env.KRA_BRANCH_ID || "00"
+    );
 
-    if (fetchError || !txn) {
-      return res.status(404).json({ error: 'Transaction not found', detail: fetchError?.message });
-    }
-
-    // 2. Build the DigiTax payload
-    // Field names below match DigiTax's documented Sale schema:
-    // https://ke.docs.digitax.tech/docs/invoice-attributes
-    //
-    // ⚠️ IMPORTANT — still needs attention before this will fully work:
-    // DigiTax requires each line item's `id` to be a DigiTax/KRA-issued item_id,
-    // obtained by first registering the item via POST /items. Passing your own
-    // menu item id (e.g. "sd_wat") directly here will likely fail once the
-    // field-name issues below are resolved. You'll need either:
-    //   (a) a stored mapping of { your_menu_item_id -> digitax_item_id }, or
-    //   (b) to register each menu item with DigiTax on creation/edit and store
-    //       the returned item_id alongside it in Supabase.
-    // Until that mapping exists, `item.id` below is a placeholder using your
-    // internal id, which may cause a new validation error from DigiTax.
-    // Use the KRA payload builder
-    const payload = await getKraPayload(txn);
-
-    // 3. Call KRA eTIMS
-    // First, initialize device to get a session token (in a real scenario, this would be cached/managed)
-    const { sessionToken } = await kraClient.initializeDevice(KRA_CERT_KEY);
-
-    const kraRes = await kraClient.transmitInvoice(payload, sessionToken);
-
-    // Assuming kraRes contains a success indicator or throws on failure
-    // For now, we'll check for a specific field that indicates success
-    if (!kraRes || kraRes.responseCode !== '00') {
-      await supabase
-        .from('transactions')
-        .update({
-          etims_sync_status: 'failed',
-          etims_sync_error: JSON.stringify(digitaxData),
-        })
-        .eq('id', transaction_id);
-
-      return res.status(digitaxRes.status).json({ error: 'DigiTax sync failed', detail: digitaxData });
-    }
-
-    // 4. Success — write eTIMS details back to the transaction row
-    const { error: updateError } = await supabase
-      .from('transactions')
-      .update({
-          etims_invoice_number: kraRes.invoiceNo,
-          etims_control_number: kraRes.controlCode,
-          etims_qr_url: kraRes.qrCodeUrl,
-          etims_signature: kraRes.signature,
-          etims_sync_status: 'success',
-          etims_synced_at: new Date().toISOString(),
-          etims_sync_error: null,
-        })
-        .eq('id', transaction_id);
-
-    if (updateError) {
-      return res.status(500).json({ error: 'Synced to KRA eTIMS but failed to update transaction row', detail: updateError.message });
-    }
-
-    return res.json({
+    res.status(200).json({
       success: true,
-      invoice_number: kraRes.invoiceNo,
-      qr_code_url: kraRes.qrCodeUrl,
+      message: "KRA device initialized successfully",
+      data: result.data,
     });
-  } catch (err) {
-    console.error('eTIMS sync failed:', err);
-    return res.status(500).json({ error: 'Unexpected error', detail: err.message });
+  } catch (error) {
+    console.error("KRA initialization failed:", error);
+
+    res.status(502).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 
-// 2. Serve static files from the 'dist' directory (Vite's default build output)
-app.use(express.static(path.join(__dirname, 'dist')));
+app.post("/kra/sales", async (req, res) => {
+  try {
+    if (!kra.cmcKey) {
+      await kra.selectInitInfo(process.env.KRA_BRANCH_ID || "00");
+    }
 
-// 3. Handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    const kraPayload = await getKraPayload(req.body);
+    const kraResponse = await kra.saveTrnsSalesOsdc(kraPayload);
+
+    res.status(200).json({
+      success: true,
+      data: kraResponse,
+    });
+  } catch (error) {
+    console.error("KRA sales submission failed:", error);
+
+    res.status(502).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+async function startServer() {
+  try {
+    requireEnvironmentVariables();
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+    /*
+      Initialize KRA after the server has started.
+      A KRA failure should not stop the Render web service.
+    */
+    try {
+      await kra.selectInitInfo(process.env.KRA_BRANCH_ID || "00");
+      console.log("KRA device initialized successfully");
+    } catch (error) {
+      console.error("Initial KRA sync failed:", error.message);
+      console.error(
+        "The server is still running. KRA initialization will be retried on the next sales request."
+      );
+    }
+  } catch (error) {
+    console.error("Server startup failed:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
