@@ -48,7 +48,6 @@ async function getMenuItemsForKraMapping(itemIds) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("menu_items")
-    // These are the columns present in this repository's db_setup.sql.
     .select("id, name, price")
     .in("id", itemIds);
 
@@ -89,8 +88,6 @@ async function getKraPayload(order) {
     }
 
     const total = roundMoney(quantity * unitPrice);
-    // The database currently has no KRA item-code columns. Use the stable
-    // menu id until KRA item registration fields are added to menu_items.
     const itemCode = orderItem.item_class_code || orderItem.digitax_item_id || id;
 
     return {
@@ -140,9 +137,14 @@ app.get("/health", (_req, res) => {
   res.json({ success: true, status: "healthy", kraInitialized: Boolean(kra.cmcKey) });
 });
 
-app.post("/kra/init", async (_req, res) => {
+app.post("/kra/init", async (req, res) => {
   try {
-    const result = await kra.selectInitInfo(branchId);
+    // Allow overrides from body if provided, fallback to environment
+    if (req.body?.cmcKey) kra.integrationToken = req.body.cmcKey;
+    if (req.body?.dvcSrlNo) kra.deviceSerial = req.body.dvcSrlNo;
+    if (req.body?.tin) kra.tin = req.body.tin;
+
+    const result = await kra.selectInitInfo(req.body?.bhfId || branchId);
     res.json({ success: true, message: "KRA device initialized successfully", data: result.data });
   } catch (error) {
     console.error("KRA initialization failed:", error.message);
