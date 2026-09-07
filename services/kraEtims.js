@@ -16,30 +16,32 @@ export class KraEtimsClient {
     tin = process.env.KRA_TIN,
     deviceSerial = process.env.KRA_DEVICE_SERIAL,
     cmcKey = process.env.KRA_CMC_KEY || "",
+    integrationToken = process.env.KRA_INTEGRATION_TOKEN || process.env.KRA_TOKEN || "",
   } = {}) {
     this.baseUrl = (baseUrl || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
     this.tin = tin?.trim();
     this.deviceSerial = deviceSerial?.trim();
     this.cmcKey = cmcKey?.trim() || "";
+    this.integrationToken = integrationToken?.trim() || "";
 
     if (!this.tin) throw new Error("KRA_TIN is missing");
     if (!this.deviceSerial) throw new Error("KRA_DEVICE_SERIAL is missing");
   }
 
-  headers() {
+  headers(authenticationKey = this.cmcKey || this.integrationToken) {
     return {
       Accept: "application/json",
       "Content-Type": "application/json",
-      cmcKey: this.cmcKey,
+      cmcKey: authenticationKey,
     };
   }
 
-  async post(path, payload) {
+  async post(path, payload, authenticationKey) {
     const endpoint = `${this.baseUrl}/${path.replace(/^\/+/, "")}`;
 
     try {
       const response = await axios.post(endpoint, payload, {
-        headers: this.headers(),
+        headers: this.headers(authenticationKey),
         timeout: 20000,
         validateStatus: () => true,
       });
@@ -67,11 +69,17 @@ export class KraEtimsClient {
   }
 
   async selectInitInfo(branchId = process.env.KRA_BRANCH_ID || "00") {
+    if (!this.integrationToken && !this.cmcKey) {
+      throw new Error(
+        "KRA_INTEGRATION_TOKEN is missing; add the token supplied by KRA"
+      );
+    }
+
     const data = await this.post("selectInitInfo", {
       tin: this.tin,
       bhfId: String(branchId).padStart(2, "0"),
       dvcSrlNo: this.deviceSerial,
-    });
+    }, this.integrationToken || this.cmcKey);
 
     const returnedCmcKey =
       data?.data?.info?.cmcKey || data?.data?.cmcKey || data?.cmcKey;
