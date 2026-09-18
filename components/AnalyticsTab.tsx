@@ -69,7 +69,9 @@ const StatCard: React.FC<{
 export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   salesHistory, expenses, menuItems, users
 }) => {
-  const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all' | 'custom'>('30d');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   const historyBounds = useMemo(() => {
     const dates = salesHistory.map(t => new Date(t.date).getTime()).filter(Number.isFinite);
@@ -81,10 +83,10 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   const { current, previous } = useMemo(() => {
     const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 99999;
     const now = new Date();
-    const cutCurrent = period === 'all' && historyBounds.first ? new Date(historyBounds.first) : new Date(now);
-    if (period !== 'all') cutCurrent.setDate(now.getDate() - days);
+    const cutCurrent = period === 'all' && historyBounds.first ? new Date(historyBounds.first) : period === 'custom' && customStart ? new Date(`${customStart}T00:00:00`) : new Date(now);
+    if (period !== 'all' && period !== 'custom') cutCurrent.setDate(now.getDate() - days);
     const cutPrevious = new Date(cutCurrent);
-    if (period !== 'all') cutPrevious.setDate(cutCurrent.getDate() - days);
+    if (period !== 'all' && period !== 'custom') cutPrevious.setDate(cutCurrent.getDate() - days);
 
     const inWindow = (dateStr: string, from: Date, to: Date) => {
       const d = new Date(dateStr);
@@ -92,10 +94,10 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     };
 
     return {
-      current: salesHistory.filter(t => inWindow(t.date, cutCurrent, now)),
-      previous: salesHistory.filter(t => inWindow(t.date, cutPrevious, cutCurrent)),
+      current: salesHistory.filter(t => period === 'custom' && customEnd ? getNairobiYMD(t.date) >= customStart && getNairobiYMD(t.date) <= customEnd : inWindow(t.date, cutCurrent, now)),
+      previous: period === 'custom' ? [] : salesHistory.filter(t => inWindow(t.date, cutPrevious, cutCurrent)),
     };
-  }, [salesHistory, period, historyBounds]);
+  }, [salesHistory, period, historyBounds, customStart, customEnd]);
 
   const paidCurrent = useMemo(() => current.filter(t => t.status === 'Paid'), [current]);
   const paidPrevious = useMemo(() => previous.filter(t => t.status === 'Paid'), [previous]);
@@ -113,6 +115,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       .filter(e => {
         const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 99999;
         if (period === 'all') return true;
+        if (period === 'custom' && customStart && customEnd) return getNairobiYMD(e.date) >= customStart && getNairobiYMD(e.date) <= customEnd;
         const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
         return new Date(e.date) >= cutoff;
       })
@@ -126,7 +129,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       curExpenses,
       pendingVal, pendingCount,
     };
-  }, [paidCurrent, paidPrevious, current, expenses, period]);
+  }, [paidCurrent, paidPrevious, current, expenses, period, customStart, customEnd]);
 
   // ── Daily trend, or monthly trend for the full operating history ─────────
   const dailyTrend = useMemo(() => {
@@ -154,10 +157,11 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
         ...val, barH: Math.round((val.rev / maxRev) * 100), monthly: true
       }));
     }
-    const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : customStart && customEnd ? Math.min(3660, Math.max(1, Math.ceil((new Date(`${customEnd}T12:00:00`).getTime() - new Date(`${customStart}T12:00:00`).getTime()) / 86400000) + 1)) : 30;
     const buckets: Record<string, { rev: number; orders: number }> = {};
     for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
+      const d = period === 'custom' && customEnd ? new Date(`${customEnd}T12:00:00`) : new Date();
+      d.setDate(d.getDate() - i);
       buckets[getNairobiYMD(d.toISOString())] = { rev: 0, orders: 0 };
     }
     paidCurrent.forEach(t => {
@@ -172,7 +176,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       ...val,
       barH: Math.round((val.rev / maxRev) * 100), monthly: false
     }));
-  }, [paidCurrent, period, historyBounds]);
+  }, [paidCurrent, period, historyBounds, customStart, customEnd]);
 
   // ── Hourly heatmap ────────────────────────────────────────────────────────
   const hourlyData = useMemo(() => {
@@ -259,6 +263,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     { key: '30d', label: '30 Days' },
     { key: '90d', label: '90 Days' },
     { key: 'all', label: 'All Time' },
+    { key: 'custom', label: 'Custom Range' },
   ] as const;
 
   const TEAL = '#0d9488';
@@ -290,6 +295,15 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
           ))}
         </div>
       </div>
+      {period === 'custom' && (
+        <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-4 flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Analyze from</span>
+          <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-gray-50 border border-gray-100 rounded-xl text-xs font-black p-3 outline-none" />
+          <span className="text-xs font-black text-gray-300">to</span>
+          <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-gray-50 border border-gray-100 rounded-xl text-xs font-black p-3 outline-none" />
+          {(!customStart || !customEnd) && <span className="text-xs font-bold text-amber-600">Select both dates to apply the range.</span>}
+        </div>
+      )}
 
       {/* ── KPI Row ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-6">
