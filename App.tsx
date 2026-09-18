@@ -10,11 +10,12 @@ import { AdminDashboard } from './components/AdminDashboard';
 import TransactionsPage from './components/TransactionsPage';
 import { InventoryPage } from './components/InventoryPage';
 import SupplierPage from './components/SupplierPage';
+import RecipePage from './components/RecipePage';
 import { generateReceiptMessage } from './services/geminiService';
 import { DB } from './services/supabase';
 import { LocalDB } from './services/db';
 import {
-  Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History
+  Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History, BookOpen
 } from 'lucide-react';
 
 interface Promotion {
@@ -592,6 +593,14 @@ const App: React.FC = () => {
           >
             <div className="flex items-center gap-3"><LayoutGrid size={22} /> All Items</div>
           </button>
+          <button
+            onClick={() => navigate('/recipe')}
+            className={`w-full flex items-center px-6 py-5 rounded-[20px] text-base font-black transition-all ${
+              location.pathname === '/recipe' ? 'bg-[#e0d4c4] text-[#4B3621] shadow-md' : 'text-gray-400 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center gap-3"><BookOpen size={22} /> Recipes</div>
+          </button>
           <div className="px-6 py-4 mt-6 mb-2 border-t border-gray-50">
             <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px]">Categories</p>
           </div>
@@ -661,6 +670,13 @@ const App: React.FC = () => {
                 title="Orders History"
               >
                 <History size={18} />
+              </button>
+              <button
+                onClick={() => navigate('/recipe')}
+                className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 shadow-sm"
+                title="Recipes"
+              >
+                <BookOpen size={18} />
               </button>
               {isAdmin(posUser) && (
                 <button
@@ -758,6 +774,7 @@ const App: React.FC = () => {
               />
             }
           />
+          <Route path="/recipe" element={<RecipePage />} />
           <Route
             path="/admin"
             element={
