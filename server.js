@@ -1,12 +1,16 @@
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { KraEtimsClient } from "./services/kraEtims.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 const PORT = Number(process.env.PORT || 10000);
 const branchId = String(process.env.KRA_BRANCH_ID || "00").padStart(2, "0");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -162,6 +166,14 @@ app.post("/kra/sales", async (req, res) => {
     console.error("KRA sales submission failed:", error.message);
     res.status(502).json({ success: false, error: error.message });
   }
+});
+
+// Serve the Vite production build and support direct BrowserRouter URLs such
+// as /recipe when the app is hosted behind the Express API server.
+const distPath = path.join(__dirname, "dist");
+app.use(express.static(distPath));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 app.listen(PORT, () => {
