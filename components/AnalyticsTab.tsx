@@ -71,12 +71,20 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
 }) => {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
+  const historyBounds = useMemo(() => {
+    const dates = salesHistory.map(t => new Date(t.date).getTime()).filter(Number.isFinite);
+    if (!dates.length) return { first: null as Date | null, last: null as Date | null };
+    return { first: new Date(Math.min(...dates)), last: new Date(Math.max(...dates)) };
+  }, [salesHistory]);
+
   // ── Filter windows ────────────────────────────────────────────────────────
   const { current, previous } = useMemo(() => {
     const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 99999;
     const now = new Date();
-    const cutCurrent = new Date(now); cutCurrent.setDate(now.getDate() - days);
-    const cutPrevious = new Date(now); cutPrevious.setDate(now.getDate() - days * 2);
+    const cutCurrent = period === 'all' && historyBounds.first ? new Date(historyBounds.first) : new Date(now);
+    if (period !== 'all') cutCurrent.setDate(now.getDate() - days);
+    const cutPrevious = new Date(cutCurrent);
+    if (period !== 'all') cutPrevious.setDate(cutCurrent.getDate() - days);
 
     const inWindow = (dateStr: string, from: Date, to: Date) => {
       const d = new Date(dateStr);
@@ -87,7 +95,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       current: salesHistory.filter(t => inWindow(t.date, cutCurrent, now)),
       previous: salesHistory.filter(t => inWindow(t.date, cutPrevious, cutCurrent)),
     };
-  }, [salesHistory, period]);
+  }, [salesHistory, period, historyBounds]);
 
   const paidCurrent = useMemo(() => current.filter(t => t.status === 'Paid'), [current]);
   const paidPrevious = useMemo(() => previous.filter(t => t.status === 'Paid'), [previous]);
@@ -104,6 +112,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     const curExpenses = expenses
       .filter(e => {
         const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 99999;
+        if (period === 'all') return true;
         const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
         return new Date(e.date) >= cutoff;
       })
@@ -119,9 +128,33 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     };
   }, [paidCurrent, paidPrevious, current, expenses, period]);
 
-  // ── Daily trend (last N days) ─────────────────────────────────────────────
+  // ── Daily trend, or monthly trend for the full operating history ─────────
   const dailyTrend = useMemo(() => {
-    const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 60;
+    if (period === 'all' && historyBounds.first) {
+      const buckets: Record<string, { rev: number; orders: number }> = {};
+      paidCurrent.forEach(t => {
+        const d = getNairobiYMD(t.date).slice(0, 7);
+        if (!buckets[d]) buckets[d] = { rev: 0, orders: 0 };
+        buckets[d].rev += t.total;
+        buckets[d].orders++;
+      });
+      const firstMonth = getNairobiYMD(historyBounds.first.toISOString()).slice(0, 7);
+      const lastMonth = getNairobiYMD((historyBounds.last || new Date()).toISOString()).slice(0, 7);
+      const cursor = new Date(`${firstMonth}-01T12:00:00`);
+      const end = new Date(`${lastMonth}-01T12:00:00`);
+      while (cursor <= end) {
+        const key = cursor.toISOString().slice(0, 7);
+        if (!buckets[key]) buckets[key] = { rev: 0, orders: 0 };
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      const entries = Object.entries(buckets).sort(([a], [b]) => a.localeCompare(b));
+      const maxRev = Math.max(...entries.map(([, v]) => v.rev), 1);
+      return entries.map(([date, val]) => ({
+        date, label: new Date(`${date}-01T12:00:00`).toLocaleDateString('en-KE', { month: 'short', year: 'numeric' }),
+        ...val, barH: Math.round((val.rev / maxRev) * 100), monthly: true
+      }));
+    }
+    const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     const buckets: Record<string, { rev: number; orders: number }> = {};
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
@@ -137,9 +170,9 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       date,
       label: new Date(date + 'T12:00:00').toLocaleDateString('en-KE', { month: 'short', day: 'numeric' }),
       ...val,
-      barH: Math.round((val.rev / maxRev) * 100),
+      barH: Math.round((val.rev / maxRev) * 100), monthly: false
     }));
-  }, [paidCurrent, period]);
+  }, [paidCurrent, period, historyBounds]);
 
   // ── Hourly heatmap ────────────────────────────────────────────────────────
   const hourlyData = useMemo(() => {
@@ -292,11 +325,23 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
         />
       </div>
 
+      <div className="bg-[#fffaf5] border border-[#eadfd2] rounded-[28px] px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[2px] text-[#a1876e]">Analysis coverage</p>
+          <p className="text-sm font-black text-[#4B3621]">
+            {historyBounds.first
+              ? `${historyBounds.first.toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' })} – ${(historyBounds.last || new Date()).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' })}`
+              : 'No transaction history available'}
+          </p>
+        </div>
+        <p className="text-xs font-bold text-[#8b7661]">{period === 'all' ? 'All historical records · monthly growth view' : `Selected window · ${period}`}</p>
+      </div>
+
       {/* ── Daily Revenue Trend ──────────────────────────────────────── */}
       <div className="bg-white rounded-[48px] p-10 border border-gray-50 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <h4 className="text-xl font-black text-[#4B3621] flex items-center gap-3 tracking-tighter">
-            <BarChart2 size={24} className="text-teal-500" /> Daily Revenue Trend
+            <BarChart2 size={24} className="text-teal-500" /> {period === 'all' ? 'Monthly Revenue Growth' : 'Daily Revenue Trend'}
           </h4>
           <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
             {CURRENCY} / day
@@ -306,7 +351,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
           {dailyTrend.map((d, i) => {
             const isToday = d.date === getNairobiYMD();
             return (
-              <div key={i} className="flex flex-col items-center gap-2 group flex-shrink-0" style={{ minWidth: period === '90d' ? '10px' : period === '30d' ? '20px' : '32px' }}>
+              <div key={i} className="flex flex-col items-center gap-2 group flex-shrink-0" style={{ minWidth: d.monthly ? '34px' : period === '90d' ? '10px' : period === '30d' ? '20px' : '32px' }}>
                 <div className="relative w-full flex flex-col items-center">
                   {/* Tooltip */}
                   <div className="absolute bottom-full mb-2 bg-[#4B3621] text-white text-[9px] font-black px-3 py-2 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all z-10 pointer-events-none shadow-xl">
@@ -319,7 +364,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
                     style={{ height: `${Math.max(d.barH, d.rev > 0 ? 4 : 0)}%`, minHeight: d.rev > 0 ? '4px' : '0' }}
                   />
                 </div>
-                {period !== '90d' && (
+                {(period !== '90d' || d.monthly) && (
                   <p className={`text-[8px] font-black uppercase tracking-widest rotate-45 origin-left ${isToday ? 'text-teal-600' : 'text-gray-300'}`} style={{ marginTop: '4px' }}>
                     {d.label.split(' ')[1]}
                   </p>

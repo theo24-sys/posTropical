@@ -51,7 +51,7 @@ const downloadCSV = (filename: string, rows: string[][], headers: string[]) => {
 // ─── Report type definitions ──────────────────────────────────────────────────
 
 type ReportType = 'sales_summary' | 'item_sales' | 'expenses' | 'transactions';
-type PeriodPreset = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
+type PeriodPreset = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'all' | 'custom';
 
 const REPORT_TYPES: { key: ReportType; label: string; desc: string; icon: React.ReactNode }[] = [
   { key: 'sales_summary', label: 'Sales Summary', desc: 'Revenue, margins, payment breakdown', icon: <TrendingUp size={20} /> },
@@ -67,6 +67,7 @@ const PERIOD_PRESETS: { key: PeriodPreset; label: string }[] = [
   { key: 'last_week', label: 'Last Week' },
   { key: 'this_month', label: 'This Month' },
   { key: 'last_month', label: 'Last Month' },
+  { key: 'all', label: 'All Time' },
   { key: 'custom', label: 'Custom Range' },
 ];
 
@@ -76,7 +77,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
   const printRef = useRef<HTMLDivElement>(null);
 
   const [reportType, setReportType] = useState<ReportType>('sales_summary');
-  const [period, setPeriod] = useState<PeriodPreset>('this_month');
+  const [period, setPeriod] = useState<PeriodPreset>('all');
   const [customStart, setCustomStart] = useState(getNairobiYMD());
   const [customEnd, setCustomEnd] = useState(getNairobiYMD());
 
@@ -90,6 +91,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
   const { fromYMD, toYMD, periodLabel } = useMemo(() => {
     const today = new Date();
     const todayYMD = getNairobiYMD();
+    const historyDates = salesHistory.map(t => getNairobiYMD(t.date)).concat(expenses.map(e => getNairobiYMD(e.date))).sort();
+    const firstYMD = historyDates[0] || todayYMD;
 
     switch (period) {
       case 'today':
@@ -131,6 +134,12 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
           periodLabel: `${first.toLocaleString('en-KE', { month: 'long', year: 'numeric' })}`
         };
       }
+      case 'all':
+        return {
+          fromYMD: firstYMD,
+          toYMD: todayYMD,
+          periodLabel: `${fmtDate(firstYMD + 'T12:00:00')} – ${fmtDate(todayYMD + 'T12:00:00')} (All Time)`
+        };
       case 'custom':
         return {
           fromYMD: customStart,
@@ -142,7 +151,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
       default:
         return { fromYMD: todayYMD, toYMD: todayYMD, periodLabel: 'Today' };
     }
-  }, [period, customStart, customEnd]);
+  }, [period, customStart, customEnd, salesHistory, expenses]);
 
   const inWindow = (dateStr: string) => {
     const ymd = getNairobiYMD(dateStr);

@@ -94,7 +94,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const navigate = useNavigate();
 
   // Filtering States
-  const [dateRange, setDateRange] = useState<'Day' | 'Yesterday' | 'Week' | 'Month' | 'All' | 'Custom'>('Day');
+  const [dateRange, setDateRange] = useState<'Day' | 'Yesterday' | 'Week' | 'Month' | 'All' | 'Custom'>('All');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [invSearchTerm, setInvSearchTerm] = useState('');
