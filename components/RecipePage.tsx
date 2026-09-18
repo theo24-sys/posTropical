@@ -54,20 +54,61 @@ const RECIPES: Record<string, Recipe[]> = {
   ],
 };
 
+const CHEF_RECIPES: Record<string, Recipe[]> = {
+  'Chicken & Fish': [
+    { name: 'Chicken Curry 500g', time: '30 mins', ingredients: ['Chicken 500g, onion, 2 tomatoes, garlic 4, ginger', 'Curry powder, turmeric, oil 3 tbsp, water 200ml, coriander', 'Method: fry onion, garlic and ginger; brown chicken; add tomatoes and spices for 5 mins; add water and simmer 15 mins; thicken 10 mins.'] },
+    { name: 'BBQ Roast Chicken 500g', time: '35–40 mins', ingredients: ['Chicken leg 500g, BBQ sauce 3 tbsp, oil 2 tbsp, garlic 3', 'Paprika, pepper, salt, lemon', 'Method: marinate 1 hour; roast at 200°C for 35–40 mins; baste every 15 mins; serve with fries and coleslaw.'] },
+    { name: 'Spicy Chicken Tikka', time: '15–20 mins', ingredients: ['Chicken 500g cubes, yoghurt 100g, tikka masala 2 tbsp', 'Garlic, ginger, lemon, oil, chilli', 'Method: marinate in yoghurt and spices for 2 hours; skewer and grill 15–20 mins; serve with mint chutney.'] },
+    { name: 'Grilled Fish Fillet 500g', time: '10 mins', ingredients: ['Fish fillet 500g, lemon, garlic 3, pepper, salt, paprika', 'Oil, butter', 'Method: marinate 30 mins; grill 4–5 mins per side; baste with butter.'] },
+    { name: 'Whole Fish Tomato Sauce 500g', time: '20 mins', ingredients: ['Whole fish 500g, 3 blended tomatoes, onion, garlic, oil', 'Tomato paste, Royco', 'Method: fry fish lightly; fry onion, garlic and tomato puree; add fish and simmer 12 mins.'] },
+    { name: 'Whole Fish Dry Fry 500g', time: '10 mins', ingredients: ['Whole fish 500g, garlic, ginger, lemon, salt, pepper, paprika', 'Oil, flour 2 tbsp', 'Method: score and marinate 30 mins; coat with flour; deep fry 8–10 mins until golden.'] },
+    { name: 'Whole Fish Coconut Oil 500g', time: '12 mins', ingredients: ['Whole fish 500g, coconut oil 4 tbsp, garlic, ginger', 'Turmeric, salt, lime', 'Method: marinate with lime and garlic; fry in coconut oil for 10–12 mins.'] },
+    { name: 'Grilled Chicken Breast 150g', time: '12–17 mins', ingredients: ['Chicken breasts 4 (600g), oil 3 tbsp, lemon, garlic 4', 'Paprika, pepper, salt, rosemary, honey', 'Method: marinate 30 mins–2 hours; grill 6–7 mins per side at 75°C; rest 5 mins and finish with butter garlic.'] },
+    { name: 'Grilled Fillet Steak 250g', time: '15 mins', ingredients: ['Fillet 400g (2 × 200g), salt, pepper, garlic 2, rosemary', 'Butter 20g, oil 2 tbsp', 'Method: bring to room temperature 20 mins; season; sear in a hot pan 2–3 mins per side; butter baste 1 min; rest 5–7 mins.', 'Temperatures: rare 50°C, medium-rare 55°C, medium 60°C, well-done 70°C.'] },
+  ],
+  'Pasta, Burgers & Burritos': [
+    { name: 'Spaghetti Bolognese 500g', time: '20 mins', ingredients: ['Spaghetti 250g, beef mince 250g, onion, garlic', '3 tomatoes, tomato paste, Italian herbs', 'Method: boil pasta; brown mince with onion and garlic; add tomatoes and simmer 15 mins; mix.'] },
+    { name: 'Beef Burger 250g', time: '12 mins', ingredients: ['Beef mince 250g, bun, onion, tomato, lettuce, cheese', 'Salt, pepper, ketchup, mayonnaise', 'Method: season 250g patty; grill 5–6 mins per side; assemble in bun.'] },
+    { name: 'Grilled Chicken Burger 250g', time: '15 mins', ingredients: ['Chicken breast 250g, bun, lettuce, tomato', 'Garlic powder, paprika, salt, pepper', 'Method: butterfly and season chicken; grill 6–7 mins per side; assemble.'] },
+    { name: 'Beef Burrito 150g', time: '15 mins', ingredients: ['Tortilla, beef mince 150g, beans 80g, rice 80g', 'Cheese 30g, taco seasoning', 'Method: cook beef with seasoning; fill tortilla with rice, beans and cheese; roll and grill.'] },
+    { name: 'Chicken Burrito 150g', time: '15 mins', ingredients: ['Tortilla, chicken 150g, rice 80g, beans 80g', 'Cheese, cumin', 'Method: sauté chicken; fill tortilla; roll and toast.'] },
+    { name: 'Vegetable Burrito 150g', time: '15 mins', ingredients: ['Tortilla, mixed vegetables 150g, beans 80g, rice 80g', 'Cheese, guacamole', 'Method: stir-fry vegetables; assemble burrito; grill.'] },
+    { name: 'Stir-Fried Beef 500g', time: '15 mins', ingredients: ['Beef 500g sliced, soy sauce 2 tbsp, oil 2 tbsp, garlic 3, ginger', 'Onion, bell pepper, pepper, oyster sauce', 'Method: marinate 10 mins; sear in hot wok in batches 2–3 mins; stir-fry vegetables 2 mins; combine.'] },
+  ],
+  Pizza: [
+    { name: 'Margherita Pizza 250g', time: '10–12 mins', ingredients: ['Dough 150g, tomato sauce 50g, mozzarella 80g', 'Basil, olive oil', 'Method: roll to 7–8 inches; add sauce and cheese; bake at 220°C for 10–12 mins.'] },
+    { name: 'BBQ Beef Pizza 250g', time: '12 mins', ingredients: ['Dough 150g, BBQ sauce 50g, beef 80g', 'Mozzarella 80g, onion', 'Method: add BBQ base, beef, cheese and onion; bake at 220°C for 12 mins.'] },
+    { name: 'Chicken BBQ Pizza 250g', time: '12 mins', ingredients: ['Dough 150g, BBQ sauce, chicken 80g', 'Mozzarella 80g, capsicum', 'Method: assemble and bake at 220°C for 12 mins.'] },
+    { name: 'Hawaiian Pizza 250g', time: '10–12 mins', ingredients: ['Dough 150g, tomato sauce, ham 50g, pineapple 50g', 'Mozzarella 80g', 'Method: top and bake at 220°C for 10–12 mins.'] },
+    { name: 'Vegetable Pizza 250g', time: '12 mins', ingredients: ['Dough 150g, sauce 50g, mozzarella 80g', 'Bell pepper, onion and mushroom 80g', 'Method: sauté vegetables lightly; top pizza; bake for 12 mins.'] },
+  ],
+  'Bitings & Bakery': [
+    { name: 'Chicken Nuggets 500g', time: '3–4 mins', ingredients: ['Chicken 500g minced, egg 1, flour 1 cup, breadcrumbs 1.5 cups', 'Garlic, paprika, Royco', 'Method: mince, season and shape 18–20g pieces; coat in flour, egg and breadcrumbs; fry at 170°C for 3–4 mins to 75°C.'] },
+    { name: 'Breaded Fish Fingers 500g', time: '3–4 mins', ingredients: ['Fish 500g, flour 1 cup, eggs 2, breadcrumbs 1.5 cups', 'Garlic, paprika, salt, lemon', 'Method: cut into 3-inch pieces; marinate 10 mins; bread and fry at 170°C for 3–4 mins to 63°C.'] },
+    { name: 'Chicken Nuggets 250g', time: '3–4 mins', ingredients: ['Chicken 250g, egg ½, flour ½ cup, breadcrumbs ¾ cup', 'Garlic, paprika, Royco', 'Method: shape 12–14 nuggets; double-coat for crunch; fry 3–4 mins.'] },
+    { name: 'Fish Fingers 250g', time: '3–4 mins', ingredients: ['Fish 250g, flour ½ cup, egg 1, breadcrumbs ¾ cup', 'Garlic, paprika, lemon', 'Method: cut 8–10 fingers of 25g each; marinate, bread and fry 3–4 mins.'] },
+    { name: 'Croissants 500g', time: '18–20 mins plus proofing', ingredients: ['Flour 500g, cold butter 300g, milk 150ml, water 150ml', 'Sugar 60g, salt 10g, yeast 7g', 'Method: knead and chill 1 hour; laminate 3 folds with 30-min chills; shape triangles; proof 1.5–2 hours; bake at 200°C for 18–20 mins.'] },
+    { name: 'Cinnamon Rolls 500g', time: '20–25 mins plus proofing', ingredients: ['Flour 500g, milk 300ml, butter 80g + 60g', 'Sugar 80g + 100g brown, yeast 7g, cinnamon 2 tbsp, cream cheese icing', 'Method: knead and proof 1 hour; roll 40 × 30cm; spread filling; roll, cut 6–8; proof 45 mins; bake at 180°C for 20–25 mins; ice.'] },
+  ],
+};
+
 const CATEGORY_STYLES: Record<string, string> = {
   Coffees: 'bg-[#ead9c3] text-[#6f4220]', Lemonades: 'bg-[#f6e3a3] text-[#72531a]', Teas: 'bg-[#dce8d3] text-[#406044]',
-  Chocolate: 'bg-[#e7d0c1] text-[#704126]', Shakes: 'bg-[#f0d7d8] text-[#82454c]', Smoothies: 'bg-[#d5e5d5] text-[#356044]', Desserts: 'bg-[#ead7ea] text-[#73466f]'
+  Chocolate: 'bg-[#e7d0c1] text-[#704126]', Shakes: 'bg-[#f0d7d8] text-[#82454c]', Smoothies: 'bg-[#d5e5d5] text-[#356044]', Desserts: 'bg-[#ead7ea] text-[#73466f]',
+  'Chicken & Fish': 'bg-[#f0d5c4] text-[#81421f]', 'Pasta, Burgers & Burritos': 'bg-[#e8d7c3] text-[#70451f]', Pizza: 'bg-[#f6dfb0] text-[#7a5219]', 'Bitings & Bakery': 'bg-[#e6d9c9] text-[#674a32]'
 };
 
 const RecipePage: React.FC = () => {
+  const [recipeBook, setRecipeBook] = useState<'barista' | 'chef'>('barista');
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [openRecipe, setOpenRecipe] = useState<string | null>(null);
-  const categories = Object.keys(RECIPES);
-  const filtered = useMemo(() => categories.flatMap(category => RECIPES[category].map(recipe => ({ ...recipe, category }))).filter(recipe =>
+  const recipeData = recipeBook === 'barista' ? RECIPES : CHEF_RECIPES;
+  const categories = Object.keys(recipeData);
+  const filtered = useMemo(() => categories.flatMap(category => recipeData[category].map(recipe => ({ ...recipe, category }))).filter(recipe =>
     (activeCategory === 'All' || recipe.category === activeCategory) &&
     `${recipe.name} ${recipe.category} ${recipe.ingredients.join(' ')}`.toLowerCase().includes(query.toLowerCase())
-  ), [activeCategory, query]);
+  ), [activeCategory, query, recipeBook, recipeData]);
 
   return (
     <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-10 lg:py-8 bg-[#F5F4EF]">
@@ -79,6 +120,9 @@ const RecipePage: React.FC = () => {
             <p className="mt-2 text-sm text-[#8b7661] max-w-xl">A quick reference for consistent portions, preparation times, and service standards.</p>
           </div>
           <div className="text-left md:text-right"><p className="text-3xl font-black text-[#4B3621]">{filtered.length}</p><p className="text-[10px] font-black uppercase tracking-[2px] text-gray-400">recipes shown</p></div>
+        </div>
+        <div className="inline-flex p-1.5 bg-white rounded-2xl border border-[#eadfd2] shadow-sm mb-5">
+          {([['barista', 'Barista Recipes'], ['chef', 'Chef Recipes']] as const).map(([key, label]) => <button key={key} onClick={() => { setRecipeBook(key); setActiveCategory('All'); setOpenRecipe(null); }} className={`px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${recipeBook === key ? 'bg-[#4B3621] text-white shadow-md' : 'text-gray-400 hover:text-[#4B3621]'}`}>{label}</button>)}
         </div>
         <div className="relative mb-5 max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search recipes, ingredients, or categories..." className="w-full pl-12 pr-11 py-4 bg-white border-2 border-gray-100 rounded-2xl outline-none focus:border-[#14b8a6] focus:ring-4 focus:ring-teal-50 shadow-sm font-medium" />{query && <button onClick={() => setQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#4B3621]"><X size={17} /></button>}</div>
         <div className="flex gap-2 overflow-x-auto pb-2 mb-7 scrollbar-hide">{['All', ...categories].map(category => <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap px-4 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all ${activeCategory === category ? 'bg-[#4B3621] text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100 hover:border-[#d8c5af]'}`}>{category}</button>)}</div>
