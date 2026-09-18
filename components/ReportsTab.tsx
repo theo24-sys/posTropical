@@ -569,6 +569,18 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
 
         <div className="p-10 space-y-8">
 
+          <div className="bg-[#fffaf5] border border-[#eadfd2] rounded-[24px] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[2px] text-[#a1876e]">Data included</p>
+              <p className="text-sm font-black text-[#4B3621]">{periodLabel}</p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs font-bold text-gray-500">
+              <span>{filteredSales.length.toLocaleString()} transactions</span>
+              <span>{filteredExpenses.length.toLocaleString()} expenses</span>
+              <span>{itemSalesData.length.toLocaleString()} items</span>
+            </div>
+          </div>
+
           {/* KPI summary row — always shown */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             {[
@@ -652,7 +664,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ salesHistory, expenses, 
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {itemSalesData.slice(0, 20).map(item => (
+                        {itemSalesData.map(item => (
                           <tr key={item.id} className="hover:bg-gray-50">
                             <td className="px-6 py-3 font-black sticky left-0 bg-white border-r border-gray-50">{item.name}</td>
                             {Object.keys(weeklyItemData).sort().map(wk => (
