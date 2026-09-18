@@ -7,7 +7,7 @@ import {
   Activity, ShieldAlert, Edit3, Beef, Egg, Cake, GlassWater,
   Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
   Leaf, Fish, Coffee, Wheat,
-  Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy, Download
+  Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy, Download, BookOpen
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DB } from '../services/supabase';
@@ -347,6 +347,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="flex items-center gap-5">
             <button onClick={handleManualRefresh} className={`w-14 h-14 flex items-center justify-center rounded-[20px] border-2 border-gray-50 text-gray-300 hover:text-teal-600 hover:border-teal-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
               <RefreshCw size={24} />
+            </button>
+            <button onClick={() => navigate('/admn/recipe')} className="w-14 h-14 flex items-center justify-center rounded-[20px] border-2 border-gray-50 text-gray-300 hover:text-[#4B3621] hover:border-[#eadfd2] transition-all" title="Recipe Handbook">
+              <BookOpen size={24} />
             </button>
             {activeTab === 'inventory' && <button onClick={() => { setEditingInvItem(null); setIsInvModalOpen(true); }} className="bg-[#4B3621] text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <Plus size={22} /> New Asset

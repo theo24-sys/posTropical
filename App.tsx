@@ -272,11 +272,11 @@ const App: React.FC = () => {
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
     if (isSupplier(user)) {
       navigate('/supplier');
-    } else if (location.pathname === '/admin' && isAdmin(user)) {
+    } else if ((location.pathname === '/admin' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') && isAdmin(user)) {
       // stay on admin
-    } else if (location.pathname === '/recipe') {
+    } else if (location.pathname === '/recipe' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') {
       // Staff who open the recipe URL directly should return to it after PIN login.
-      navigate('/recipe');
+      navigate(location.pathname);
     } else {
       navigate('/');
     }
@@ -525,7 +525,7 @@ const App: React.FC = () => {
   }
 
   if (!posUser) {
-  const isAdminPath = location.pathname === '/admin';
+  const isAdminPath = location.pathname === '/admin' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe';
   const isSupplierPath = location.pathname === '/supplier';
   const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
   const MOCK_USER_IDS = new Set(['u1', 'u2', 'u3', 'u4', 'u5']);
@@ -778,6 +778,8 @@ const App: React.FC = () => {
             }
           />
           <Route path="/recipe" element={<RecipePage />} />
+          <Route path="/admin/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/admin" replace />} />
+          <Route path="/admn/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/recipe" replace />} />
           <Route
             path="/admin"
             element={
