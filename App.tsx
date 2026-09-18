@@ -274,6 +274,9 @@ const App: React.FC = () => {
       navigate('/supplier');
     } else if (location.pathname === '/admin' && isAdmin(user)) {
       // stay on admin
+    } else if (location.pathname === '/recipe') {
+      // Staff who open the recipe URL directly should return to it after PIN login.
+      navigate('/recipe');
     } else {
       navigate('/');
     }
