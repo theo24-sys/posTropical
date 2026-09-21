@@ -44,6 +44,9 @@ export interface MenuItem {
   description?: string;
   stock: number;
   lowStockThreshold: number;
+  // Test/practice items print TEST TICKET receipts and are never recorded
+  // as sales, so they don't pollute revenue or reports.
+  isTest?: boolean;
   // eTIMS / KRA fields
   digitax_item_id?: string;
   item_class_code?: string;
@@ -109,7 +112,8 @@ export interface ReceiptData {
   updatedAt?: string;
   aiMessage?: string;
   orderId: string;
-  paymentMethod: PaymentMethod;
+  // Label shown on the receipt; may combine methods, e.g. "Cash + M-Pesa".
+  paymentMethod: string;
   cashierName: string;
   tableNumber?: number;
   orderType?: 'Dine-in' | 'Take Away';
@@ -127,7 +131,8 @@ export interface SaleTransaction {
   id: string;
   date: string;
   total: number;
-  paymentMethod: PaymentMethod;
+  // Label shown on the receipt; may combine methods, e.g. "Cash + M-Pesa".
+  paymentMethod: string;
   status: 'Paid' | 'Pending';
   cashierName: string;
   tableNumber?: number;

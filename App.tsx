@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
-import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, cartIsTestOnly } from './constants';
+import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, cartIsTestOnly, menuItemIsTest } from './constants';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -151,9 +151,10 @@ const App: React.FC = () => {
         ]);
 
        const usersToUse = cloudUsers; // trust Supabase; no fallback to mock data
-       const menuToUse = cloudMenu; // trust Supabase menu as source of truth — no auto-seed
+       // Flag test items (id/name starts with "test") so the menu can badge
+       // them and checkout can exclude them from recorded sales.
+       const menuToUse = cloudMenu.map((m: MenuItem) => menuItemIsTest(m) ? { ...m, isTest: true } : m);
        const inventoryToUse = cloudInv;
-
        setUsers(usersToUse);
        setMenuItems(menuToUse);
        setInventory(inventoryToUse);
@@ -407,7 +408,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: PaymentMethod) => {
+  const handleUpdateStatus = async (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: string) => {
     const tx = salesHistory.find(t => t.id === id);
     if (!tx || !posUser) return;
     const updatedTx: SaleTransaction = {

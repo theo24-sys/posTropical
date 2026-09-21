@@ -192,7 +192,13 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   // ── Payment method split ──────────────────────────────────────────────────
   const paymentSplit = useMemo(() => {
     const map: Record<string, number> = {};
-    paidCurrent.forEach(t => { map[t.paymentMethod] = (map[t.paymentMethod] || 0) + t.total; });
+    paidCurrent.forEach(t => {
+      // Combined labels like "Cash + M-Pesa" split the total evenly across
+      // the methods used, so each shows its share of revenue.
+      const parts = t.paymentMethod.split('+').map(s => s.trim()).filter(Boolean);
+      const share = parts.length > 1 ? t.total / parts.length : t.total;
+      parts.forEach(p => { map[p] = (map[p] || 0) + share; });
+    });
     const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
     const colors: Record<string, string> = {
       'Cash': '#16a34a', 'M-Pesa': '#10b981', 'Card': '#3b82f6', 'Co-Op': '#7c3aed', 'KCB': '#0ea5e9', 'Pay Later': '#f59e0b'
@@ -208,7 +214,8 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       .map(([method, amount]) => ({
         method, amount,
         pct: Math.round((amount / total) * 100),
-        color: colors[method] || '#6b7280',
+        // Strip hand-typed amounts ("Cash 300") so colors still match.
+        color: colors[method.replace(/\s*\d+([.,]\d+)?$/, '').trim()] || '#6b7280',
         icon: icons[method] || <CreditCard size={16} />,
       }));
   }, [paidCurrent]);

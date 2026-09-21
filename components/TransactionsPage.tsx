@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { SaleTransaction, PaymentMethod, PAYMENT_METHODS, User } from '../types';
 import { CURRENCY } from '../constants';
-import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle } from 'lucide-react';
+import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle, Landmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
   transactions: SaleTransaction[];
-  onUpdateStatus: (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: PaymentMethod) => Promise<void>;
+  onUpdateStatus: (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: string) => Promise<void>;
   user: User;
   onEditOrder?: (transaction: SaleTransaction) => void;
 }
@@ -16,7 +16,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
-  const [settleMethod, setSettleMethod] = useState<PaymentMethod>('Cash');
+  // Multi-select: an order can be settled with more than one method.
+  const [settleMethods, setSettleMethods] = useState<Set<PaymentMethod>>(new Set());
+  const [combined, setCombined] = useState('');
+  const [combinedTouched, setCombinedTouched] = useState(false);
   const navigate = useNavigate();
 
   const formatEATDate = (isoString: string) => {
@@ -42,13 +45,25 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
 
   const handleSettleClick = (t: SaleTransaction) => {
     setSelectedTransaction(t);
-    setSettleMethod('Cash');
+    setSettleMethods(new Set());
+    setCombined('');
+    setCombinedTouched(false);
     setIsSettleModalOpen(true);
   };
 
+  const toggleSettleMethod = (m: PaymentMethod) => {
+    setSettleMethods(prev => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m); else next.add(m);
+      return next;
+    });
+  };
+
+  const combinedLabel = (combinedTouched && combined.trim()) || Array.from(settleMethods).join(' + ');
+
   const handleConfirmSettle = async () => {
-    if (selectedTransaction) {
-      await onUpdateStatus(selectedTransaction.id, 'Paid', settleMethod);
+    if (selectedTransaction && settleMethods.size > 0) {
+      await onUpdateStatus(selectedTransaction.id, 'Paid', combinedLabel);
       setIsSettleModalOpen(false);
       setSelectedTransaction(null);
     }
@@ -208,28 +223,44 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
             </div>
 
             <div className="space-y-4 mb-10">
-              <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Select Tender Method</p>
+              <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Select Tender Method{settleMethods.size > 1 ? 's' : ''}</p>
               <div className="grid grid-cols-3 gap-4">
                 {PAYMENT_METHODS.map(m => (
                   <button
                     key={m}
-                    onClick={() => setSettleMethod(m)}
+                    onClick={() => toggleSettleMethod(m)}
                     className={`py-6 rounded-[24px] border-2 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-3 transition-all
-                      ${settleMethod === m ? 'bg-white border-[#4B3621] text-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
+                      ${settleMethods.has(m) ? 'bg-white border-[#4B3621] text-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
                     `}
                   >
                     {m === 'Cash' && <Banknote size={24} />}
                     {m === 'M-Pesa' && <Smartphone size={24} />}
                     {m === 'Card' && <CreditCard size={24} />}
+                    {(m === 'Co-Op' || m === 'KCB') && <Landmark size={24} />}
                     {m}
                   </button>
                 ))}
               </div>
+              {settleMethods.size > 1 && (
+                <input
+                  type="text"
+                  value={combinedTouched ? combined : Array.from(settleMethods).join(' + ')}
+                  onChange={e => { setCombinedTouched(true); setCombined(e.target.value); }}
+                  placeholder="Optional: add amounts, e.g. Cash 300 + M-Pesa 200"
+                  className="mt-4 w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-[24px] focus:bg-white focus:border-[#4B3621] outline-none font-bold text-sm text-[#4B3621] transition-all"
+                />
+              )}
             </div>
 
             <div className="flex gap-4">
               <button onClick={() => setIsSettleModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest text-gray-400">Abort</button>
-              <button onClick={handleConfirmSettle} className="flex-[2] py-6 bg-[#4B3621] text-white rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all">Settle & Archive</button>
+              <button
+                onClick={handleConfirmSettle}
+                disabled={settleMethods.size === 0}
+                className={`flex-[2] py-6 rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl transition-all ${settleMethods.size > 0 ? 'bg-[#4B3621] text-white hover:scale-105 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+              >
+                {settleMethods.size > 0 ? `Settle & Archive — ${combinedLabel}` : 'Settle & Archive'}
+              </button>
             </div>
           </div>
         </div>

@@ -7,9 +7,10 @@ interface ReceiptModalProps {
   data: ReceiptData | null;
   isOpen: boolean;
   onClose: () => void;
-  // Ticking a payment method on a pending bill calls this to close the sale
-  // (marks it Paid with that method, deducts stock, triggers eTIMS sync).
-  onSettlePaymentMethod?: (method: PaymentMethod) => Promise<void>;
+  // Pressing Complete calls this with the payment label (e.g. "Cash" or
+  // "Cash + M-Pesa") to close the sale (marks it Paid, deducts stock,
+  // triggers eTIMS sync).
+  onSettlePaymentMethod?: (methodLabel: string) => Promise<void>;
   // Test receipts are print-only: never saved, never settled.
   isTestOrder?: boolean;
 }
@@ -42,7 +43,10 @@ const PRINT_STYLES = `
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClose, onSettlePaymentMethod, isTestOrder }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
+  // Multi-select: an order can be paid with more than one method.
+  const [selected, setSelected] = useState<Set<PaymentMethod>>(new Set());
+  const [combined, setCombined] = useState('');
+  const [combinedTouched, setCombinedTouched] = useState(false);
   if (!isOpen || !data) return null;
 
   // --- 24-HOUR WOMEN'S DAY CHECK (EAT) ---
@@ -66,13 +70,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const hasEtims = etimsStatus === 'success' && !!data.etimsInvoiceNumber;
   const etimsFailed = etimsStatus === 'failed';
 
-  // Closes the transaction with the ticked payment method. The bill stays
+  const toggleMethod = (m: PaymentMethod) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m); else next.add(m);
+      return next;
+    });
+  };
+
+  // Auto-fill the combined label from the ticked methods; the cashier can
+  // still edit the free-text (e.g. "Cash 300 + M-Pesa 200").
+  const autoLabel = Array.from(selected).join(' + ');
+  const finalLabel = (combinedTouched && combined.trim()) || autoLabel;
+
+  // Closes the transaction with the ticked payment method(s). The bill stays
   // Pending until this runs — ticking alone is not enough.
   const handleComplete = async () => {
-    if (!selectedMethod || !onSettlePaymentMethod || isSettling) return;
+    if (selected.size === 0 || !onSettlePaymentMethod || isSettling) return;
     setIsSettling(true);
     try {
-      await onSettlePaymentMethod(selectedMethod);
+      await onSettlePaymentMethod(finalLabel);
     } catch (e) {
       console.error('Failed to settle from receipt:', e);
     } finally {
@@ -137,19 +154,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     // --- PAYMENT METHOD CHECKBOXES (printed on every copy) ---
     // Pending bill: empty boxes for the cashier to tick by hand.
     // Official receipt: the settled method's box is pre-ticked (■).
-    const tickedMethod = !isPending && PAYMENT_METHODS.includes(data.paymentMethod)
-      ? data.paymentMethod
-      : undefined;
+    // Official receipt: pre-tick every method that was used (combined
+    // labels like "Cash + M-Pesa" tick both boxes).
+    const paidMethods = !isPending ? data.paymentMethod.split('+').map(s => s.trim()) : [];
     const paymentBoxesHtml = isTest ? '' : `
       <div class="divider"></div>
       <div class="center" style="margin-top: 4px;">
         <p style="font-size: 15px; font-weight: bold; letter-spacing: 0.4px; margin: 6px 0 2px 0;">
-          ${isPending ? 'PAYMENT METHOD (TICK ONE)' : 'PAYMENT METHOD'}
+          ${isPending ? 'PAYMENT METHOD (TICK ALL THAT APPLY)' : 'PAYMENT METHOD'}
         </p>
         <div style="margin-top: 6px;">
           ${PAYMENT_METHODS.map(m => `
             <span style="display: inline-block; margin: 4px 7px; font-size: 16px; font-weight: bold; white-space: nowrap;">
-              <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; vertical-align: middle; margin-right: 4px; ${tickedMethod === m ? 'background:#000; box-shadow: inset 0 0 0 3px #fff;' : ''}"></span>${m}
+              <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; vertical-align: middle; margin-right: 4px; ${paidMethods.includes(m) ? 'background:#000; box-shadow: inset 0 0 0 3px #fff;' : ''}"></span>${m}
             </span>
           `).join('')}
         </div>
@@ -259,15 +276,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             {showCompleteFlow && (
               <div className="mt-8">
                 <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 text-center">
-                  Tick the method used, then press Complete
+                  Tick every method used, then press Complete
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {PAYMENT_METHODS.map(m => {
-                    const checked = selectedMethod === m;
+                    const checked = selected.has(m);
                     return (
                       <button
                         key={m}
-                        onClick={() => setSelectedMethod(checked ? null : m)}
+                        onClick={() => toggleMethod(m)}
                         disabled={isSettling}
                         className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
                           checked
@@ -287,17 +304,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                     );
                   })}
                 </div>
+                {selected.size > 1 && (
+                  <input
+                    type="text"
+                    value={combinedTouched ? combined : autoLabel}
+                    onChange={e => { setCombinedTouched(true); setCombined(e.target.value); }}
+                    placeholder="Optional: add amounts, e.g. Cash 300 + M-Pesa 200"
+                    className="mt-3 w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#4B3621] focus:outline-none text-sm font-bold text-[#4B3621] bg-white"
+                  />
+                )}
                 <button
                   onClick={handleComplete}
-                  disabled={!selectedMethod || isSettling}
+                  disabled={selected.size === 0 || isSettling}
                   className={`w-full mt-5 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                    selectedMethod && !isSettling
+                    selected.size > 0 && !isSettling
                       ? 'bg-green-600 text-white hover:bg-green-700 shadow-xl hover:scale-[1.01] active:scale-[0.99]'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   <ShieldCheck size={18} />
-                  {isSettling ? 'Completing...' : selectedMethod ? `Complete — Paid via ${selectedMethod}` : 'Complete'}
+                  {isSettling ? 'Completing...' : selected.size > 0 ? `Complete — Paid via ${finalLabel}` : 'Complete'}
                 </button>
                 <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3">
                   Bill stays Pending until Complete is pressed

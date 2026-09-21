@@ -4,14 +4,15 @@ import { MenuItem, Category, User, SaleTransaction, InventoryItem } from './type
 export const CURRENCY = 'KES';
 
 // --- TEST/SANDBOX ITEMS ---
-// Items whose id or name starts with 'test' (case-insensitive) are treated as
-// system-test items: they can be added to a cart and printed for practice, but
-// the checkout is NOT recorded — no transaction is saved, no stock is deducted,
-// and no eTIMS invoice is raised. Used to exercise the system without polluting
-// sales reports.
+// Test items stay in the menu (flag isTest, or id/name starting with 'test')
+// so staff can print practice tickets. A checkout where every item is a test
+// item is NOT recorded — no transaction is saved, no stock is deducted, and
+// no eTIMS invoice is raised — so sales reports stay clean.
 export const isTestItem = (idOrName: string) => /^test/i.test((idOrName || '').trim());
 export const cartIsTestOnly = (items: { id: string; name: string }[]) =>
   items.length > 0 && items.every(i => isTestItem(i.id) || isTestItem(i.name));
+export const menuItemIsTest = (item: { id: string; name: string; isTest?: boolean }) =>
+  !!item.isTest || isTestItem(item.id) || isTestItem(item.name);
  
 // --- BRANDING ---
 export const LOGO_URL = "https://i.ibb.co/9mh7YqNf/logo-png.png";

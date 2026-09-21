@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { MenuItem } from '../types';
 import { CURRENCY } from '../constants';
-import { Plus, Check, UtensilsCrossed } from 'lucide-react';
+import { Plus, Check, UtensilsCrossed, FlaskConical } from 'lucide-react';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -29,6 +29,11 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onAdd }) => {
     >
       {/* Reduced image container size to aspect-[2/1] */}
       <div className="aspect-[2/1] bg-gray-50 relative overflow-hidden shrink-0">
+        {item.isTest && (
+          <span className="absolute top-2 left-2 z-10 bg-gray-800/90 text-white px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-md">
+            <FlaskConical size={10} /> Test
+          </span>
+        )}
         {!imgError ? (
           <img 
             src={item.image} 

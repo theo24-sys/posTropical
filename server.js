@@ -42,6 +42,9 @@ function formatKraDate(value = new Date()) {
 // Official KRA eTIMS payment type codes:
 // 01 Cash, 02 Credit, 03 Cheque, 04 Mobile Money, 05 Card, 06 Other
 function paymentTypeCode(paymentMethod) {
+  // Combined tenders like "Cash + M-Pesa" are reported under their first
+  // method (KRA takes a single payment type per invoice).
+  const first = String(paymentMethod || "Cash").split("+")[0].trim();
   return {
     Cash: "01",
     "M-Pesa": "04",
@@ -49,7 +52,7 @@ function paymentTypeCode(paymentMethod) {
     "Co-Op": "06", // bank transfer — reported as Other
     KCB: "06", // bank transfer — reported as Other
     "Pay Later": "02", // unpaid bill settled later = credit
-  }[paymentMethod] || String(paymentMethod || "01");
+  }[first] || first;
 }
 
 async function getMenuItemsForKraMapping(itemIds) {
