@@ -195,7 +195,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     paidCurrent.forEach(t => { map[t.paymentMethod] = (map[t.paymentMethod] || 0) + t.total; });
     const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
     const colors: Record<string, string> = {
-      'Cash': '#16a34a', 'M-Pesa': '#10b981', 'Card': '#3b82f6', 'Pay Later': '#f59e0b'
+      'Cash': '#16a34a', 'M-Pesa': '#10b981', 'Card': '#3b82f6', 'Co-Op': '#7c3aed', 'KCB': '#0ea5e9', 'Pay Later': '#f59e0b'
     };
     const icons: Record<string, React.ReactNode> = {
       'Cash': <Banknote size={16} />,

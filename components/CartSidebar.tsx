@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CartItem, PaymentMethod, UserRole, SaleTransaction } from '../types';
+import { CartItem, UserRole, SaleTransaction } from '../types';
 import { CURRENCY } from '../constants';
-import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Banknote, Smartphone, Utensils, ReceiptText, ChevronRight, Clock } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, Utensils, ReceiptText, ChevronRight, Clock } from 'lucide-react';
 import { DB } from '../services/supabase';
 
 interface CartSidebarProps {
@@ -9,7 +9,9 @@ interface CartSidebarProps {
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
-  onCheckout: (paymentMethod: PaymentMethod, orderType: 'Dine-in' | 'Take Away', amountTendered?: number, change?: number, tableNumber?: number) => void;
+  // Payment method is no longer picked at checkout — the guest bill is saved as
+  // Pending and the cashier ticks the actual method on the receipt afterwards.
+  onCheckout: (orderType: 'Dine-in' | 'Take Away', amountTendered?: number, change?: number, tableNumber?: number) => void;
   onHold: (customerName?: string) => void;
   subtotal: number;
   tax: number;
@@ -38,7 +40,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   pendingTransactions = [],
   onResumeOrder
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('M-Pesa');
   const [orderType, setOrderType] = useState<'Dine-in' | 'Take Away'>(prefilledOrderType || 'Dine-in');
   const [selectedTable, setSelectedTable] = useState<number | undefined>(prefilledTable);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -75,7 +76,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
       return;
     }
     onCheckout(
-      paymentMethod,
       orderType,
       undefined,
       undefined,
@@ -193,27 +193,17 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
           )}
 
           <div>
-            <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4">PAYMENT METHOD</p>
-            <div className="grid grid-cols-2 gap-3">
-              {(['Cash', 'M-Pesa', 'Card', 'Pay Later'] as PaymentMethod[]).map(method => (
-                <button
-                  key={method}
-                  onClick={() => setPaymentMethod(method)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
-                    paymentMethod === method
-                      ? 'bg-gray-50 border-[#4B3621] text-[#4B3621] shadow-md'
-                      : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                  } ${method === 'Pay Later' ? 'border-dashed border-orange-200 hover:border-orange-400' : ''}`}
-                >
-                  {method === 'Cash' && <Banknote size={20} />}
-                  {method === 'M-Pesa' && <Smartphone size={20} />}
-                  {method === 'Card' && <CreditCard size={20} />}
-                  {method === 'Pay Later' && <ReceiptText size={20} className={paymentMethod === 'Pay Later' ? 'text-orange-500' : ''} />}
-                  <span className="text-[9px] font-black uppercase tracking-widest">
-                    {method === 'Pay Later' ? 'Pending' : method}
-                  </span>
-                </button>
-              ))}
+            <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 flex items-center gap-2">
+              <Clock size={14} className="text-orange-400" /> BILL SETTLEMENT
+            </p>
+            <div className="p-4 rounded-2xl bg-orange-50 border border-dashed border-orange-200 text-center">
+              <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest leading-relaxed">
+                Bill will be saved as Pending.
+                <br />
+                Print the guest bill, then tick the
+                <br />
+                payment method on the receipt to close it.
+              </p>
             </div>
           </div>
         </div>
@@ -290,20 +280,12 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
         <button
           onClick={handleCheckoutClick}
           disabled={cart.length === 0 || isProcessing}
-          className={`w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] ${
-            paymentMethod === 'Pay Later'
-              ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10'
-              : 'bg-[#4B3621] text-white hover:bg-[#3e2d1e]'
-          } hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3`}
+          className="w-full py-6 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-[2px] bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/10 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
         >
-          {isProcessing ? (
-            'Processing...'
-          ) : paymentMethod === 'Pay Later' ? (
+          {isProcessing ? 'Processing...' : (
             <>
-              <ReceiptText size={22} /> Save & Print Bill
+              <ReceiptText size={22} /> Save & Print Guest Bill
             </>
-          ) : (
-            'Process Payment'
           )}
         </button>
 

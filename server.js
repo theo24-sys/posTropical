@@ -39,12 +39,16 @@ function formatKraDate(value = new Date()) {
   ].join("");
 }
 
+// Official KRA eTIMS payment type codes:
+// 01 Cash, 02 Credit, 03 Cheque, 04 Mobile Money, 05 Card, 06 Other
 function paymentTypeCode(paymentMethod) {
   return {
     Cash: "01",
-    "M-Pesa": "02",
-    Card: "03",
-    "Pay Later": "04",
+    "M-Pesa": "04",
+    Card: "05",
+    "Co-Op": "06", // bank transfer — reported as Other
+    KCB: "06", // bank transfer — reported as Other
+    "Pay Later": "02", // unpaid bill settled later = credit
   }[paymentMethod] || String(paymentMethod || "01");
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { SaleTransaction, PaymentMethod, User } from '../types';
+import { SaleTransaction, PaymentMethod, PAYMENT_METHODS, User } from '../types';
 import { CURRENCY } from '../constants';
 import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -210,7 +210,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
             <div className="space-y-4 mb-10">
               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Select Tender Method</p>
               <div className="grid grid-cols-3 gap-4">
-                {(['Cash', 'M-Pesa', 'Card'] as PaymentMethod[]).map(m => (
+                {PAYMENT_METHODS.map(m => (
                   <button
                     key={m}
                     onClick={() => setSettleMethod(m)}

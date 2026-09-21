@@ -20,7 +20,11 @@ export enum Category {
   PIZZA = 'PIZZA'
 }
 
-export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Pay Later';
+export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Co-Op' | 'KCB' | 'Pay Later';
+
+// Methods ticked on the receipt AFTER the bill is printed.
+// 'Pay Later' is kept for legacy pending records; new bills are always Pending.
+export const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'M-Pesa', 'Card', 'Co-Op', 'KCB'];
 export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista' | 'Supplier';
 
 export interface User {

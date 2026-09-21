@@ -1,16 +1,46 @@
 import React, { useState } from 'react';
-import { ReceiptData } from '../types';
-import { CURRENCY, LOGO_URL } from '../constants';
-import { Printer, X, ReceiptText, ShieldCheck, MapPin, Coffee } from 'lucide-react';
+import { ReceiptData, PaymentMethod, PAYMENT_METHODS } from '../types';
+import { LOGO_URL } from '../constants';
+import { Printer, X, ReceiptText, ShieldCheck, Check } from 'lucide-react';
 
 interface ReceiptModalProps {
   data: ReceiptData | null;
   isOpen: boolean;
   onClose: () => void;
+  // Ticking a payment method on a pending bill calls this to close the sale
+  // (marks it Paid with that method, deducts stock, triggers eTIMS sync).
+  onSettlePaymentMethod?: (method: PaymentMethod) => Promise<void>;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClose }) => {
+const SHOP_PHONE = "0748027790";
+const SHOP_LOCATION = "Lodwar, Turkana County";
+
+const PRINT_STYLES = `
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 18px;
+    line-height: 1.4;
+    color: #000;
+    letter-spacing: 0.3px;
+    margin: 0;
+  }
+  .receipt {
+    width: 72mm;
+    margin: 0 auto;
+    padding: 4mm 2mm;
+  }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  .footer { font-size: 16px; margin-top: 16px; text-align: center; letter-spacing: 0.3px; }
+  h2 { font-size: 26px; letter-spacing: 0.5px; margin: 4px 0; }
+`;
+
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClose, onSettlePaymentMethod }) => {
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   if (!isOpen || !data) return null;
 
   // --- 24-HOUR WOMEN'S DAY CHECK (EAT) ---
@@ -22,8 +52,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   }).format(now);
   const isWomensDay = eatDate === "08/03";
 
-  const SHOP_PHONE = "0748027790";
-  const SHOP_LOCATION = "Lodwar, Turkana County";
   const isPending = data.status === 'Pending';
   const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
 
@@ -32,15 +60,52 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const hasEtims = etimsStatus === 'success' && !!data.etimsInvoiceNumber;
   const etimsFailed = etimsStatus === 'failed';
 
+  // Closes the transaction with the ticked payment method. The bill stays
+  // Pending until this runs — ticking alone is not enough.
+  const handleComplete = async () => {
+    if (!selectedMethod || !onSettlePaymentMethod || isSettling) return;
+    setIsSettling(true);
+    try {
+      await onSettlePaymentMethod(selectedMethod);
+    } catch (e) {
+      console.error('Failed to settle from receipt:', e);
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  // --- SINGLE PRINT: one receipt with payment-method checkboxes for staff
+  // to tick by hand once the customer has paid. ---
   const handlePrint = () => {
     setIsPrinting(true);
-    const printWindow = window.open('', 'ReceiptPrint', 'height=700,width=420');
-    if (!printWindow) {
+    const win = window.open('', 'ReceiptPrint', 'height=700,width=420');
+    if (!win) {
       alert("Please allow pop-ups to print.");
       setIsPrinting(false);
       return;
     }
 
+    win.document.write(`
+      <html>
+      <head>
+        <title>${docTitle} #${data.orderId}</title>
+        <style>${PRINT_STYLES}</style>
+      </head>
+      <body>
+        <div class="receipt">${buildReceiptBodyHtml()}</div>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+
+    setTimeout(() => {
+      win.print();
+      setIsPrinting(false);
+    }, 500);
+  };
+
+  const buildReceiptBodyHtml = () => {
     const itemsHtml = data.items
       .map(item => `
         <tr>
@@ -70,6 +135,28 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       </div>
     ` : '';
 
+    // --- PAYMENT METHOD CHECKBOXES (printed on every copy) ---
+    // Pending bill: empty boxes for the cashier to tick by hand.
+    // Official receipt: the settled method's box is pre-ticked (■).
+    const tickedMethod = !isPending && PAYMENT_METHODS.includes(data.paymentMethod)
+      ? data.paymentMethod
+      : undefined;
+    const paymentBoxesHtml = `
+      <div class="divider"></div>
+      <div class="center" style="margin-top: 4px;">
+        <p style="font-size: 15px; font-weight: bold; letter-spacing: 0.4px; margin: 6px 0 2px 0;">
+          ${isPending ? 'PAYMENT METHOD (TICK ONE)' : 'PAYMENT METHOD'}
+        </p>
+        <div style="margin-top: 6px;">
+          ${PAYMENT_METHODS.map(m => `
+            <span style="display: inline-block; margin: 4px 7px; font-size: 16px; font-weight: bold; white-space: nowrap;">
+              <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; vertical-align: middle; margin-right: 4px; ${tickedMethod === m ? 'background:#000; box-shadow: inset 0 0 0 3px #fff;' : ''}"></span>${m}
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
     // --- ETIMS PRINT BLOCK ---
     const etimsPrintHtml = !isPending ? (
       hasEtims ? `
@@ -88,68 +175,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       ` : ''
     ) : '';
 
-    printWindow.document.write(`
-      <html>
-      <head>
-        <title>${docTitle} #${data.orderId}</title>
-        <style>
-          body { 
-            font-family: 'Courier New', Courier, monospace; 
-            width: 72mm; 
-            margin: 0 auto; 
-            padding: 4mm 2mm; 
-            font-size: 18px; 
-            line-height: 1.4; 
-            color: #000; 
-            letter-spacing: 0.3px;
-          }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
-          table { width: 100%; border-collapse: collapse; }
-          .footer { font-size: 16px; margin-top: 16px; text-align: center; letter-spacing: 0.3px; }
-          h2 { font-size: 26px; letter-spacing: 0.5px; margin: 4px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="center">
-          <h2 style="margin: 0; font-size: 26px; letter-spacing: 0.6px;">Tropical Dreams</h2>
-          <p style="margin: 4px 0; font-size: 18px; letter-spacing: 0.4px;">Coffee House - Lodwar</p>
-          <p style="margin: 2px 0; font-size: 18px; letter-spacing: 0.4px;">${SHOP_PHONE}</p>
-        </div>
-        <div class="divider"></div>
-        <div class="center bold" style="font-size: 20px; letter-spacing: 0.5px;">*** ${docTitle} ***</div>
-        <p style="margin: 6px 0; font-size: 18px;">Order #${data.orderId}</p>
-        <p style="font-size: 18px;">${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}</p>
-        <div class="divider"></div>
-        <table>
-          ${itemsHtml}
-          ${subtotalHtml}
-          ${discountHtml}
-          <tr>
-            <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
-            <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">KES ${data.total.toLocaleString()}</td>
-          </tr>
-        </table>
-        ${etimsPrintHtml}
-        <div class="divider"></div>
-        <div class="footer">
-          <p style="font-size: 18px;">Served by: ${data.cashierName}</p>
-          ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic; font-size: 18px; letter-spacing: 0.3px;">"${data.aiMessage}"</p>` : ''}
-          <p style="margin-top: 16px; font-weight: bold; font-size: 20px; letter-spacing: 0.5px;">Karibu Tena!</p>
-        </div>
-        ${womensDayPrintHtml}
-      </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-
-    setTimeout(() => {
-      printWindow.print();
-      setIsPrinting(false);
-    }, 500);
+    return `
+      <div class="center">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: 0.6px;">Tropical Dreams</h2>
+        <p style="margin: 4px 0; font-size: 18px; letter-spacing: 0.4px;">Coffee House - Lodwar</p>
+        <p style="margin: 2px 0; font-size: 18px; letter-spacing: 0.4px;">${SHOP_PHONE}</p>
+      </div>
+      <div class="divider"></div>
+      <div class="center bold" style="font-size: 20px; letter-spacing: 0.5px;">*** ${docTitle} ***</div>
+      <p style="margin: 6px 0; font-size: 18px;">Order #${data.orderId}</p>
+      <p style="font-size: 18px;">${new Date(data.date).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}</p>
+      <div class="divider"></div>
+      <table>
+        ${itemsHtml}
+        ${subtotalHtml}
+        ${discountHtml}
+        <tr>
+          <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
+          <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">KES ${data.total.toLocaleString()}</td>
+        </tr>
+      </table>
+      ${paymentBoxesHtml}
+      ${etimsPrintHtml}
+      <div class="divider"></div>
+      <div class="footer">
+        <p style="font-size: 18px;">Served by: ${data.cashierName}</p>
+        ${data.aiMessage ? `<p style="margin-top: 12px; font-style: italic; font-size: 18px; letter-spacing: 0.3px;">"${data.aiMessage}"</p>` : ''}
+        <p style="margin-top: 16px; font-weight: bold; font-size: 20px; letter-spacing: 0.5px;">Karibu Tena!</p>
+      </div>
+      ${womensDayPrintHtml}
+    `;
   };
 
   return (
@@ -199,7 +254,62 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             <div className={`p-8 rounded-[32px] text-center font-black ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
               <span className="text-2xl">{isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
               <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
+              {!isPending && (
+                <span className="block mt-2 text-sm font-black uppercase tracking-widest">
+                  Paid via {data.paymentMethod}
+                </span>
+              )}
             </div>
+
+            {/* --- PAYMENT METHOD CHECKBOXES (screen) --- */}
+            {isPending && onSettlePaymentMethod && (
+              <div className="mt-8">
+                <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 text-center">
+                  Tick the method used, then press Complete
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {PAYMENT_METHODS.map(m => {
+                    const checked = selectedMethod === m;
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setSelectedMethod(checked ? null : m)}
+                        disabled={isSettling}
+                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                          checked
+                            ? 'border-[#4B3621] bg-gray-50 shadow-md'
+                            : isSettling
+                              ? 'opacity-50 cursor-wait border-gray-100 bg-gray-50'
+                              : 'border-gray-100 bg-white hover:border-[#4B3621] hover:bg-gray-50 hover:shadow-md active:scale-[0.98]'
+                        }`}
+                      >
+                        <span className={`w-6 h-6 shrink-0 border-2 rounded-md flex items-center justify-center transition-colors ${
+                          checked ? 'border-[#4B3621] bg-[#4B3621]' : 'border-[#4B3621] bg-white'
+                        }`}>
+                          <Check size={16} className={`transition-opacity ${checked ? 'text-white opacity-100' : 'text-[#4B3621] opacity-0'}`} />
+                        </span>
+                        <span className="text-sm font-black uppercase tracking-widest text-[#4B3621]">{m}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleComplete}
+                  disabled={!selectedMethod || isSettling}
+                  className={`w-full mt-5 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                    selectedMethod && !isSettling
+                      ? 'bg-green-600 text-white hover:bg-green-700 shadow-xl hover:scale-[1.01] active:scale-[0.99]'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <ShieldCheck size={18} />
+                  {isSettling ? 'Completing...' : selectedMethod ? `Complete — Paid via ${selectedMethod}` : 'Complete'}
+                </button>
+                <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3">
+                  Bill stays Pending until Complete is pressed
+                </p>
+              </div>
+            )}
 
             {/* --- ETIMS SECTION --- */}
             {!isPending && (
@@ -251,7 +361,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             className={`flex-[2] py-5 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'} text-white rounded-[28px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2`}
           >
             <Printer size={18} />
-            {isPrinting ? 'Printing...' : isPending ? 'Print Guest Bill' : 'Print Receipt'}
+            {isPrinting ? 'Printing x2...' : isPending ? 'Print Guest Bill (x2)' : 'Print Receipt (x2)'}
           </button>
         </div>
       </div>

@@ -323,7 +323,6 @@ const App: React.FC = () => {
   };
 
   const handleCheckout = async (
-    paymentMethod: PaymentMethod,
     orderType: 'Dine-in' | 'Take Away',
     amountTendered?: number,
     change?: number,
@@ -337,14 +336,16 @@ const App: React.FC = () => {
     const finalTotal = subtotal - discountAmount;
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
+    // Every checkout now saves as Pending — the cashier ticks the actual
+    // payment method on the receipt afterwards to close the transaction.
     const sale: SaleTransaction = {
       id: orderId,
       date: editingTransactionId
         ? salesHistory.find(t => t.id === editingTransactionId)?.date || timestamp
         : timestamp,
       total: finalTotal,
-      paymentMethod,
-      status: paymentMethod === 'Pay Later' ? 'Pending' : 'Paid',
+      paymentMethod: 'Pay Later',
+      status: 'Pending',
       cashierName: posUser.name,
       tableNumber,
       orderType,
@@ -367,7 +368,7 @@ const App: React.FC = () => {
         change,
         date: sale.date,
         orderId,
-        paymentMethod,
+        paymentMethod: 'Pay Later',
         cashierName: posUser.name,
         tableNumber,
         orderType,
@@ -385,44 +386,9 @@ const App: React.FC = () => {
         await LocalDB.queueOrder(sale);
       }
 
-      if (sale.status === 'Paid') {
-        try {
-          const saleItems = cart.map(i => ({ id: i.id, quantity: i.quantity }));
-          if (saleItems.length > 0) {
-            if (navigator.onLine) {
-              await DB.deductKitchenInventory(saleItems);
-            } else {
-              await LocalDB.deductKitchenInventory(saleItems);
-            }
-            applyInventoryDeductionLocally(saleItems);
-            console.log(`Inventory deducted for order ${orderId}`);
-            await fetchData(false);
-          }
-        } catch (deductErr: any) {
-          console.error('Inventory deduction failed:', deductErr);
-          logActivity('STOCK_UPDATE', `Deduction failed for order ${orderId}: ${deductErr?.message || 'Unknown error'}`, 'high');
-        }
-
-        // --- ETIMS SYNC (fire only for actually-paid sales, only when online) ---
-        if (navigator.onLine) {
-          const result = await syncEtims(orderId);
-          if (result.ok) {
-            setReceiptData(prev => (prev && prev.orderId === orderId) ? {
-              ...prev,
-              etimsInvoiceNumber: result.invoiceNumber,
-              etimsQrUrl: result.qrUrl,
-              etimsSyncStatus: 'success'
-            } : prev);
-          } else {
-            console.error('eTIMS sync failed:', result.error);
-            setReceiptData(prev => (prev && prev.orderId === orderId) ? {
-              ...prev,
-              etimsSyncStatus: 'failed'
-            } : prev);
-            logActivity('SALE', `eTIMS sync failed for order ${orderId}: ${result.error}`, 'high');
-          }
-        }
-      }
+      // NOTE: no stock deduction or eTIMS sync here — the bill is Pending.
+      // Both happen in handleUpdateStatus when the cashier ticks the payment
+      // method and the sale becomes Paid.
 
       logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
       setCart([]);
@@ -863,6 +829,11 @@ const App: React.FC = () => {
             data={receiptData}
             isOpen={isModalOpen}
             onClose={() => { setIsModalOpen(false); setReceiptData(null); }}
+            onSettlePaymentMethod={async (method) => {
+              if (receiptData) {
+                await handleUpdateStatus(receiptData.orderId, 'Paid', method);
+              }
+            }}
           />
         )}
       </div>
