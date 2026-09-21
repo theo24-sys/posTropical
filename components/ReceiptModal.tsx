@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ReceiptData, PaymentMethod, PAYMENT_METHODS } from '../types';
 import { LOGO_URL, isTestItem } from '../constants';
-import { Printer, X, ReceiptText, ShieldCheck, Check, FlaskConical } from 'lucide-react';
+import { Printer, X, ReceiptText, ShieldCheck, Check, FlaskConical, Banknote, Layers } from 'lucide-react';
 
 interface ReceiptModalProps {
   data: ReceiptData | null;
@@ -45,6 +45,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const [isSettling, setIsSettling] = useState(false);
   // Multi-select: an order can be paid with more than one method.
   const [selected, setSelected] = useState<Set<PaymentMethod>>(new Set());
+  // 'single' is the everyday default; 'multi' unlocks split payments with
+  // per-method amounts.
+  const [payMode, setPayMode] = useState<'single' | 'multi'>('single');
   // Amount tendered per method; for 2+ methods the amounts must add up to
   // the bill total before Complete unlocks.
   const [amounts, setAmounts] = useState<Partial<Record<PaymentMethod, string>>>({});
@@ -86,15 +89,40 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     });
   };
 
-  // Split-payment amounts are custom: they don't have to add up to the bill.
-  // A mismatch only shows a warning — the cashier decides whether to proceed.
-  const needsAmounts = selected.size > 1;
+  // Single-pay mode: tapping a method selects it and deselects the rest.
+  const pickSingle = (m: PaymentMethod) => setSelected(new Set([m]));
+
+  // Switching back to single-pay keeps one method (the first ticked) and
+  // drops any per-method amounts.
+  const switchMode = (mode: 'single' | 'multi') => {
+    setPayMode(mode);
+    if (mode === 'single') {
+      setSelected(prev => (prev.size <= 1 ? prev : new Set([Array.from(prev)[0]])));
+      setAmounts({});
+    }
+  };
+
+  // Amount inputs only appear in multi-pay with 2+ methods ticked. Amounts
+  // are custom: a mismatch only warns, it never blocks Complete.
+  const needsAmounts = payMode === 'multi' && selected.size > 1;
   const totalCents = Math.round(data.total * 100);
   const enteredCents = Array.from(selected).reduce((sum, m) => {
     const v = parseFloat((amounts[m] || '').replace(/,/g, ''));
     return sum + (isFinite(v) && v >= 0 ? Math.round(v * 100) : 0);
   }, 0);
   const remainingCents = totalCents - enteredCents;
+
+  // Helper: divide the bill evenly across ticked methods (the last method
+  // absorbs any rounding remainder).
+  const splitEvenly = () => {
+    const list = Array.from(selected);
+    if (list.length < 2) return;
+    const each = Math.floor(totalCents / list.length);
+    const fmt = (c: number) => (c / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    const next: Partial<Record<PaymentMethod, string>> = {};
+    list.forEach((m, i) => { next[m] = fmt(i === list.length - 1 ? totalCents - each * (list.length - 1) : each); });
+    setAmounts(next);
+  };
 
   // Label saved with the sale, e.g. "Cash" or "Cash 300 + M-Pesa 200".
   const finalLabel = selected.size === 0 ? '' : Array.from(selected)
@@ -299,13 +327,66 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
               )}
             </div>
 
-            {/* --- PAYMENT METHOD CHECKBOXES (screen) --- */}
+            {/* --- PAYMENT (screen): single-pay default + multi-pay section --- */}
             {showCompleteFlow && (
               <div className="mt-8">
-                <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 text-center">
-                  Tick every method used, then press Complete
-                </p>
-                <div className="grid grid-cols-2 gap-3">
+                {/* Mode toggle: single (default) vs multi-pay */}
+                <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-2xl mb-4">
+                  <button
+                    onClick={() => switchMode('single')}
+                    disabled={isSettling}
+                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                      payMode === 'single' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <Banknote size={14} /> Single Pay
+                  </button>
+                  <button
+                    onClick={() => switchMode('multi')}
+                    disabled={isSettling}
+                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                      payMode === 'multi' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <Layers size={14} /> Multi Pay
+                  </button>
+                </div>
+
+                {payMode === 'single' ? (
+                  /* --- SINGLE PAY: tap one method, press Complete --- */
+                  <div>
+                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-3 text-center">
+                      Tap the method used
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {PAYMENT_METHODS.map(m => {
+                        const active = selected.has(m);
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => pickSingle(m)}
+                            disabled={isSettling}
+                            className={`p-4 rounded-2xl border-2 text-sm font-black uppercase tracking-widest transition-all ${
+                              active
+                                ? 'bg-[#4B3621] text-white border-[#4B3621] shadow-lg'
+                                : isSettling
+                                  ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-wait'
+                                  : 'bg-white text-[#4B3621] border-gray-100 hover:border-[#4B3621] hover:shadow-md active:scale-[0.98]'
+                            }`}
+                          >
+                            {m}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* --- MULTI-PAY: tick methods + adjust amounts --- */
+                  <div className="p-4 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-center">
+                      Tick every method used, then split the bill
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
                   {PAYMENT_METHODS.map(m => {
                     const checked = selected.has(m);
                     return (
@@ -330,12 +411,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                       </button>
                     );
                   })}
-                </div>
-                {needsAmounts && (
-                  <div className="mt-3">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">
-                      Amount per method — bill total KES {data.total.toLocaleString()}
-                    </p>
+                    </div>
+                    {needsAmounts && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            Bill total KES {data.total.toLocaleString()}
+                          </p>
+                          <button
+                            onClick={splitEvenly}
+                            disabled={isSettling}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                          >
+                            Split evenly
+                          </button>
+                        </div>
                     <div className="grid grid-cols-2 gap-2">
                       {Array.from(selected).map(m => (
                         <div key={m} className="relative">
@@ -363,6 +453,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                           ? `⚠ Short by KES ${(remainingCents / 100).toLocaleString()} — check before completing`
                           : `⚠ KES ${(-remainingCents / 100).toLocaleString()} more than the bill — check before completing`}
                     </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 <button

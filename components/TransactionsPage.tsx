@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SaleTransaction, PaymentMethod, PAYMENT_METHODS, User } from '../types';
 import { CURRENCY } from '../constants';
-import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle, Landmark } from 'lucide-react';
+import { Search, Clock, CheckCircle, ArrowLeft, CreditCard, Banknote, Smartphone, Utensils, ShoppingBasket, PlusCircle, Landmark, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
@@ -18,8 +18,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
   // Multi-select: an order can be settled with more than one method.
   const [settleMethods, setSettleMethods] = useState<Set<PaymentMethod>>(new Set());
-  // Amount per method; 2+ methods must add up to the bill total.
+  // Amount per method (multi-pay only).
   const [settleAmounts, setSettleAmounts] = useState<Partial<Record<PaymentMethod, string>>>({});
+  // 'single' is the everyday default; 'multi' unlocks split settlement.
+  const [settleMode, setSettleMode] = useState<'single' | 'multi'>('single');
   const navigate = useNavigate();
 
   const formatEATDate = (isoString: string) => {
@@ -47,6 +49,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
     setSelectedTransaction(t);
     setSettleMethods(new Set());
     setSettleAmounts({});
+    setSettleMode('single');
     setIsSettleModalOpen(true);
   };
 
@@ -64,9 +67,33 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
     });
   };
 
+  // Single-pay mode: tapping a method selects it and deselects the rest.
+  const pickSingleSettle = (m: PaymentMethod) => setSettleMethods(new Set([m]));
+
+  // Switching back to single-pay keeps one method and drops any amounts.
+  const switchSettleMode = (mode: 'single' | 'multi') => {
+    setSettleMode(mode);
+    if (mode === 'single') {
+      setSettleMethods(prev => (prev.size <= 1 ? prev : new Set([Array.from(prev)[0]])));
+      setSettleAmounts({});
+    }
+  };
+
+  // Helper: divide the bill evenly across ticked methods (last absorbs rounding).
+  const splitSettleEvenly = () => {
+    const list = Array.from(settleMethods);
+    if (list.length < 2 || !selectedTransaction) return;
+    const cents = Math.round(selectedTransaction.total * 100);
+    const each = Math.floor(cents / list.length);
+    const fmt = (c: number) => (c / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    const next: Partial<Record<PaymentMethod, string>> = {};
+    list.forEach((m, i) => { next[m] = fmt(i === list.length - 1 ? cents - each * (list.length - 1) : each); });
+    setSettleAmounts(next);
+  };
+
   // Split-payment amounts are custom: they don't have to add up to the bill.
   // A mismatch only shows a warning — the cashier decides whether to proceed.
-  const needsAmounts = settleMethods.size > 1;
+  const needsAmounts = settleMode === 'multi' && settleMethods.size > 1;
   const totalCents = Math.round((selectedTransaction?.total || 0) * 100);
   const enteredCents = Array.from(settleMethods).reduce((sum, m) => {
     const v = parseFloat((settleAmounts[m] || '').replace(/,/g, ''));
@@ -241,29 +268,82 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
             </div>
 
             <div className="space-y-4 mb-10">
-              <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Select Tender Method{settleMethods.size > 1 ? 's' : ''}</p>
-              <div className="grid grid-cols-3 gap-4">
-                {PAYMENT_METHODS.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => toggleSettleMethod(m)}
-                    className={`py-6 rounded-[24px] border-2 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-3 transition-all
-                      ${settleMethods.has(m) ? 'bg-white border-[#4B3621] text-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
-                    `}
-                  >
-                    {m === 'Cash' && <Banknote size={24} />}
-                    {m === 'M-Pesa' && <Smartphone size={24} />}
-                    {m === 'Card' && <CreditCard size={24} />}
-                    {(m === 'Co-Op' || m === 'KCB') && <Landmark size={24} />}
-                    {m}
-                  </button>
-                ))}
+              {/* Mode toggle: single (default) vs multi-pay */}
+              <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-[24px]">
+                <button
+                  onClick={() => switchSettleMode('single')}
+                  className={`py-4 rounded-[18px] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                    settleMode === 'single' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Banknote size={14} /> Single Pay
+                </button>
+                <button
+                  onClick={() => switchSettleMode('multi')}
+                  className={`py-4 rounded-[18px] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                    settleMode === 'multi' ? 'bg-white text-[#4B3621] shadow-md' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Layers size={14} /> Multi Pay
+                </button>
               </div>
-              {settleMethods.size > 1 && (
+
+              {settleMode === 'single' ? (
+                <div>
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Tap the tender method</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {PAYMENT_METHODS.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => pickSingleSettle(m)}
+                        className={`py-6 rounded-[24px] border-2 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-3 transition-all
+                          ${settleMethods.has(m) ? 'bg-[#4B3621] text-white border-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
+                        `}
+                      >
+                        {m === 'Cash' && <Banknote size={24} />}
+                        {m === 'M-Pesa' && <Smartphone size={24} />}
+                        {m === 'Card' && <CreditCard size={24} />}
+                        {(m === 'Co-Op' || m === 'KCB') && <Landmark size={24} />}
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-4 block">Tick every tender method used</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {PAYMENT_METHODS.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => toggleSettleMethod(m)}
+                        className={`py-6 rounded-[24px] border-2 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-3 transition-all
+                          ${settleMethods.has(m) ? 'bg-white border-[#4B3621] text-[#4B3621] shadow-xl translate-y-[-4px]' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-200'}
+                        `}
+                      >
+                        {m === 'Cash' && <Banknote size={24} />}
+                        {m === 'M-Pesa' && <Smartphone size={24} />}
+                        {m === 'Card' && <CreditCard size={24} />}
+                        {(m === 'Co-Op' || m === 'KCB') && <Landmark size={24} />}
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {needsAmounts && (
                 <div className="mt-4">
-                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2 text-center">
-                    Amount per method — bill total {CURRENCY} {selectedTransaction.total.toLocaleString()}
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                      Bill total {CURRENCY} {selectedTransaction.total.toLocaleString()}
+                    </p>
+                    <button
+                      onClick={splitSettleEvenly}
+                      className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700"
+                    >
+                      Split evenly
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     {Array.from(settleMethods).map(m => (
                       <div key={m} className="relative">
