@@ -18,8 +18,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const [selectedTransaction, setSelectedTransaction] = useState<SaleTransaction | null>(null);
   // Multi-select: an order can be settled with more than one method.
   const [settleMethods, setSettleMethods] = useState<Set<PaymentMethod>>(new Set());
-  const [combined, setCombined] = useState('');
-  const [combinedTouched, setCombinedTouched] = useState(false);
+  // Amount per method; 2+ methods must add up to the bill total.
+  const [settleAmounts, setSettleAmounts] = useState<Partial<Record<PaymentMethod, string>>>({});
   const navigate = useNavigate();
 
   const formatEATDate = (isoString: string) => {
@@ -46,8 +46,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
   const handleSettleClick = (t: SaleTransaction) => {
     setSelectedTransaction(t);
     setSettleMethods(new Set());
-    setCombined('');
-    setCombinedTouched(false);
+    setSettleAmounts({});
     setIsSettleModalOpen(true);
   };
 
@@ -57,12 +56,32 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
       if (next.has(m)) next.delete(m); else next.add(m);
       return next;
     });
+    setSettleAmounts(prev => {
+      if (!(m in prev)) return prev;
+      const next = { ...prev };
+      delete next[m];
+      return next;
+    });
   };
 
-  const combinedLabel = (combinedTouched && combined.trim()) || Array.from(settleMethods).join(' + ');
+  // Split-payment validation: with 2+ methods, every amount must be entered
+  // and the amounts must total the bill (compared in cents).
+  const needsAmounts = settleMethods.size > 1;
+  const totalCents = Math.round((selectedTransaction?.total || 0) * 100);
+  const enteredCents = Array.from(settleMethods).reduce((sum, m) => {
+    const v = parseFloat((settleAmounts[m] || '').replace(/,/g, ''));
+    return sum + (isFinite(v) && v >= 0 ? Math.round(v * 100) : 0);
+  }, 0);
+  const amountsComplete = !needsAmounts || enteredCents === totalCents;
+  const remainingCents = totalCents - enteredCents;
+
+  // Label saved with the sale, e.g. "Cash" or "Cash 300 + M-Pesa 200".
+  const combinedLabel = settleMethods.size === 0 ? '' : Array.from(settleMethods)
+    .map(m => (needsAmounts ? `${m} ${(settleAmounts[m] || '').trim()}`.trim() : m))
+    .join(' + ');
 
   const handleConfirmSettle = async () => {
-    if (selectedTransaction && settleMethods.size > 0) {
+    if (selectedTransaction && settleMethods.size > 0 && amountsComplete) {
       await onUpdateStatus(selectedTransaction.id, 'Paid', combinedLabel);
       setIsSettleModalOpen(false);
       setSelectedTransaction(null);
@@ -242,13 +261,37 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
                 ))}
               </div>
               {settleMethods.size > 1 && (
-                <input
-                  type="text"
-                  value={combinedTouched ? combined : Array.from(settleMethods).join(' + ')}
-                  onChange={e => { setCombinedTouched(true); setCombined(e.target.value); }}
-                  placeholder="Optional: add amounts, e.g. Cash 300 + M-Pesa 200"
-                  className="mt-4 w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-[24px] focus:bg-white focus:border-[#4B3621] outline-none font-bold text-sm text-[#4B3621] transition-all"
-                />
+                <div className="mt-4">
+                  <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2 text-center">
+                    Amount per method — must add up to {CURRENCY} {selectedTransaction.total.toLocaleString()}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {Array.from(settleMethods).map(m => (
+                      <div key={m} className="relative">
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300">{CURRENCY}</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="any"
+                          value={settleAmounts[m] ?? ''}
+                          onChange={e => setSettleAmounts(prev => ({ ...prev, [m]: e.target.value }))}
+                          placeholder={m}
+                          className="w-full pl-14 pr-4 py-4 bg-gray-50 border-2 border-transparent rounded-[24px] focus:bg-white focus:border-[#4B3621] outline-none font-bold text-sm text-[#4B3621] transition-all"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`text-center text-[10px] font-black uppercase tracking-widest mt-2 ${
+                    remainingCents === 0 ? 'text-green-600' : remainingCents < 0 ? 'text-red-500' : 'text-gray-400'
+                  }`}>
+                    {remainingCents === 0
+                      ? 'Fully allocated ✓'
+                      : remainingCents > 0
+                        ? `Remaining: ${CURRENCY} ${(remainingCents / 100).toLocaleString()}`
+                        : `Over by ${CURRENCY} ${(-remainingCents / 100).toLocaleString()}`}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -256,8 +299,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
               <button onClick={() => setIsSettleModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest text-gray-400">Abort</button>
               <button
                 onClick={handleConfirmSettle}
-                disabled={settleMethods.size === 0}
-                className={`flex-[2] py-6 rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl transition-all ${settleMethods.size > 0 ? 'bg-[#4B3621] text-white hover:scale-105 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                disabled={settleMethods.size === 0 || !amountsComplete}
+                className={`flex-[2] py-6 rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl transition-all ${settleMethods.size > 0 && amountsComplete ? 'bg-[#4B3621] text-white hover:scale-105 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
               >
                 {settleMethods.size > 0 ? `Settle & Archive — ${combinedLabel}` : 'Settle & Archive'}
               </button>

@@ -45,8 +45,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const [isSettling, setIsSettling] = useState(false);
   // Multi-select: an order can be paid with more than one method.
   const [selected, setSelected] = useState<Set<PaymentMethod>>(new Set());
-  const [combined, setCombined] = useState('');
-  const [combinedTouched, setCombinedTouched] = useState(false);
+  // Amount tendered per method; for 2+ methods the amounts must add up to
+  // the bill total before Complete unlocks.
+  const [amounts, setAmounts] = useState<Partial<Record<PaymentMethod, string>>>({});
   if (!isOpen || !data) return null;
 
   // --- 24-HOUR WOMEN'S DAY CHECK (EAT) ---
@@ -76,17 +77,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       if (next.has(m)) next.delete(m); else next.add(m);
       return next;
     });
+    // Drop the amount of any method that gets unticked.
+    setAmounts(prev => {
+      if (!(m in prev)) return prev;
+      const next = { ...prev };
+      delete next[m];
+      return next;
+    });
   };
 
-  // Auto-fill the combined label from the ticked methods; the cashier can
-  // still edit the free-text (e.g. "Cash 300 + M-Pesa 200").
-  const autoLabel = Array.from(selected).join(' + ');
-  const finalLabel = (combinedTouched && combined.trim()) || autoLabel;
+  // Split-payment validation: with 2+ methods ticked, every amount must be
+  // entered and the entered amounts must total the bill (compared in cents
+  // to avoid floating-point drift).
+  const needsAmounts = selected.size > 1;
+  const totalCents = Math.round(data.total * 100);
+  const enteredCents = Array.from(selected).reduce((sum, m) => {
+    const v = parseFloat((amounts[m] || '').replace(/,/g, ''));
+    return sum + (isFinite(v) && v >= 0 ? Math.round(v * 100) : 0);
+  }, 0);
+  const amountsComplete = !needsAmounts || enteredCents === totalCents;
+  const remainingCents = totalCents - enteredCents;
+
+  // Label saved with the sale, e.g. "Cash" or "Cash 300 + M-Pesa 200".
+  const finalLabel = selected.size === 0 ? '' : Array.from(selected)
+    .map(m => (needsAmounts ? `${m} ${(amounts[m] || '').trim()}`.trim() : m))
+    .join(' + ');
 
   // Closes the transaction with the ticked payment method(s). The bill stays
   // Pending until this runs — ticking alone is not enough.
   const handleComplete = async () => {
-    if (selected.size === 0 || !onSettlePaymentMethod || isSettling) return;
+    if (selected.size === 0 || !amountsComplete || !onSettlePaymentMethod || isSettling) return;
     setIsSettling(true);
     try {
       await onSettlePaymentMethod(finalLabel);
@@ -154,9 +174,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     // --- PAYMENT METHOD CHECKBOXES (printed on every copy) ---
     // Pending bill: empty boxes for the cashier to tick by hand.
     // Official receipt: the settled method's box is pre-ticked (■).
-    // Official receipt: pre-tick every method that was used (combined
-    // labels like "Cash + M-Pesa" tick both boxes).
-    const paidMethods = !isPending ? data.paymentMethod.split('+').map(s => s.trim()) : [];
+    // Official receipt: pre-tick every method that was used. Labels may
+    // embed amounts ("Cash 300 + M-Pesa 200") — show them next to the box.
+    const paidParts = !isPending
+      ? data.paymentMethod.split('+').map(s => s.trim()).filter(Boolean).map(p => {
+          const match = p.match(/^(.*?)(?:\s+(\d[\d.,]*))?$/);
+          return { method: (match?.[1] || p).trim(), amount: match?.[2] };
+        })
+      : [];
     const paymentBoxesHtml = isTest ? '' : `
       <div class="divider"></div>
       <div class="center" style="margin-top: 4px;">
@@ -164,11 +189,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
           ${isPending ? 'PAYMENT METHOD (TICK ALL THAT APPLY)' : 'PAYMENT METHOD'}
         </p>
         <div style="margin-top: 6px;">
-          ${PAYMENT_METHODS.map(m => `
+          ${PAYMENT_METHODS.map(m => {
+            const part = paidParts.find(p => p.method === m);
+            const amountLabel = part?.amount ? ` <span style="font-weight:normal">(KES ${Number(part.amount.replace(/,/g, '')).toLocaleString()})</span>` : '';
+            return `
             <span style="display: inline-block; margin: 4px 7px; font-size: 16px; font-weight: bold; white-space: nowrap;">
-              <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; vertical-align: middle; margin-right: 4px; ${paidMethods.includes(m) ? 'background:#000; box-shadow: inset 0 0 0 3px #fff;' : ''}"></span>${m}
+              <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; vertical-align: middle; margin-right: 4px; ${part ? 'background:#000; box-shadow: inset 0 0 0 3px #fff;' : ''}"></span>${m}${amountLabel}
             </span>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
     `;
@@ -304,20 +333,45 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                     );
                   })}
                 </div>
-                {selected.size > 1 && (
-                  <input
-                    type="text"
-                    value={combinedTouched ? combined : autoLabel}
-                    onChange={e => { setCombinedTouched(true); setCombined(e.target.value); }}
-                    placeholder="Optional: add amounts, e.g. Cash 300 + M-Pesa 200"
-                    className="mt-3 w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#4B3621] focus:outline-none text-sm font-bold text-[#4B3621] bg-white"
-                  />
+                {needsAmounts && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">
+                      Amount per method — must add up to KES {data.total.toLocaleString()}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from(selected).map(m => (
+                        <div key={m} className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300">KES</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step="any"
+                            value={amounts[m] ?? ''}
+                            onChange={e => setAmounts(prev => ({ ...prev, [m]: e.target.value }))}
+                            disabled={isSettling}
+                            placeholder={m}
+                            className="w-full pl-11 pr-3 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#4B3621] focus:outline-none text-sm font-bold text-[#4B3621] bg-white disabled:opacity-50"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className={`text-center text-[10px] font-black uppercase tracking-widest mt-2 ${
+                      remainingCents === 0 ? 'text-green-600' : remainingCents < 0 ? 'text-red-500' : 'text-gray-400'
+                    }`}>
+                      {remainingCents === 0
+                        ? 'Fully allocated ✓'
+                        : remainingCents > 0
+                          ? `Remaining: KES ${(remainingCents / 100).toLocaleString()}`
+                          : `Over by KES ${(-remainingCents / 100).toLocaleString()}`}
+                    </p>
+                  </div>
                 )}
                 <button
                   onClick={handleComplete}
-                  disabled={selected.size === 0 || isSettling}
+                  disabled={selected.size === 0 || !amountsComplete || isSettling}
                   className={`w-full mt-5 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                    selected.size > 0 && !isSettling
+                    selected.size > 0 && amountsComplete && !isSettling
                       ? 'bg-green-600 text-white hover:bg-green-700 shadow-xl hover:scale-[1.01] active:scale-[0.99]'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}

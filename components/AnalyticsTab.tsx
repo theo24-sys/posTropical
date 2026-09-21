@@ -193,11 +193,23 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   const paymentSplit = useMemo(() => {
     const map: Record<string, number> = {};
     paidCurrent.forEach(t => {
-      // Combined labels like "Cash + M-Pesa" split the total evenly across
-      // the methods used, so each shows its share of revenue.
-      const parts = t.paymentMethod.split('+').map(s => s.trim()).filter(Boolean);
-      const share = parts.length > 1 ? t.total / parts.length : t.total;
-      parts.forEach(p => { map[p] = (map[p] || 0) + share; });
+      // Labels may combine methods, optionally with amounts per method
+      // ("Cash 300 + M-Pesa 200"). Use the recorded amounts when present;
+      // otherwise split the total evenly across the methods used.
+      const parts = t.paymentMethod.split('+').map(s => s.trim()).filter(Boolean).map(p => {
+        const match = p.match(/^(.*?)(?:\s+(\d[\d.,]*))?$/);
+        const v = parseFloat((match?.[2] || '').replace(/,/g, ''));
+        return { method: (match?.[1] || p).trim(), amount: isFinite(v) ? v : undefined };
+      });
+      const explicit = parts.reduce((s, p) => s + (p.amount || 0), 0);
+      const remainder = Math.max(t.total - explicit, 0);
+      const unpriced = parts.filter(p => p.amount === undefined);
+      parts.forEach(p => {
+        const share = p.amount !== undefined ? p.amount
+          : unpriced.length > 0 ? remainder / unpriced.length
+          : t.total / parts.length;
+        map[p.method] = (map[p.method] || 0) + share;
+      });
     });
     const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
     const colors: Record<string, string> = {
@@ -214,8 +226,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
       .map(([method, amount]) => ({
         method, amount,
         pct: Math.round((amount / total) * 100),
-        // Strip hand-typed amounts ("Cash 300") so colors still match.
-        color: colors[method.replace(/\s*\d+([.,]\d+)?$/, '').trim()] || '#6b7280',
+        color: colors[method] || '#6b7280',
         icon: icons[method] || <CreditCard size={16} />,
       }));
   }, [paidCurrent]);

@@ -42,9 +42,9 @@ function formatKraDate(value = new Date()) {
 // Official KRA eTIMS payment type codes:
 // 01 Cash, 02 Credit, 03 Cheque, 04 Mobile Money, 05 Card, 06 Other
 function paymentTypeCode(paymentMethod) {
-  // Combined tenders like "Cash + M-Pesa" are reported under their first
-  // method (KRA takes a single payment type per invoice).
-  const first = String(paymentMethod || "Cash").split("+")[0].trim();
+  // Combined tenders like "Cash 300 + M-Pesa 200" are reported under their
+  // first method (KRA takes a single payment type per invoice).
+  const first = String(paymentMethod || "Cash").split("+")[0].trim().replace(/\s+\d[\d.,]*$/, "").trim();
   return {
     Cash: "01",
     "M-Pesa": "04",
