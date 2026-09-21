@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
-import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS } from './constants';
+import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, cartIsTestOnly } from './constants';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -336,6 +336,9 @@ const App: React.FC = () => {
     const finalTotal = subtotal - discountAmount;
     const orderId = editingTransactionId || `TD-${Date.now().toString().slice(-6)}`;
     const timestamp = getNairobiISO();
+    // Test carts (all items are system-test items) print a receipt for practice
+    // but are never recorded: no transaction row, no stock deduction, no eTIMS.
+    const isTestCheckout = cartIsTestOnly(cart);
     // Every checkout now saves as Pending — the cashier ticks the actual
     // payment method on the receipt afterwards to close the transaction.
     const sale: SaleTransaction = {
@@ -378,21 +381,25 @@ const App: React.FC = () => {
         etimsSyncStatus: sale.status === 'Paid' ? 'pending' : undefined
       });
       setIsModalOpen(true);
-      setSalesHistory(prev => [sale, ...prev.filter(t => t.id !== orderId)]);
+      setSalesHistory(prev => (isTestCheckout ? prev : [sale, ...prev.filter(t => t.id !== orderId)]));
 
-      if (navigator.onLine) {
-        await DB.saveTransaction(sale);
-      } else {
-        await LocalDB.queueOrder(sale);
+      if (!isTestCheckout) {
+        if (navigator.onLine) {
+          await DB.saveTransaction(sale);
+        } else {
+          await LocalDB.queueOrder(sale);
+        }
       }
 
       // NOTE: no stock deduction or eTIMS sync here — the bill is Pending.
       // Both happen in handleUpdateStatus when the cashier ticks the payment
       // method and the sale becomes Paid.
 
-      logActivity('SALE', `Order ${orderId} ${sale.status}.`, 'low');
-      setCart([]);
-      setEditingTransactionId(null);
+      logActivity('SALE', isTestCheckout ? `TEST order ${orderId} printed — not recorded.` : `Order ${orderId} ${sale.status}.`, 'low');
+      if (!isTestCheckout) {
+        setCart([]);
+        setEditingTransactionId(null);
+      }
     } catch (e) {
       console.error('Checkout failed:', e);
     } finally {
@@ -834,6 +841,7 @@ const App: React.FC = () => {
                 await handleUpdateStatus(receiptData.orderId, 'Paid', method);
               }
             }}
+            isTestOrder={cartIsTestOnly(receiptData.items)}
           />
         )}
       </div>

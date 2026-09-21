@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ReceiptData, PaymentMethod, PAYMENT_METHODS } from '../types';
-import { LOGO_URL } from '../constants';
-import { Printer, X, ReceiptText, ShieldCheck, Check } from 'lucide-react';
+import { LOGO_URL, isTestItem } from '../constants';
+import { Printer, X, ReceiptText, ShieldCheck, Check, FlaskConical } from 'lucide-react';
 
 interface ReceiptModalProps {
   data: ReceiptData | null;
@@ -10,6 +10,8 @@ interface ReceiptModalProps {
   // Ticking a payment method on a pending bill calls this to close the sale
   // (marks it Paid with that method, deducts stock, triggers eTIMS sync).
   onSettlePaymentMethod?: (method: PaymentMethod) => Promise<void>;
+  // Test receipts are print-only: never saved, never settled.
+  isTestOrder?: boolean;
 }
 
 const SHOP_PHONE = "0748027790";
@@ -37,7 +39,7 @@ const PRINT_STYLES = `
   h2 { font-size: 26px; letter-spacing: 0.5px; margin: 4px 0; }
 `;
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClose, onSettlePaymentMethod }) => {
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClose, onSettlePaymentMethod, isTestOrder }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSettling, setIsSettling] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
@@ -53,7 +55,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   const isWomensDay = eatDate === "08/03";
 
   const isPending = data.status === 'Pending';
-  const docTitle = isPending ? "GUEST BILL" : "OFFICIAL RECEIPT";
+  // A printed test receipt: all items are system-test items. It must never be
+  // settled or recorded, even though it looks like a Pending guest bill.
+  const isTest = !!isTestOrder || data.items.every(i => isTestItem(i.id) || isTestItem(i.name));
+  const showCompleteFlow = isPending && !isTest && !!onSettlePaymentMethod;
+  const docTitle = isTest ? "TEST TICKET — NOT A SALE" : (isPending ? "GUEST BILL" : "OFFICIAL RECEIPT");
 
   // --- ETIMS STATUS ---
   const etimsStatus = data.etimsSyncStatus; // 'success' | 'failed' | 'pending' | undefined
@@ -134,7 +140,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     const tickedMethod = !isPending && PAYMENT_METHODS.includes(data.paymentMethod)
       ? data.paymentMethod
       : undefined;
-    const paymentBoxesHtml = `
+    const paymentBoxesHtml = isTest ? '' : `
       <div class="divider"></div>
       <div class="center" style="margin-top: 4px;">
         <p style="font-size: 15px; font-weight: bold; letter-spacing: 0.4px; margin: 6px 0 2px 0;">
@@ -183,11 +189,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         ${itemsHtml}
         ${discountHtml}
         <tr>
-          <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
+          <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">${isTest ? 'TEST TOTAL' : `TOTAL ${isPending ? 'DUE' : 'PAID'}`}</td>
           <td style="padding: 12px 0 8px 0; text-align: right; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">KES ${data.total.toLocaleString()}</td>
         </tr>
       </table>
-      ${paymentBoxesHtml}
+      ${isTest ? '<div class="center bold" style="margin-top: 10px; font-size: 16px;">* TEST TICKET — NOT RECORDED *</div>' : paymentBoxesHtml}
       ${etimsPrintHtml}
       <div class="divider"></div>
       <div class="footer">
@@ -203,16 +209,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#4B3621]/80 backdrop-blur-md">
       <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 relative">
         {/* Header */}
-        <div className={`${isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
-          <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
-            <X size={24} />
-          </button>
-          <div className="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20 relative z-10">
-            {isPending ? <ReceiptText size={40} /> : <ShieldCheck size={40} />}
-          </div>
+          <div className={`${isTest ? 'bg-gray-700' : isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
+            <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
+              <X size={24} />
+            </button>
+            <div className="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20 relative z-10">
+              {isTest ? <FlaskConical size={40} /> : isPending ? <ReceiptText size={40} /> : <ShieldCheck size={40} />}
+            </div>
           <h2 className="font-serif text-3xl font-black uppercase tracking-tighter">{docTitle}</h2>
           <p className="text-white opacity-80 text-sm font-black tracking-widest mt-2">
-            ORDER #{data.orderId} • {isPending ? 'PAYMENT REQUIRED' : 'SETTLED'}
+            ORDER #{data.orderId} • {isTest ? 'TEST MODE — NOTHING SAVED' : isPending ? 'PAYMENT REQUIRED' : 'SETTLED'}
           </p>
         </div>
 
@@ -239,8 +245,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               )}
             </div>
-            <div className={`p-8 rounded-[32px] text-center font-black ${isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
-              <span className="text-2xl">{isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
+            <div className={`p-8 rounded-[32px] text-center font-black ${isTest ? 'bg-gray-100 text-gray-600' : isPending ? 'bg-orange-50 text-orange-800' : 'bg-teal-50 text-[#4B3621]'}`}>
+              <span className="text-2xl">{isTest ? 'TEST TOTAL (NOT RECORDED)' : isPending ? 'TOTAL DUE' : 'TOTAL PAID'}</span>
               <span className="text-5xl block mt-2">KES {data.total.toLocaleString()}</span>
               {!isPending && (
                 <span className="block mt-2 text-sm font-black uppercase tracking-widest">
@@ -250,7 +256,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             </div>
 
             {/* --- PAYMENT METHOD CHECKBOXES (screen) --- */}
-            {isPending && onSettlePaymentMethod && (
+            {showCompleteFlow && (
               <div className="mt-8">
                 <p className="text-[11px] font-black text-gray-300 uppercase tracking-[2px] mb-4 text-center">
                   Tick the method used, then press Complete
