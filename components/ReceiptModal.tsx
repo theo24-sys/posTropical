@@ -122,13 +122,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       </tr>
     ` : '';
 
-    const subtotalHtml = `
-      <tr>
-        <td style="padding: 10px 0 6px 0; font-size: 20px; font-weight: bold; letter-spacing: 0.4px;">Subtotal</td>
-        <td style="padding: 10px 0 6px 0; text-align: right; font-size: 20px; font-weight: bold; letter-spacing: 0.4px;">KES ${(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</td>
-      </tr>
-    `;
-
     const womensDayPrintHtml = isWomensDay ? `
       <div style="margin-top: 16px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px 0; text-align: center; font-weight: bold; font-size: 17px; text-transform: uppercase; letter-spacing: 0.6px;">
         *** HAPPY INTERNATIONAL WOMEN'S DAY ***
@@ -188,7 +181,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
       <div class="divider"></div>
       <table>
         ${itemsHtml}
-        ${subtotalHtml}
         ${discountHtml}
         <tr>
           <td style="padding: 12px 0 8px 0; font-weight: bold; font-size: 22px; letter-spacing: 0.5px;">TOTAL ${isPending ? 'DUE' : 'PAID'}</td>
@@ -240,11 +232,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               ))}
              
-              <div className="flex justify-between pt-4 border-t border-gray-100 font-bold text-gray-600">
-                <span>Subtotal</span>
-                <span>KES {(data.subtotal || data.total + (data.discountAmount || 0)).toLocaleString()}</span>
-              </div>
-              {data.discountAmount && data.discountAmount > 0 && (
+            {data.discountAmount && data.discountAmount > 0 && (
                 <div className="flex justify-between text-green-700 font-black italic">
                   <span>Promo Discount ({data.discountPercent}%)</span>
                   <span>-KES {data.discountAmount.toLocaleString()}</span>
@@ -361,7 +349,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             className={`flex-[2] py-5 ${isPending ? 'bg-orange-600' : 'bg-[#4B3621]'} text-white rounded-[28px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2`}
           >
             <Printer size={18} />
-            {isPrinting ? 'Printing x2...' : isPending ? 'Print Guest Bill (x2)' : 'Print Receipt (x2)'}
+            {isPrinting ? 'Printing...' : isPending ? 'Print Guest Bill' : 'Print Receipt'}
           </button>
         </div>
       </div>

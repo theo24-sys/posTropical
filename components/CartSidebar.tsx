@@ -251,14 +251,6 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
       {/* FIXED FOOTER */}
       <div className="p-8 bg-white border-t border-gray-100 space-y-6 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0">
         <div className="space-y-3">
-          <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-6">
-            <span className="text-base font-black text-gray-400 uppercase tracking-widest">Subtotal</span>
-            <div className="text-right">
-              <span className="text-xs font-black text-gray-400 uppercase mr-2">{CURRENCY}</span>
-              <span className="text-2xl font-black text-[#4B3621] tracking-tighter">{subtotal.toLocaleString()}</span>
-            </div>
-          </div>
-
           {discountPercent > 0 && (
             <div className="flex justify-between text-green-700 font-medium text-lg">
               <span>Promo Discount ({discountPercent}%)</span>
