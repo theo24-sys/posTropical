@@ -86,16 +86,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
     });
   };
 
-  // Split-payment validation: with 2+ methods ticked, every amount must be
-  // entered and the entered amounts must total the bill (compared in cents
-  // to avoid floating-point drift).
+  // Split-payment amounts are custom: they don't have to add up to the bill.
+  // A mismatch only shows a warning — the cashier decides whether to proceed.
   const needsAmounts = selected.size > 1;
   const totalCents = Math.round(data.total * 100);
   const enteredCents = Array.from(selected).reduce((sum, m) => {
     const v = parseFloat((amounts[m] || '').replace(/,/g, ''));
     return sum + (isFinite(v) && v >= 0 ? Math.round(v * 100) : 0);
   }, 0);
-  const amountsComplete = !needsAmounts || enteredCents === totalCents;
   const remainingCents = totalCents - enteredCents;
 
   // Label saved with the sale, e.g. "Cash" or "Cash 300 + M-Pesa 200".
@@ -106,7 +104,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
   // Closes the transaction with the ticked payment method(s). The bill stays
   // Pending until this runs — ticking alone is not enough.
   const handleComplete = async () => {
-    if (selected.size === 0 || !amountsComplete || !onSettlePaymentMethod || isSettling) return;
+    if (selected.size === 0 || !onSettlePaymentMethod || isSettling) return;
     setIsSettling(true);
     try {
       await onSettlePaymentMethod(finalLabel);
@@ -336,7 +334,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 {needsAmounts && (
                   <div className="mt-3">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">
-                      Amount per method — must add up to KES {data.total.toLocaleString()}
+                      Amount per method — bill total KES {data.total.toLocaleString()}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {Array.from(selected).map(m => (
@@ -357,21 +355,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                       ))}
                     </div>
                     <p className={`text-center text-[10px] font-black uppercase tracking-widest mt-2 ${
-                      remainingCents === 0 ? 'text-green-600' : remainingCents < 0 ? 'text-red-500' : 'text-gray-400'
+                      remainingCents === 0 ? 'text-green-600' : 'text-amber-500'
                     }`}>
                       {remainingCents === 0
-                        ? 'Fully allocated ✓'
+                        ? 'Adds up to the bill ✓'
                         : remainingCents > 0
-                          ? `Remaining: KES ${(remainingCents / 100).toLocaleString()}`
-                          : `Over by KES ${(-remainingCents / 100).toLocaleString()}`}
+                          ? `⚠ Short by KES ${(remainingCents / 100).toLocaleString()} — check before completing`
+                          : `⚠ KES ${(-remainingCents / 100).toLocaleString()} more than the bill — check before completing`}
                     </p>
                   </div>
                 )}
                 <button
                   onClick={handleComplete}
-                  disabled={selected.size === 0 || !amountsComplete || isSettling}
+                  disabled={selected.size === 0 || isSettling}
                   className={`w-full mt-5 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                    selected.size > 0 && amountsComplete && !isSettling
+                    selected.size > 0 && !isSettling
                       ? 'bg-green-600 text-white hover:bg-green-700 shadow-xl hover:scale-[1.01] active:scale-[0.99]'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}

@@ -64,15 +64,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
     });
   };
 
-  // Split-payment validation: with 2+ methods, every amount must be entered
-  // and the amounts must total the bill (compared in cents).
+  // Split-payment amounts are custom: they don't have to add up to the bill.
+  // A mismatch only shows a warning — the cashier decides whether to proceed.
   const needsAmounts = settleMethods.size > 1;
   const totalCents = Math.round((selectedTransaction?.total || 0) * 100);
   const enteredCents = Array.from(settleMethods).reduce((sum, m) => {
     const v = parseFloat((settleAmounts[m] || '').replace(/,/g, ''));
     return sum + (isFinite(v) && v >= 0 ? Math.round(v * 100) : 0);
   }, 0);
-  const amountsComplete = !needsAmounts || enteredCents === totalCents;
   const remainingCents = totalCents - enteredCents;
 
   // Label saved with the sale, e.g. "Cash" or "Cash 300 + M-Pesa 200".
@@ -81,7 +80,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
     .join(' + ');
 
   const handleConfirmSettle = async () => {
-    if (selectedTransaction && settleMethods.size > 0 && amountsComplete) {
+    if (selectedTransaction && settleMethods.size > 0) {
       await onUpdateStatus(selectedTransaction.id, 'Paid', combinedLabel);
       setIsSettleModalOpen(false);
       setSelectedTransaction(null);
@@ -263,7 +262,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
               {settleMethods.size > 1 && (
                 <div className="mt-4">
                   <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2 text-center">
-                    Amount per method — must add up to {CURRENCY} {selectedTransaction.total.toLocaleString()}
+                    Amount per method — bill total {CURRENCY} {selectedTransaction.total.toLocaleString()}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {Array.from(settleMethods).map(m => (
@@ -283,13 +282,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
                     ))}
                   </div>
                   <p className={`text-center text-[10px] font-black uppercase tracking-widest mt-2 ${
-                    remainingCents === 0 ? 'text-green-600' : remainingCents < 0 ? 'text-red-500' : 'text-gray-400'
+                    remainingCents === 0 ? 'text-green-600' : 'text-amber-500'
                   }`}>
                     {remainingCents === 0
-                      ? 'Fully allocated ✓'
+                      ? 'Adds up to the bill ✓'
                       : remainingCents > 0
-                        ? `Remaining: ${CURRENCY} ${(remainingCents / 100).toLocaleString()}`
-                        : `Over by ${CURRENCY} ${(-remainingCents / 100).toLocaleString()}`}
+                        ? `⚠ Short by ${CURRENCY} ${(remainingCents / 100).toLocaleString()} — check before settling`
+                        : `⚠ ${CURRENCY} ${(-remainingCents / 100).toLocaleString()} more than the bill — check before settling`}
                   </p>
                 </div>
               )}
@@ -299,8 +298,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
               <button onClick={() => setIsSettleModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest text-gray-400">Abort</button>
               <button
                 onClick={handleConfirmSettle}
-                disabled={settleMethods.size === 0 || !amountsComplete}
-                className={`flex-[2] py-6 rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl transition-all ${settleMethods.size > 0 && amountsComplete ? 'bg-[#4B3621] text-white hover:scale-105 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                disabled={settleMethods.size === 0}
+                className={`flex-[2] py-6 rounded-[28px] font-black text-[10px] uppercase tracking-widest shadow-2xl transition-all ${settleMethods.size > 0 ? 'bg-[#4B3621] text-white hover:scale-105 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
               >
                 {settleMethods.size > 0 ? `Settle & Archive — ${combinedLabel}` : 'Settle & Archive'}
               </button>
