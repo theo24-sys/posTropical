@@ -279,7 +279,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#4B3621]/80 backdrop-blur-md">
-      <div className="bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 relative">
+      <div className="bg-white w-full max-w-md lg:max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] lg:max-h-[94vh] border border-gray-100 relative">
         {/* Header */}
           <div className={`${isTest ? 'bg-gray-700' : isPending ? 'bg-orange-500' : 'bg-[#4B3621]'} p-8 text-center text-white relative shrink-0 transition-colors`}>
             <button onClick={onClose} className="absolute top-6 right-6 text-white/60 hover:text-white rounded-full p-2 hover:bg-white/10 z-10">
@@ -295,8 +295,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
         </div>
 
         {/* Content */}
-        <div className="p-8 overflow-y-auto flex-1 bg-gray-50/30">
-          <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 relative">
+        <div className="p-4 lg:p-8 overflow-y-auto flex-1 bg-gray-50/30">
+          {/* Laptop: bill on the left, payment on the right; mobile: stacked */}
+          <div className="bg-white p-6 lg:p-10 rounded-[32px] shadow-sm border border-gray-100 relative block lg:grid lg:grid-cols-2 lg:gap-10">
+            <div>
             <div className="text-center mb-8 border-b border-gray-100 pb-8">
               <img src={LOGO_URL} alt="Logo" className="h-16 object-contain mx-auto mb-4" />
               <h3 className="font-serif text-2xl font-black text-[#4B3621] uppercase tracking-tighter">Tropical Dreams</h3>
@@ -326,7 +328,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </span>
               )}
             </div>
+            </div>
 
+            <div className="lg:border-l lg:border-gray-100 lg:pl-10 flex flex-col">
             {/* --- PAYMENT (screen): single-pay default + multi-pay section --- */}
             {showCompleteFlow && (
               <div className="mt-8">
@@ -511,11 +515,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                 </div>
               )}
             </div>
+            </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="p-8 bg-white border-t border-gray-100 flex gap-4 shrink-0">
+        <div className="p-6 lg:p-8 bg-white border-t border-gray-100 flex gap-4 shrink-0">
           <button onClick={onClose} className="flex-1 py-5 bg-gray-100 rounded-[28px] font-black text-xs uppercase text-gray-500 hover:bg-gray-200 transition-all">
             Close
           </button>
