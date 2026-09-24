@@ -323,6 +323,31 @@ const App: React.FC = () => {
     navigate('/');
   };
 
+  const handleDeletePendingBill = useCallback(async (id: string) => {
+    const target = salesHistory.find(t => t.id === id);
+    if (!target) return;
+
+    const confirmed = window.confirm(`Ignore pending bill #${id}? This will remove it from the active pending list.`);
+    if (!confirmed) return;
+
+    setSalesHistory(prev => prev.filter(t => t.id !== id));
+    if (editingTransactionId === id) {
+      setCart([]);
+      setEditingTransactionId(null);
+    }
+
+    try {
+      if (navigator.onLine) {
+        await DB.deleteTransaction(id);
+      }
+      await LocalDB.removeOrderFromQueue(id);
+    } catch (err) {
+      console.error(`Failed to remove pending bill ${id}:`, err);
+    }
+
+    logActivity('SALE', `Ignored pending bill ${id} (${target.tableNumber ? `Table ${target.tableNumber}` : 'Take Away'})`, 'medium');
+  }, [editingTransactionId, salesHistory, logActivity]);
+
   const handleCheckout = async (
     orderType: 'Dine-in' | 'Take Away',
     amountTendered?: number,
@@ -735,6 +760,7 @@ const App: React.FC = () => {
                     onLogAction={logActivity}
                     pendingTransactions={sortedSalesHistory.filter(t => t.status === 'Pending')}
                     onResumeOrder={onResumeOrder}
+                    onDeletePendingBill={handleDeletePendingBill}
                   />
                 </div>
               </div>
@@ -748,6 +774,7 @@ const App: React.FC = () => {
                 onUpdateStatus={handleUpdateStatus}
                 user={posUser}
                 onEditOrder={onResumeOrder}
+                onDeletePending={handleDeletePendingBill}
               />
             }
           />

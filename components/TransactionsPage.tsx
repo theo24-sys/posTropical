@@ -9,9 +9,10 @@ interface TransactionsPageProps {
   onUpdateStatus: (id: string, newStatus: 'Paid' | 'Pending', paymentMethod: string) => Promise<void>;
   user: User;
   onEditOrder?: (transaction: SaleTransaction) => void;
+  onDeletePending?: (id: string) => Promise<void> | void;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpdateStatus, user, onEditOrder }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpdateStatus, user, onEditOrder, onDeletePending }) => {
   const [filterStatus, setFilterStatus] = useState<'All' | 'Paid' | 'Pending'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
@@ -230,6 +231,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onUpd
                               className="bg-white border-2 border-gray-100 hover:border-[#4B3621] text-[#4B3621] px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
                             >
                               <PlusCircle size={16} /> Add Items
+                            </button>
+                          )}
+                          {onDeletePending && (
+                            <button
+                              type="button"
+                              onClick={() => void onDeletePending(t.id)}
+                              className="bg-red-50 border-2 border-red-100 hover:border-red-300 text-red-600 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                            >
+                              Ignore Bill
                             </button>
                           )}
                           <button

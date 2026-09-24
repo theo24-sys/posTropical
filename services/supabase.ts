@@ -293,6 +293,11 @@ export const DB = {
     if (error) console.error('updateTransactionDate failed:', error.message);
   },
 
+  async deleteTransaction(id: string): Promise<void> {
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) console.error('deleteTransaction failed:', error.message);
+  },
+
   // --- Expenses ---
   async getExpenses(): Promise<Expense[]> {
     const data = await safeFetch<any>(

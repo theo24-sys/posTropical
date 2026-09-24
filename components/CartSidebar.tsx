@@ -24,6 +24,7 @@ interface CartSidebarProps {
   prefilledOrderType?: 'Dine-in' | 'Take Away';
   pendingTransactions?: SaleTransaction[];
   onResumeOrder?: (transaction: SaleTransaction) => void;
+  onDeletePendingBill?: (id: string) => Promise<void> | void;
 }
 
 export const CartSidebar: React.FC<CartSidebarProps> = ({
@@ -38,7 +39,8 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
   prefilledTable,
   prefilledOrderType,
   pendingTransactions = [],
-  onResumeOrder
+  onResumeOrder,
+  onDeletePendingBill
 }) => {
   const [orderType, setOrderType] = useState<'Dine-in' | 'Take Away'>(prefilledOrderType || 'Dine-in');
   const [selectedTable, setSelectedTable] = useState<number | undefined>(prefilledTable);
@@ -221,27 +223,41 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
             </div>
             <div className="grid grid-cols-1 gap-3">
               {pendingTransactions.map(tx => (
-                <button
-                  key={tx.id}
-                  onClick={() => onResumeOrder?.(tx)}
-                  className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-[24px] hover:border-orange-200 hover:shadow-xl transition-all text-left group shadow-sm"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 font-black text-lg">
-                      {tx.tableNumber || 'TA'}
+                <div key={tx.id} className="relative">
+                  <button
+                    onClick={() => onResumeOrder?.(tx)}
+                    className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-[24px] hover:border-orange-200 hover:shadow-xl transition-all text-left group shadow-sm"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 font-black text-lg">
+                        {tx.tableNumber || 'TA'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-[#4B3621]">{tx.tableNumber ? `Table ${tx.tableNumber}` : 'Take Away'}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {tx.items.length} items • {new Intl.DateTimeFormat('en-GB', { timeStyle: 'short', timeZone: 'Africa/Nairobi' }).format(new Date(tx.date))}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-black text-[#4B3621]">{tx.tableNumber ? `Table ${tx.tableNumber}` : 'Take Away'}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        {tx.items.length} items • {new Intl.DateTimeFormat('en-GB', { timeStyle: 'short', timeZone: 'Africa/Nairobi' }).format(new Date(tx.date))}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-black text-[#4B3621]">{CURRENCY} {tx.total.toLocaleString()}</span>
+                      <ChevronRight size={18} className="text-gray-200 group-hover:text-orange-400 transition-colors" />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-base font-black text-[#4B3621]">{CURRENCY} {tx.total.toLocaleString()}</span>
-                    <ChevronRight size={18} className="text-gray-200 group-hover:text-orange-400 transition-colors" />
-                  </div>
-                </button>
+                  </button>
+                  {onDeletePendingBill && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onDeletePendingBill(tx.id);
+                      }}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                      title="Ignore pending bill"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
