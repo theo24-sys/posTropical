@@ -11,7 +11,8 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 -- COFFEE BAR (DOUBLE)
 ('cf_esp_s', 'Espresso Single Shot', 200, 'COFFEE (DOUBLE)', 'Bold, concentrated single shot.', 500, 50, 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'),
 ('cf_amer', 'Americano', 250, 'COFFEE (DOUBLE)', 'Espresso diluted with hot water.', 500, 50, 'https://images.unsplash.com/photo-1551030173-122f525e675f?auto=format&fit=crop&w=600&q=80'),
-('cf_cap', 'Cappuccino', 300, 'COFFEE (DOUBLE)', 'Espresso, steamed milk, milk foam.', 500, 50, 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'),
+('cf_cap', 'Cuppucino Single', 300, 'COFFEE (DOUBLE)', 'Espresso, steamed milk, milk foam.', 500, 50, 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'),
+('cf_cap2', 'Cuppucino Double', 400, 'COFFEE (DOUBLE)', 'Espresso, steamed milk, milk foam.', 500, 50, 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80'),
 ('cf_lat', 'Café Latte', 400, 'COFFEE (DOUBLE)', 'Espresso and steamed milk with light foam.', 500, 50, 'https://images.unsplash.com/photo-1556484687-30636164638a?auto=format&fit=crop&w=600&q=80'),
 ('cf_moc', 'Mocha', 400, 'COFFEE (DOUBLE)', 'Espresso, chocolate, steamed milk.', 200, 20, 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80'),
 ('cf_latmac', 'Latte Macchiato', 400, 'COFFEE (DOUBLE)', 'Steamed milk layered with espresso and foam.', 200, 20, 'https://images.unsplash.com/photo-1593443320739-97f8732d4a38?auto=format&fit=crop&w=600&q=80'),
@@ -30,7 +31,7 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('sd_spark1', 'Sparkling Water 1L', 250, 'SOFT DRINKS', 'Chilled carbonated mineral water.', 100, 20, 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80'),
 
 -- ICED COFFEE
-('ice_cof', 'Iced Coffee', 300, 'ICED COFFEE', 'Chilled coffee served over ice.', 50, 10, 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80'),
+('ice_cof', 'Iced Coffee', 300, 'ICED COFFEE', 'Chilled coffee served over ice. Vanilla, Caramel, or Hazelnut (add flavour name after Iced Coffee).', 50, 10, 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80'),
 ('ice_lat', 'Iced Latte', 400, 'ICED COFFEE', 'Espresso and chilled milk over ice.', 50, 10, 'https://images.unsplash.com/photo-1553909489-cd47e3b4430f?auto=format&fit=crop&w=600&q=80'),
 ('ice_flav', 'Iced Vanilla/Caramel/Hazelnut Latte', 450, 'ICED COFFEE', 'Iced latte with Vanilla, Caramel, or Hazelnut syrup.', 50, 10, 'https://images.unsplash.com/photo-1461023058943-48dbf1399f98?auto=format&fit=crop&w=600&q=80'),
 ('ice_moc', 'Iced Mocha', 450, 'ICED COFFEE', 'Espresso, chocolate, chilled milk over ice.', 50, 10, 'https://images.unsplash.com/photo-1499377193864-82682aefed04?auto=format&fit=crop&w=600&q=80'),
@@ -39,17 +40,16 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 
 -- SHAKES
 ('sh_flav', 'Vanilla/Strawberry/Chocolate Shake', 450, 'SHAKES', 'Ice-cream flavors blended with chilled milk.', 40, 10, 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80'),
+('sh_ban', 'Banana Shake', 470, 'SHAKES', 'Creamy and smooth fresh banana blended with milk and vanilla ice cream for a naturally sweet, refreshing treat.', 40, 10, 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=600&q=80'),
 ('sh_ore', 'Oreo Shake', 500, 'SHAKES', 'Crushed Oreo cookies, vanilla ice cream, chilled milk.', 40, 10, 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80'),
 ('sh_esp', 'Espresso Shake', 500, 'SHAKES', 'Espresso, vanilla ice cream, chilled milk.', 40, 10, 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80'),
 
 -- SMOOTHIES
 ('sm_man', 'Mango Crush Smoothie', 400, 'SMOOTHIES', 'Ripe mangoes, yoghurt, and ice.', 30, 5, 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=600&q=80'),
-('sm_ban', 'Banana Buzz', 400, 'SMOOTHIES', 'Ripe bananas, yoghurt, chilled milk.', 30, 5, 'https://images.unsplash.com/photo-1619684617498-8aa07d6d7a46?auto=format&fit=crop&w=600&q=80'),
-('sm_coffee', 'Creamy Coffee Smoothie', 500, 'SMOOTHIES', 'Espresso, creamy milk, and ice.', 30, 5, 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80'),
 ('sm_pro', 'TDs Protein Smoothie', 500, 'SMOOTHIES', 'Peanut Butter Banana blend.', 30, 5, 'https://images.unsplash.com/photo-1598284912132-3ca1f3151d89?auto=format&fit=crop&w=600&q=80'),
 
 -- FRESH JUICES
-('ju_mint', 'Mint Pineapple', 350, 'FRESH JUICES', 'Pineapple and fresh mint, chilled.', 30, 5, 'https://images.unsplash.com/photo-1536980630732-c7247a83d719?auto=format&fit=crop&w=600&q=80'),
+('ju_mint', 'Mint Pinaade', 400, 'FRESH JUICES', 'Pineapple and fresh mint, chilled.', 30, 5, 'https://images.unsplash.com/photo-1536980630732-c7247a83d719?auto=format&fit=crop&w=600&q=80'),
 ('ju_man', 'Mango', 300, 'FRESH JUICES', 'Ripe juicy mangoes, chilled.', 50, 10, 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=600&q=80'),
 ('ju_pas', 'Passion', 350, 'FRESH JUICES', 'Fresh passion fruit, chilled.', 50, 10, 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?auto=format&fit=crop&w=600&q=80'),
 ('ju_beet', 'Beetroot', 350, 'FRESH JUICES', 'Fresh beetroot juice packed with nutrients.', 30, 5, 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80'),
@@ -57,7 +57,6 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 
 -- LEMONADES
 ('lem_straw', 'Flavored Strawberry Lemonade', 450, 'LEMONADES', 'Ripe strawberry and lemon.', 30, 5, 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80'),
-('lem_kiwi', 'Flavored Kiwi Lemonade', 450, 'LEMONADES', 'Citrusy kiwi and lemonade.', 30, 5, 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80'),
 ('lem_pass', 'Flavored Passion Lemonade', 450, 'LEMONADES', 'Passion fruit and lemonade.', 30, 5, 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80'),
 
 -- MOCKTAILS
@@ -69,8 +68,8 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 ('bit_sam', 'Beef Samosa (2 Pieces)', 200, 'BITINGS', 'Crispy, filled with seasoned minced beef and spices.', 100, 20, 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80'),
 ('bit_saus', 'Sausages (2 Pieces)', 200, 'BITINGS', 'Juicy fried sausages with dipping sauce.', 100, 20, 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'),
 ('bit_w8', 'TDs Chicken Wings (8 Pieces)', 1000, 'BITINGS', 'BBQ, Honey/Garlic, or Sweet Chili sauce, sesame seeds.', 30, 10, 'https://images.unsplash.com/photo-1527477396000-64ca9c00173f?auto=format&fit=crop&w=600&q=80'),
-('bit_nug', 'Chicken Nuggets', 600, 'BITINGS', 'Seasoned breadcrumb-coated chicken bites.', 30, 5, 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80'),
-('bit_fish', 'Breaded Fish Fingers', 900, 'BITINGS', 'Crispy fish strips with tartar sauce, salad, and choice of side.', 20, 5, 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80'),
+('bit_nug', 'Chicken Nuggets', 800, 'BITINGS', 'Seasoned breadcrumb-coated chicken bites.', 30, 5, 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80'),
+('bit_fish', 'Breaded Fish Fingers', 800, 'BITINGS', 'Crispy fish strips with tartar sauce, salad, and choice of side.', 20, 5, 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80'),
 
 -- BAKERY & PASTRIES
 ('bk_lemon', 'Lemon Cake Slice', 400, 'BAKERY & PASTRIES', 'Moist vanilla sponge with lemon glaze.', 12, 4, 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=600&q=80'),
@@ -81,17 +80,20 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 
 -- MAIN COURSES - BEEF
 ('mn_fil', 'Grilled Fillet Steak', 1000, 'MAIN COURSES', 'Herb-seasoned beef fillet, flame-grilled. Rare/Medium/Well-done.', 15, 5, 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=600&q=80'),
-('mn_sbeef', 'Stir Fried Beef', 950, 'MAIN COURSES', 'Beef strips with onions, peppers, garlic, soy-based sauce.', 20, 5, 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80'),
+('mn_sbeef', 'Stir Fried Beef', 1000, 'MAIN COURSES', 'Beef strips with onions, peppers, garlic, soy-based sauce.', 20, 5, 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80'),
 
 -- MAIN COURSES - CHICKEN
 ('mn_gbreast', 'Grilled Chicken Breast', 1000, 'MAIN COURSES', 'Herb, garlic, and lemon marinated, grilled.', 20, 5, 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=600&q=80'),
-('mn_ccur_sp', 'TDs Special Chicken Curry', 900, 'MAIN COURSES', 'Chicken simmered in aromatic curry sauce.', 20, 5, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80'),
+('mn_schick', 'Star Fried Chicken', 950, 'MAIN COURSES', 'Crispy fried chicken, seasoned and golden.', 20, 5, 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?auto=format&fit=crop&w=600&q=80'),
+('mn_ccur_sp', 'TDs Special Chicken Curry', 1000, 'MAIN COURSES', 'Chicken simmered in aromatic curry sauce.', 20, 5, 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80'),
 ('mn_bbq', 'BBQ Roast Chicken', 950, 'MAIN COURSES', 'Oven-roasted, smoky BBQ glaze.', 20, 5, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80'),
-('mn_ctik', 'Spicy Chicken Tikka', 900, 'MAIN COURSES', 'Yogurt and tikka-spice marinated, grilled. Served with salad.', 20, 5, 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80'),
+('mn_gfish', 'Fish Fillet', 1100, 'MAIN COURSES', 'Grilled fish fillet served with a choice of side.', 15, 5, 'https://images.unsplash.com/photo-1580476262798-bddd9f4b7369?auto=format&fit=crop&w=600&q=80'),
+('mn_til', 'Whole Fish (All)', 1200, 'MAIN COURSES', 'Tomato Gravy / Dry Fry / Coconut — all preparations.', 10, 5, 'https://images.unsplash.com/photo-1510130387422-82bed34b37e9?auto=format&fit=crop&w=600&q=80'),
 
 -- SIDES
 ('sd_mash', 'Mashed Potatoes', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80'),
 ('sd_fries', 'Fries', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1630384060421-a4323ceca0ad?auto=format&fit=crop&w=600&q=80'),
+('sd_wedge', 'Potato Wedges', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1518013431117-eb1465fa5752?auto=format&fit=crop&w=600&q=80'),
 ('sd_rice', 'Rice', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=600&q=80'),
 ('sd_chap', 'Chapati', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80'),
 ('sd_ugali', 'Ugali', 200, 'SIDES', '', 50, 10, 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=600&q=80'),

@@ -22,7 +22,6 @@ const RECIPES: Record<string, Recipe[]> = {
   Lemonades: [
     { name: 'Flavoured Strawberry Lemonade', time: '5 mins', ingredients: ['30ml lemon juice', '6 mint leaves', '200ml Sprite soda', '2.5 scoops ice', '30ml strawberry crush', '4 strawberry pieces', '4 lemon slices'] },
     { name: 'Mint Pinade', time: '3 mins', ingredients: ['8 mint leaves', '¼ pineapple slice', '10–30ml sugar syrup', '2 scoops ice', '300ml water'] },
-    { name: 'Flavoured Kiwi Lemonade', time: '5 mins', ingredients: ['30ml lemon juice', '6 mint leaves', '200ml Sprite', '2.5 scoops ice', '30ml kiwi crush', '3 kiwi pieces + 2 lemon slices'] },
     { name: 'Flavoured Passion Lemonade', time: '5 mins', ingredients: ['50ml lemon juice', '8 mint leaves', '150ml Sprite', '2.5 scoops ice', '50ml passion juice', '30ml passion crush', '4 lemon slices'] },
     { name: 'Virgin Mojito', time: '5 mins', ingredients: ['8 mint leaves', '200ml Sprite', '4 lemon slices', '2.5 scoops ice'] },
     { name: 'Blue Lagoon', time: '5 mins', ingredients: ['45ml blue curacao syrup', '2.5 scoops ice', '30ml lemon juice', '250ml Sprite'] },
@@ -43,10 +42,10 @@ const RECIPES: Record<string, Recipe[]> = {
     { name: 'Strawberry Shake', time: '3 mins', ingredients: ['3 scoops strawberry ice cream', '170ml cold milk'] },
     { name: 'Oreo Shake', time: '5 mins', ingredients: ['3 scoops ice cream', '170ml cold milk', '2 Oreo biscuits blended', '1 Oreo for topping'] },
     { name: 'Chocolate Shake', time: '3 mins', ingredients: ['2 scoops chocolate ice cream', '170ml cold milk', 'Sprinkles topping'] },
+    { name: 'Banana Shake', time: '3 mins', ingredients: ['1 ripe banana', '3 scoops vanilla ice cream', '170ml cold milk', 'Blend until smooth'] },
   ],
   Smoothies: [
     { name: 'Mango Crush Smoothie', time: '5 mins', ingredients: ['1 mango fruit', '2 scoops ice cubes', '300ml yoghurt'] },
-    { name: 'Banana Buzz', time: '5 mins', ingredients: ['1 banana', '200ml yoghurt', '100ml chilled milk', '2 scoops ice'] },
     { name: 'TD’s Protein Smoothie', time: '5 mins', ingredients: ['1 banana', '2 tablespoons peanut butter', '2 scoops ice', '300ml yoghurt'] },
   ],
   Desserts: [
@@ -58,7 +57,6 @@ const CHEF_RECIPES: Record<string, Recipe[]> = {
   'Chicken & Fish': [
     { name: 'Chicken Curry 500g', time: '30 mins', ingredients: ['Chicken 500g, onion, 2 tomatoes, garlic 4, ginger', 'Curry powder, turmeric, oil 3 tbsp, water 200ml, coriander', 'Method: fry onion, garlic and ginger; brown chicken; add tomatoes and spices for 5 mins; add water and simmer 15 mins; thicken 10 mins.'] },
     { name: 'BBQ Roast Chicken 500g', time: '35–40 mins', ingredients: ['Chicken leg 500g, BBQ sauce 3 tbsp, oil 2 tbsp, garlic 3', 'Paprika, pepper, salt, lemon', 'Method: marinate 1 hour; roast at 200°C for 35–40 mins; baste every 15 mins; serve with fries and coleslaw.'] },
-    { name: 'Spicy Chicken Tikka', time: '15–20 mins', ingredients: ['Chicken 500g cubes, yoghurt 100g, tikka masala 2 tbsp', 'Garlic, ginger, lemon, oil, chilli', 'Method: marinate in yoghurt and spices for 2 hours; skewer and grill 15–20 mins; serve with mint chutney.'] },
     { name: 'Grilled Fish Fillet 500g', time: '10 mins', ingredients: ['Fish fillet 500g, lemon, garlic 3, pepper, salt, paprika', 'Oil, butter', 'Method: marinate 30 mins; grill 4–5 mins per side; baste with butter.'] },
     { name: 'Whole Fish Tomato Sauce 500g', time: '20 mins', ingredients: ['Whole fish 500g, 3 blended tomatoes, onion, garlic, oil', 'Tomato paste, Royco', 'Method: fry fish lightly; fry onion, garlic and tomato puree; add fish and simmer 12 mins.'] },
     { name: 'Whole Fish Dry Fry 500g', time: '10 mins', ingredients: ['Whole fish 500g, garlic, ginger, lemon, salt, pepper, paprika', 'Oil, flour 2 tbsp', 'Method: score and marinate 30 mins; coat with flour; deep fry 8–10 mins until golden.'] },

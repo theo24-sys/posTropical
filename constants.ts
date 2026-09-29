@@ -278,8 +278,10 @@ export const KITCHEN_RECIPES: Record<string, { invId: string; amount: number }[]
   'bg_beef':      [{ invId: 'inv_beef_patties', amount: 1 }],
   'mn_gbreast':   [{ invId: 'inv_chicken_breast', amount: 1 }],
   'mn_ccur_sp':   [{ invId: 'inv_chicken_portions', amount: 1 }],
-  'mn_ctik':      [{ invId: 'inv_bbq_chicken_legs', amount: 1 }],
+  'mn_schick':    [{ invId: 'inv_chicken_portions', amount: 1 }],
   'mn_bbq':       [{ invId: 'inv_bbq_chicken_legs', amount: 1 }],
+  'mn_gfish':     [{ invId: 'inv_fish_fillet', amount: 1 }],
+  'mn_til':       [{ invId: 'inv_whole_fish', amount: 1 }],
   'bg_chick':     [{ invId: 'inv_chicken_portions', amount: 1 }],
   'bur_chick':    [{ invId: 'inv_chicken_portions', amount: 1 }],
   'bit_w8':       [{ invId: 'inv_chicken_wings', amount: 8 }],
@@ -296,10 +298,10 @@ export const KITCHEN_RECIPES: Record<string, { invId: string; amount: number }[]
   'ju_mint':      [{ invId: 'inv_pineapple', amount: 0.25 }, { invId: 'inv_lemon', amount: 1 }],
   'ju_trop':      [{ invId: 'inv_pineapple', amount: 0.25 }],
   'lem_straw':    [{ invId: 'inv_lemon', amount: 2 }],
-  'lem_kiwi':     [{ invId: 'inv_lemon', amount: 2 }],
   'lem_pass':     [{ invId: 'inv_lemon', amount: 2 }],
   'moc_moj':      [{ invId: 'inv_lemon', amount: 1 }],
   'sd_fries':     [{ invId: 'inv_viazi_debe', amount: 0.05 }],
+  'sd_wedge':     [{ invId: 'inv_viazi_debe', amount: 0.05 }],
   'sd_mash':      [{ invId: 'inv_viazi_debe', amount: 0.05 }],
   't_afrmas':     [{ invId: 'inv_ginger', amount: 0.01 }],
   't_dawa':       [{ invId: 'inv_ginger', amount: 0.01 }, { invId: 'inv_lemon', amount: 0.5 }],
@@ -317,7 +319,8 @@ export const MENU_ITEMS: MenuItem[] = [
   // ================= COFFEE BAR =================
   { id: 'cf_esp_s', name: 'Espresso Single Shot', price: 200, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
   { id: 'cf_amer', name: 'Americano', price: 250, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1551030173-122f525e675f?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
-  { id: 'cf_cap', name: 'Cappuccino', price: 300, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
+  { id: 'cf_cap', name: 'Cuppucino Single', price: 300, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
+  { id: 'cf_cap2', name: 'Cuppucino Double', price: 400, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
   { id: 'cf_lat', name: 'Café Latte', price: 400, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1556484687-30636164638a?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
   { id: 'cf_moc', name: 'Mocha', price: 400, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&q=80', stock: 200, lowStockThreshold: 20 },
   { id: 'cf_latmac', name: 'Latte Macchiato', price: 400, category: Category.HOT_DRINKS, image: 'https://images.unsplash.com/photo-1593443320739-97f8732d4a38?auto=format&fit=crop&w=600&q=80', stock: 200, lowStockThreshold: 20 },
@@ -336,7 +339,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'sd_spark1', name: 'Sparkling Water 1L', price: 250, category: Category.SOFT_DRINKS, image: 'https://images.unsplash.com/photo-1559839914-17aae19cea9e?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
  
   // ================= ICED COFFEE =================
-  { id: 'ice_cof', name: 'Iced Coffee', price: 300, category: Category.ICED_COFFEE, image: 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
+  { id: 'ice_cof', name: 'Iced Coffee', price: 300, category: Category.ICED_COFFEE, image: 'https://images.unsplash.com/photo-1517701604599-bb29b5dd7359?auto=format&fit=crop&w=600&q=80', description: 'Vanilla, Caramel, or Hazelnut (add flavour name after Iced Coffee)', stock: 50, lowStockThreshold: 10 },
   { id: 'ice_lat', name: 'Iced Latte', price: 400, category: Category.ICED_COFFEE, image: 'https://images.unsplash.com/photo-1553909489-cd47e3b4430f?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'ice_flav', name: 'Iced Vanilla/Caramel/Hazelnut Latte', price: 450, category: Category.ICED_COFFEE, image: 'https://images.unsplash.com/photo-1461023058943-48dbf1399f98?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'ice_moc', name: 'Iced Mocha', price: 450, category: Category.ICED_COFFEE, image: 'https://images.unsplash.com/photo-1499377193864-82682aefed04?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
@@ -345,17 +348,16 @@ export const MENU_ITEMS: MenuItem[] = [
  
   // ================= SHAKES =================
   { id: 'sh_flav', name: 'Vanilla/Strawberry/Chocolate Shake', price: 450, category: Category.SHAKES, image: 'https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80', stock: 40, lowStockThreshold: 10 },
+  { id: 'sh_ban', name: 'Banana Shake', price: 470, category: Category.SHAKES, image: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=600&q=80', description: 'Creamy and smooth fresh banana blended with milk and vanilla ice cream for a naturally sweet, refreshing treat', stock: 40, lowStockThreshold: 10 },
   { id: 'sh_ore', name: 'Oreo Shake', price: 500, category: Category.SHAKES, image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80', stock: 40, lowStockThreshold: 10 },
   { id: 'sh_esp', name: 'Espresso Shake', price: 500, category: Category.SHAKES, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80', stock: 40, lowStockThreshold: 10 },
  
   // ================= SMOOTHIES =================
   { id: 'sm_man', name: 'Mango Crush Smoothie', price: 400, category: Category.SMOOTHIES, image: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
-  { id: 'sm_ban', name: 'Banana Buzz', price: 400, category: Category.SMOOTHIES, image: 'https://images.unsplash.com/photo-1619684617498-8aa07d6d7a46?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
-  { id: 'sm_coffee', name: 'Creamy Coffee Smoothie', price: 500, category: Category.SMOOTHIES, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
   { id: 'sm_pro', name: 'TDs Protein Smoothie', price: 500, category: Category.SMOOTHIES, image: 'https://images.unsplash.com/photo-1598284912132-3ca1f3151d89?auto=format&fit=crop&w=600&q=80', description: 'Peanut Butter Banana', stock: 30, lowStockThreshold: 5 },
  
   // ================= FRESH JUICES =================
-  { id: 'ju_mint', name: 'Mint Pineapple', price: 350, category: Category.FRESH_JUICES, image: 'https://images.unsplash.com/photo-1536980630732-c7247a83d719?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
+  { id: 'ju_mint', name: 'Mint Pinaade', price: 400, category: Category.FRESH_JUICES, image: 'https://images.unsplash.com/photo-1536980630732-c7247a83d719?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
   { id: 'ju_man', name: 'Mango', price: 300, category: Category.FRESH_JUICES, image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'ju_pas', name: 'Passion', price: 350, category: Category.FRESH_JUICES, image: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'ju_beet', name: 'Beetroot', price: 350, category: Category.FRESH_JUICES, image: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
@@ -363,7 +365,6 @@ export const MENU_ITEMS: MenuItem[] = [
  
   // ================= LEMONADES =================
   { id: 'lem_straw', name: 'Flavored Strawberry Lemonade', price: 450, category: Category.LEMONADES, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
-  { id: 'lem_kiwi', name: 'Flavored Kiwi Lemonade', price: 450, category: Category.LEMONADES, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
   { id: 'lem_pass', name: 'Flavored Passion Lemonade', price: 450, category: Category.LEMONADES, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
  
   // ================= MOCKTAILS =================
@@ -375,8 +376,8 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'bit_sam', name: 'Beef Samosa (2 Pieces)', price: 200, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
   { id: 'bit_saus', name: 'Sausages (2 Pieces)', price: 200, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 20 },
   { id: 'bit_w8', name: 'TDs Chicken Wings (8 Pieces)', price: 1000, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1527477396000-64ca9c00173f?auto=format&fit=crop&w=600&q=80', description: 'BBQ, Honey/Garlic, or Sweet Chili sauce, sesame seeds', stock: 30, lowStockThreshold: 10 },
-  { id: 'bit_nug', name: 'Chicken Nuggets', price: 600, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
-  { id: 'bit_fish', name: 'Breaded Fish Fingers', price: 900, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80', description: 'Served with tartar sauce, salad, and choice of side', stock: 20, lowStockThreshold: 5 },
+  { id: 'bit_nug', name: 'Chicken Nuggets', price: 800, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80', stock: 30, lowStockThreshold: 5 },
+  { id: 'bit_fish', name: 'Breaded Fish Fingers', price: 800, category: Category.BITINGS, image: 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80', description: 'Served with tartar sauce, salad, and choice of side', stock: 20, lowStockThreshold: 5 },
  
   // ================= BAKERY & PASTRIES =================
   { id: 'bk_lemon', name: 'Lemon Cake Slice', price: 400, category: Category.BAKERY, image: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=600&q=80', stock: 12, lowStockThreshold: 4 },
@@ -387,11 +388,14 @@ export const MENU_ITEMS: MenuItem[] = [
  
   // ================= MAIN COURSES =================
   { id: 'mn_fil', name: 'Grilled Fillet Steak', price: 1000, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=600&q=80', description: 'Rare/Medium/Well-done', stock: 15, lowStockThreshold: 5 },
-  { id: 'mn_sbeef', name: 'Stir Fried Beef', price: 950, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
+  { id: 'mn_sbeef', name: 'Stir Fried Beef', price: 1000, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
   { id: 'mn_gbreast', name: 'Grilled Chicken Breast', price: 1000, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
-  { id: 'mn_ccur_sp', name: 'TDs Special Chicken Curry', price: 900, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
+  { id: 'mn_schick', name: 'Star Fried Chicken', price: 950, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
+  { id: 'mn_ccur_sp', name: 'TDs Special Chicken Curry', price: 1000, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
   { id: 'mn_bbq', name: 'BBQ Roast Chicken', price: 950, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80', stock: 20, lowStockThreshold: 5 },
-  { id: 'mn_ctik', name: 'Spicy Chicken Tikka', price: 900, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=600&q=80', description: 'Served with salad', stock: 20, lowStockThreshold: 5 },
+  // --- FISH ---
+  { id: 'mn_gfish', name: 'Fish Fillet', price: 1100, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1580476262798-bddd9f4b7369?auto=format&fit=crop&w=600&q=80', description: 'Grilled fish fillet served with a choice of side', stock: 15, lowStockThreshold: 5 },
+  { id: 'mn_til', name: 'Whole Fish (All)', price: 1200, category: Category.MAINS, image: 'https://images.unsplash.com/photo-1510130387422-82bed34b37e9?auto=format&fit=crop&w=600&q=80', description: 'Tomato Gravy / Dry Fry / Coconut — all preparations', stock: 10, lowStockThreshold: 5 },
  
   // ================= BURGERS & BURRITOS =================
   { id: 'bg_beef', name: 'Beef Burger', price: 800, category: Category.BURGERS, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80', description: 'Served with fries or salad', stock: 30, lowStockThreshold: 5 },
@@ -404,6 +408,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ================= SIDES =================
   { id: 'sd_mash', name: 'Mashed Potatoes', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'sd_fries', name: 'Fries', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1630384060421-a4323ceca0ad?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
+  { id: 'sd_wedge', name: 'Potato Wedges', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1518013431117-eb1465fa5752?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'sd_rice', name: 'Rice', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'sd_chap', name: 'Chapati', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 'sd_ugali', name: 'Ugali', price: 200, category: Category.SIDES, image: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
