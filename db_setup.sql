@@ -21,7 +21,7 @@ INSERT INTO public.menu_items (id, name, price, category, description, stock, lo
 -- TEAS
 ('cf_hotc', 'Hot Chocolate', 300, 'TEAS', 'Premium cocoa and steamed milk.', 200, 30, 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80'),
 ('t_afrmas', 'African/Masala Tea', 250, 'TEAS', 'Black tea simmered with milk and aromatic spices.', 500, 50, 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80'),
-('t_pot', 'Tea Pot/Masala', 450, 'TEAS', 'A full pot of freshly brewed premium tea.', 50, 10, 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80'),
+('t_pot', 'Tea Pot/Masala', 500, 'TEAS', 'A full pot of freshly brewed premium tea.', 50, 10, 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80'),
 ('t_herb', 'Herbal Tea', 250, 'TEAS', 'Green/Ginger/Lemon/Hibiscus/Peppermint', 100, 10, 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80'),
 ('t_dawa', 'Dawa', 300, 'TEAS', 'Lemon, ginger, and natural honey.', 100, 10, 'https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?auto=format&fit=crop&w=600&q=80'),
 

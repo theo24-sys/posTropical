@@ -329,7 +329,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ================= TEAS =================
   { id: 'cf_hotc', name: 'Hot Chocolate', price: 300, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80', stock: 200, lowStockThreshold: 30 },
   { id: 't_afrmas', name: 'African/Masala Tea', price: 250, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?auto=format&fit=crop&w=600&q=80', stock: 500, lowStockThreshold: 50 },
-  { id: 't_pot', name: 'Tea Pot/Masala', price: 450, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
+  { id: 't_pot', name: 'Tea Pot/Masala', price: 500, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80', stock: 50, lowStockThreshold: 10 },
   { id: 't_herb', name: 'Herbal Tea', price: 250, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=600&q=80', description: 'Green/Ginger/Lemon/Hibiscus/Peppermint', stock: 100, lowStockThreshold: 10 },
   { id: 't_dawa', name: 'Dawa', price: 300, category: Category.TEAS, image: 'https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?auto=format&fit=crop&w=600&q=80', stock: 100, lowStockThreshold: 10 },
  

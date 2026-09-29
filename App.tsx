@@ -272,6 +272,24 @@ const App: React.FC = () => {
     };
   }, [attemptAutoSync, fetchData]);
 
+  // Keep the menu fresh on long-lived terminals: every time the app regains
+  // focus (tab switch back, tablet wake-up) or reconnects, pull the catalog
+  // again so menu changes pushed by a deployment appear without a manual
+  // reload. fetchData also re-runs the per-deploy catalog sync, so this is
+  // what makes one-time menu pushes land on already-open screens.
+  useEffect(() => {
+    const refetch = () => {
+      if (!document.hidden && navigator.onLine) fetchData();
+      if (navigator.onLine) attemptAutoSync();
+    };
+    window.addEventListener('focus', refetch);
+    document.addEventListener('visibilitychange', refetch);
+    return () => {
+      window.removeEventListener('focus', refetch);
+      document.removeEventListener('visibilitychange', refetch);
+    };
+  }, [attemptAutoSync, fetchData]);
+
   const handleLogin = (user: User) => {
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
