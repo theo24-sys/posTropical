@@ -433,4 +433,16 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'pz_veg_l', name: 'Vegetable Pizza (Large)', price: 1600, category: Category.PIZZA, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80', description: 'Pizza sauce, mozzarella, onions, bell peppers, sweetcorn', stock: 20, lowStockThreshold: 5 },
 ];
  
+// --- ITEMS RETIRED FROM THE MENU ---
+// IDs here are deleted from the Supabase menu_items table by the automatic
+// catalog sync (services/supabase.ts -> DB.syncMenuCatalog) the first time a
+// build containing this list runs. Add an id here whenever an item is removed
+// from MENU_ITEMS so it disappears from every device after deployment.
+export const REMOVED_MENU_ITEM_IDS: string[] = [
+  'sm_ban',     // Banana Buzz
+  'sm_coffee',  // Creamy Coffee Smoothie
+  'lem_kiwi',   // Flavored Kiwi Lemonade
+  'mn_ctik',    // Spicy Chicken Tikka
+];
+
 export const MOCK_TRANSACTIONS: SaleTransaction[] = [];

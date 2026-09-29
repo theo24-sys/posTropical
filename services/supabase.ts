@@ -1,6 +1,6 @@
 import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
-import { KITCHEN_RECIPES } from '../constants';
+import { KITCHEN_RECIPES, MENU_ITEMS, REMOVED_MENU_ITEM_IDS } from '../constants';
 
 // ────────────────────────────────────────────────
 // Supabase Configuration
@@ -8,7 +8,17 @@ import { KITCHEN_RECIPES } from '../constants';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://wmkefywbmydjnyqhvepv.supabase.co';
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta2VmeXdibXlkam55cWh2ZXB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODAwMjMsImV4cCI6MjA3OTI1NjAyM30.Hp53NUqr0NPE8KuAGwiBYE0UwDX_AdeJXiy_x4p4BSE';
 
+// Injected at build time via vite.config.ts `define`.
+declare const __APP_BUILD_ID__: string | undefined;
+
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Unique per build (set in vite.config.ts). Guarantees the catalog sync runs
+// once per deployment rather than once per device launch — and lets us log
+// which build performed it.
+export const APP_BUILD_ID: string =
+  (typeof __APP_BUILD_ID__ !== 'undefined' && __APP_BUILD_ID__) || 'dev';
+
 
 // Helper for safe query handling
 const safeFetch = async <T>(query: any): Promise<T[]> => {
@@ -123,6 +133,63 @@ export const DB = {
   async deleteMenuItem(id: string): Promise<void> {
     const { error } = await supabase.from('menu_items').delete().eq('id', id);
     if (error) console.error('deleteMenuItem failed:', error.message);
+  },
+
+  // --- AUTOMATIC CATALOG SYNC ---
+  // Pushes the code-defined catalog (constants.ts MENU_ITEMS) to Supabase the
+  // first time each new build runs, so menu changes made in code go live right
+  // after a deployment. Live stock counts are preserved: only id/name/price/
+  // category/description/image are synced, never stock. Items listed in
+  // REMOVED_MENU_ITEM_IDS are deleted once, then remembered in localStorage so
+  // an admin re-adding an item manually (e.g. a sold-out special) is never
+  // clobbered on the next launch.
+  async syncMenuCatalog(buildId: string): Promise<void> {
+    const flagKey = `menu-catalog-sync:${buildId}`;
+    if (typeof window !== 'undefined' && window.localStorage.getItem(flagKey)) return;
+
+    try {
+      // Snapshot current cloud rows (stock) before writing anything.
+      const cloud = await safeFetch<any>(supabase.from('menu_items').select('*'));
+
+      const cloudRow = (id: string) => cloud.find((c: any) => c.id === id);
+      const payload = MENU_ITEMS.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        category: item.category as string,
+        image: item.image,
+        description: item.description ?? null,
+        stock: cloudRow(item.id)?.stock ?? item.stock,
+        low_stock_threshold: cloudRow(item.id)?.low_stock_threshold ?? item.lowStockThreshold,
+      }));
+
+      // Upsert in chunks to stay within request limits.
+      for (let i = 0; i < payload.length; i += 50) {
+        const { error } = await supabase.from('menu_items').upsert(payload.slice(i, i + 50));
+        if (error) throw new Error(error.message);
+      }
+
+      // One-time deletion of items retired from the menu.
+      const retireKey = `menu-retired-items`;
+      let alreadyRetired: string[] = [];
+      if (typeof window !== 'undefined') {
+        try { alreadyRetired = JSON.parse(window.localStorage.getItem(retireKey) || '[]'); } catch { alreadyRetired = []; }
+      }
+      const toRemove = REMOVED_MENU_ITEM_IDS.filter(id => !alreadyRetired.includes(id));
+      for (const id of toRemove) {
+        const { error } = await supabase.from('menu_items').delete().eq('id', id);
+        if (error) console.error(`syncMenuCatalog: failed to remove ${id}:`, error.message);
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(retireKey, JSON.stringify([...alreadyRetired, ...toRemove]));
+      }
+
+      if (typeof window !== 'undefined') window.localStorage.setItem(flagKey, 'done');
+      console.log(`[menu-catalog] synced ${payload.length} items to Supabase (build ${buildId})`);
+    } catch (err: any) {
+      // Never block startup over a sync failure; it will retry next launch.
+      console.warn('[menu-catalog] sync failed, will retry next launch:', err?.message || err);
+    }
   },
 
   // --- Inventory ---

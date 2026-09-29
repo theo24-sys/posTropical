@@ -12,7 +12,7 @@ import { InventoryPage } from './components/InventoryPage';
 import SupplierPage from './components/SupplierPage';
 import RecipePage from './components/RecipePage';
 import { generateReceiptMessage } from './services/geminiService';
-import { DB } from './services/supabase';
+import { DB, APP_BUILD_ID } from './services/supabase';
 import { LocalDB } from './services/db';
 import {
   Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History, BookOpen
@@ -141,6 +141,10 @@ const App: React.FC = () => {
     if (isInitial) setIsLoading(true);
     try {
       if (navigator.onLine) {
+        // One-time-per-deploy: push code-defined menu changes (new items, price
+        // edits, removals) to Supabase before reading the menu back.
+        await DB.syncMenuCatalog(APP_BUILD_ID);
+
         const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs] = await Promise.all([
           DB.getUsers(),
           DB.getMenuItems(),

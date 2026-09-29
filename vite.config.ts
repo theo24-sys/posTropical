@@ -3,8 +3,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Unique id per build — used by the menu catalog sync to run once per deploy.
+const appBuildId = `build-${Date.now()}`;
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(appBuildId),
+  },
   plugins: [
     react(),
     VitePWA({
