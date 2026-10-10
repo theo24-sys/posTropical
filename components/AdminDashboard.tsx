@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MenuItem, User, Category, UserRole, SaleTransaction, PaymentMethod, Expense, AuditLog, InventoryItem, InventoryCategory } from '../types.ts';
 import { CURRENCY, LOGO_URL, MENU_ITEMS } from '../constants.ts';
 import {
-  Plus, Trash2, Package, Users, BarChart3, PieChart, RefreshCw,
+  Plus, Trash2, Package, Users, BarChart3, PieChart, RefreshCw, Menu,
   DollarSign, ArrowLeft, Search, TrendingUp, TrendingDown,
   Activity, ShieldAlert, Edit3, Beef, Egg, Cake, GlassWater,
   Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
@@ -111,6 +111,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [expenseDate, setExpenseDate] = useState('');
+  // Phone navigation drawer
+  const [isNavOpen, setIsNavOpen] = useState(false);
   // Expense being corrected (edit mode) — null means a brand-new entry.
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
@@ -315,14 +317,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const NavLink = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (
-    <button onClick={() => setActiveTab(id)} className={`w-full flex items-center justify-between px-6 py-5 rounded-[22px] transition-all ${activeTab === id ? 'bg-[#4B3621] text-white shadow-xl translate-x-1' : 'text-gray-400 hover:bg-gray-50'}`}>
+    <button onClick={() => { setActiveTab(id); setIsNavOpen(false); }} className={`w-full flex items-center justify-between px-6 py-5 rounded-[22px] transition-all ${activeTab === id ? 'bg-[#4B3621] text-white shadow-xl translate-x-1' : 'text-gray-400 hover:bg-gray-50'}`}>
       <div className="flex items-center gap-4"><Icon size={22} /> <span className="text-sm font-black uppercase tracking-widest">{label}</span></div>
     </button>
   );
 
   return (
     <div className="flex h-screen bg-[#FDFCF9] font-sans overflow-hidden text-[#4B3621]">
-      <aside className="w-[340px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20 shadow-lg">
+      {/* Phones: slide-over nav drawer. Desktop: permanent sidebar. */}
+      {isNavOpen && <div className="fixed inset-0 z-30 bg-[#4B3621]/50 backdrop-blur-sm md:hidden" onClick={() => setIsNavOpen(false)} />}
+      <aside className={`fixed md:relative z-40 inset-y-0 left-0 w-[300px] md:w-[340px] bg-white border-r border-gray-100 flex flex-col shrink-0 shadow-lg transform transition-transform duration-300 ${isNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-12 flex flex-col items-center gap-6">
           <div className="w-20 h-20 bg-white rounded-[32px] flex items-center justify-center shadow-2xl p-2 border border-gray-50 overflow-hidden">
             <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
@@ -333,6 +337,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
         <nav className="flex-1 px-6 space-y-3 py-6 overflow-y-auto scrollbar-thin">
+          <button onClick={() => setIsNavOpen(false)} className="w-full flex md:hidden items-center justify-center gap-3 py-4 rounded-[22px] bg-gray-50 text-gray-400 font-black text-xs uppercase tracking-widest"><X size={18} /> Close Menu</button>
           <NavLink id="reports" label="Analytics" icon={BarChart3} />
           <NavLink id="inventory" label="Inventory" icon={Package} />
           <NavLink id="menu" label="Catalogue" icon={Layers} />
@@ -351,14 +356,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="h-28 bg-white border-b border-gray-100 px-12 flex justify-between items-center shrink-0 shadow-sm z-10">
-          <div className="flex items-center gap-8">
-            <button onClick={() => navigate('/')} className="w-14 h-14 flex items-center justify-center bg-gray-50 rounded-[20px] text-gray-400 hover:text-[#4B3621] hover:bg-gray-100 transition-all shadow-inner">
+        <header className="h-20 md:h-28 bg-white border-b border-gray-100 px-4 md:px-12 flex justify-between items-center shrink-0 shadow-sm z-10">
+          <div className="flex items-center gap-3 md:gap-8 min-w-0">
+            <button onClick={() => setIsNavOpen(true)} className="md:hidden w-12 h-12 flex items-center justify-center bg-gray-50 rounded-[20px] text-[#4B3621] active:bg-gray-100" title="Open menu">
+              <Menu size={24} />
+            </button>
+            <button onClick={() => navigate('/')} className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-50 rounded-[20px] text-gray-400 hover:text-[#4B3621] hover:bg-gray-100 transition-all shadow-inner">
               <ArrowLeft size={24} />
             </button>
-            <h2 className="text-4xl font-serif font-black capitalize tracking-tighter">{activeTab}</h2>
+            <h2 className="text-2xl md:text-4xl font-serif font-black capitalize tracking-tighter truncate">{activeTab}</h2>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2 md:gap-5">
             <button onClick={handleManualRefresh} className={`w-14 h-14 flex items-center justify-center rounded-[20px] border-2 border-gray-50 text-gray-300 hover:text-teal-600 hover:border-teal-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
               <RefreshCw size={24} />
             </button>
@@ -670,7 +678,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
                   </div>
                 </div>
-                <table className="w-full min-w-[900px] text-left">
+                {/* Widescreen: full table */}
+                <table className="hidden md:table w-full text-left">
                   <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-50">
                     <tr>
                       <th className="px-12 py-6">Date Lodged</th>
@@ -681,7 +690,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <th className="px-12 py-6 text-right">KES Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">                    {filteredExpenses.map(e => (
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredExpenses.map(e => (
                       <tr key={e.id} className="hover:bg-gray-50/50 transition-colors group cursor-pointer" onClick={() => { setEditingExpense(e); setExpenseDate(e.date.slice(0, 10)); setIsExpenseModalOpen(true); }}>
                         <td className="px-12 py-10 font-bold text-gray-500 whitespace-nowrap">{new Date(e.date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td className="px-12 py-10 text-sm font-black text-amber-600 whitespace-nowrap">{e.supplierSource || '—'}</td>
@@ -718,6 +728,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {filteredExpenses.length === 0 && <tr><td colSpan={6} className="text-center py-40 text-gray-300 italic font-bold">No financial outflows recorded in this window.</td></tr>}
                   </tbody>
                 </table>
+
+                {/* PHONES & TABLETS: stacked, tappable cards — no sideways scrolling, edit/delete always visible */}
+                <div className="md:hidden divide-y divide-gray-50">
+                  {filteredExpenses.map(e => (
+                    <div key={e.id} onClick={() => { setEditingExpense(e); setExpenseDate(e.date.slice(0, 10)); setIsExpenseModalOpen(true); }} className="px-5 py-5 active:bg-gray-50 cursor-pointer">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-black text-lg text-[#4B3621] leading-tight break-words">{e.itemName || e.description}</div>
+                          <div className="text-xs font-bold text-gray-400 mt-1">{new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · {e.recordedBy}{e.supplierSource ? ` · ${e.supplierSource}` : ''}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-gray-300">
+                            <span className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1">{e.category}</span>
+                            {e.quantity != null && <span className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1">Qty: {e.quantity} {e.quantityUnit || ''}</span>}
+                            {e.unitCost != null && <span className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1">Unit: {CURRENCY} {e.unitCost.toLocaleString()}</span>}
+                            {e.note && <span className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1">{e.note}</span>}
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex flex-col items-end gap-3">
+                          <span className="text-xl font-black text-red-500 tracking-tighter">-{e.amount.toLocaleString()}</span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); setEditingExpense(e); setExpenseDate(e.date.slice(0, 10)); setIsExpenseModalOpen(true); }}
+                              className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 text-[#4B3621] active:bg-[#4B3621] active:text-white transition-colors"
+                              title="Edit this entry"
+                            >
+                              <Edit3 size={18}/>
+                            </button>
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); if (confirm('Remove this expense entry permanently?')) onDeleteExpense(e.id); }}
+                              className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-500 active:bg-red-500 active:text-white transition-colors"
+                              title="Delete this entry"
+                            >
+                              <Trash2 size={18}/>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredExpenses.length === 0 && (
+                    <div className="py-16 text-center text-gray-300 italic font-bold">No financial outflows recorded in this window.</div>
+                  )}
+                </div>
               </div>
             )}
 
