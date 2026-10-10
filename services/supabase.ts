@@ -421,6 +421,36 @@ export const DB = {
     if (error) console.error('deleteExpense failed:', error.message);
   },
 
+  // Fix a wrongly-entered expense in place (admin correction). Uses upsert so
+  // it works whether the row carries the full schema or the legacy subset.
+  async updateExpense(expense: Expense): Promise<void> {
+    const { error } = await supabase.from('expenses').upsert({
+      id: expense.id,
+      date: expense.date,
+      description: expense.description,
+      amount: expense.amount,
+      category: expense.category,
+      recorded_by: expense.recordedBy,
+      supplier_source: expense.supplierSource ?? null,
+      item_name: expense.itemName ?? null,
+      quantity: expense.quantity ?? null,
+      unit_cost: expense.unitCost ?? null,
+      note: expense.note ?? null,
+    });
+    if (error) {
+      // Legacy table without extra columns: retry with the core subset.
+      const legacy = await supabase.from('expenses').upsert({
+        id: expense.id,
+        date: expense.date,
+        description: expense.description,
+        amount: expense.amount,
+        category: expense.category,
+        recorded_by: expense.recordedBy,
+      });
+      if (legacy.error) console.error('updateExpense failed:', legacy.error.message);
+    }
+  },
+
   // --- Audit Logs ---
   async getAuditLogs(): Promise<AuditLog[]> {
     const data = await safeFetch<any>(

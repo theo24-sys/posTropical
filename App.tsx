@@ -318,6 +318,11 @@ const App: React.FC = () => {
     await DB.saveExpense(expense);
   };
 
+  const handleUpdateExpense = async (expense: Expense) => {
+    setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e));
+    await DB.updateExpense(expense);
+  };
+
   const addToCart = useCallback((item: MenuItem) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -865,6 +870,7 @@ const App: React.FC = () => {
                   onSaveExpense={async (e: Expense) => {
                     await handleSaveExpense(e);
                   }}
+                  onUpdateExpense={handleUpdateExpense}
                   onDeleteExpense={async (id: string) => {
                     setExpenses(prev => prev.filter(e => e.id !== id));
                     await DB.deleteExpense(id);

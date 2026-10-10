@@ -30,6 +30,7 @@ interface AdminDashboardProps {
   onSaveUser: (user: User) => Promise<void>;
   onDeleteUser: (id: string) => Promise<void>;
   onSaveExpense: (expense: Expense) => Promise<void>;
+  onUpdateExpense: (expense: Expense) => Promise<void>;
   onDeleteExpense: (id: string) => Promise<void>;
   onClose: () => void;
   onRefresh: () => Promise<void>;
@@ -85,7 +86,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   menuItems, users, salesHistory, expenses, auditLogs, inventory,
   onUpdateStock, onSaveInventoryItem, onDeleteInventoryItem,
   onSaveItem, onDeleteItem, onSaveUser, onDeleteUser,
-  onSaveExpense, onDeleteExpense, onClose, onRefresh,
+  onSaveExpense, onUpdateExpense, onDeleteExpense, onClose, onRefresh,
   currentUser
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'finances' | 'security' | 'inventory' | 'menu' | 'analytics' | 'reports_export'>('reports');
@@ -110,6 +111,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [expenseDate, setExpenseDate] = useState('');
+  // Expense being corrected (edit mode) — null means a brand-new entry.
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   // Recovery tool states
@@ -287,16 +290,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     e.preventDefault(); setIsSaving(true);
     const formData = new FormData(e.target as HTMLFormElement);
     const selectedDate = expenseDate || new Date().toISOString().slice(0, 10);
-    const newExp: Expense = {
-      id: `exp-${Date.now()}`,
+    const q = (name: string) => (formData.get(name) as string || '').trim();
+    const qtyRaw = q('quantity');
+    const unitRaw = q('unitCost');
+    const exp: Expense = {
+      ...(editingExpense ? { id: editingExpense.id, recordedBy: editingExpense.recordedBy } : { id: `exp-${Date.now()}`, recordedBy: currentUser.name }),
       date: new Date(selectedDate).toISOString(),
-      description: formData.get('description') as string,
+      description: q('description'),
       amount: Number(formData.get('amount')),
-      category: formData.get('category') as any,
-      recordedBy: currentUser.name
+      category: (formData.get('category') as any) || 'Other',
+      supplierSource: (q('supplierSource') || undefined) as Expense['supplierSource'],
+      itemName: q('itemName') || undefined,
+      quantity: qtyRaw !== '' && !isNaN(Number(qtyRaw)) ? Number(qtyRaw) : undefined,
+      unitCost: unitRaw !== '' && !isNaN(Number(unitRaw)) ? Number(unitRaw) : undefined,
+      note: q('note') || undefined,
     };
-    await onSaveExpense(newExp);
-    setIsSaving(false); setIsExpenseModalOpen(false);
+    if (editingExpense) {
+      await onUpdateExpense(exp);
+    } else {
+      await onSaveExpense(exp);
+    }
+    setIsSaving(false); setIsExpenseModalOpen(false); setEditingExpense(null);
     setExpenseDate('');
   };
 
@@ -360,7 +374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {activeTab === 'users' && <button onClick={() => { setEditingUser(null); setIsUserModalOpen(true); }} className="bg-[#4B3621] text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <UserPlus size={22} /> New Staff
             </button>}
-            {activeTab === 'finances' && <button onClick={() => { setExpenseDate(new Date().toISOString().slice(0, 10)); setIsExpenseModalOpen(true); }} className="bg-red-500 text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
+            {activeTab === 'finances' && <button onClick={() => { setEditingExpense(null); setExpenseDate(new Date().toISOString().slice(0, 10)); setIsExpenseModalOpen(true); }} className="bg-red-500 text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <DollarSign size={22} /> Record Outflow
             </button>}
           </div>
@@ -602,7 +616,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
 
             {activeTab === 'finances' && (
-              <div className="bg-white rounded-[56px] shadow-sm border border-gray-50 overflow-hidden">
+              <div className="bg-white rounded-[56px] shadow-sm border border-gray-50 overflow-x-auto">
                 <div className="p-12 border-b border-gray-50 bg-gray-50/20 space-y-8">
                   <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-6">
                     <div>
@@ -656,7 +670,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     )}
                   </div>
                 </div>
-                <table className="w-full text-left">
+                <table className="w-full min-w-[900px] text-left">
                   <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-50">
                     <tr>
                       <th className="px-12 py-6">Date Lodged</th>
@@ -667,9 +681,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <th className="px-12 py-6 text-right">KES Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredExpenses.map(e => (
-                      <tr key={e.id} className="hover:bg-gray-50/50 transition-colors group">
+                  <tbody className="divide-y divide-gray-50">                    {filteredExpenses.map(e => (
+                      <tr key={e.id} className="hover:bg-gray-50/50 transition-colors group cursor-pointer" onClick={() => { setEditingExpense(e); setExpenseDate(e.date.slice(0, 10)); setIsExpenseModalOpen(true); }}>
                         <td className="px-12 py-10 font-bold text-gray-500 whitespace-nowrap">{new Date(e.date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td className="px-12 py-10 text-sm font-black text-amber-600 whitespace-nowrap">{e.supplierSource || '—'}</td>
                         <td className="px-12 py-10 min-w-[280px]">
@@ -682,7 +695,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </td>
                         <td className="px-12 py-10"><span className="px-6 py-2.5 rounded-full bg-white border border-gray-100 shadow-sm text-[9px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">{e.category}</span></td>
                         <td className="px-12 py-10 text-sm font-bold text-gray-400 whitespace-nowrap">{e.recordedBy}</td>
-                        <td className="px-12 py-10 text-right"><div className="flex justify-end items-center gap-4"><span className="text-2xl font-black text-red-500 tracking-tighter">-{e.amount.toLocaleString()}</span><button onClick={() => onDeleteExpense(e.id)} className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={18}/></button></div></td>
+                        <td className="px-12 py-10 text-right">
+                          <div className="flex justify-end items-center gap-4">
+                            <span className="text-2xl font-black text-red-500 tracking-tighter">-{e.amount.toLocaleString()}</span>
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); setEditingExpense(e); setExpenseDate(e.date.slice(0, 10)); setIsExpenseModalOpen(true); }}
+                              className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-300 hover:bg-[#4B3621] hover:text-white transition-colors"
+                              title="Edit this entry"
+                            >
+                              <Edit3 size={18}/>
+                            </button>
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); if (confirm('Remove this expense entry permanently?')) onDeleteExpense(e.id); }}
+                              className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors"
+                              title="Delete this entry"
+                            >
+                              <Trash2 size={18}/>
+                            </button>
+                        </div></td>
                       </tr>
                     ))}
                     {filteredExpenses.length === 0 && <tr><td colSpan={6} className="text-center py-40 text-gray-300 italic font-bold">No financial outflows recorded in this window.</td></tr>}
@@ -825,15 +855,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {isExpenseModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-6">
-            <div className="bg-white w-full max-w-xl rounded-[64px] p-16 shadow-2xl relative animate-in zoom-in-95 duration-300">
-              <button onClick={() => setIsExpenseModalOpen(false)} className="absolute top-10 right-10 text-gray-300 hover:text-[#4B3621] transition-all p-3 hover:bg-gray-50 rounded-full"><X size={32}/></button>
-              <h3 className="font-serif text-4xl font-black mb-10 text-red-500 tracking-tighter">Record Outflow</h3>
-              <form onSubmit={handleSaveExpenseForm} className="space-y-10">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-4 sm:p-6 overflow-y-auto">
+            <div className="bg-white w-full max-w-xl rounded-[40px] sm:rounded-[64px] p-8 sm:p-16 shadow-2xl relative animate-in zoom-in-95 duration-300 my-auto">
+              <button onClick={() => { setIsExpenseModalOpen(false); setEditingExpense(null); }} className="absolute top-6 right-6 sm:top-10 sm:right-10 text-gray-300 hover:text-[#4B3621] transition-all p-3 hover:bg-gray-50 rounded-full"><X size={32}/></button>
+              <h3 className="font-serif text-3xl sm:text-4xl font-black mb-3 text-red-500 tracking-tighter">{editingExpense ? 'Correct Entry' : 'Record Outflow'}</h3>
+              <p className="text-xs font-bold text-gray-400 mb-10">{editingExpense ? `Recorded by ${editingExpense.recordedBy} — correcting on their behalf; the fix is logged as an admin edit.` : 'Log a cash outflow to the expense ledger.'}</p>
+              <form onSubmit={handleSaveExpenseForm} className="space-y-6 sm:space-y-10">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Ledger Description</label>
-                    <input name="description" className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required />
+                    <input name="description" defaultValue={editingExpense?.description || ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Date Lodged</label>
@@ -846,11 +877,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-10">
-                  <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Amount (KES)</label><input name="amount" type="number" className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required /></div>
-                  <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Sector</label><select name="category" className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest outline-none"><option>Inventory Restock</option><option>Utilities</option><option>Salaries</option><option>Maintenance</option><option>Rent</option><option>Other</option></select></div>
+                <div className="grid grid-cols-2 gap-6 sm:gap-10">
+                  <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Amount (KES)</label><input name="amount" type="number" min="0" step="1" defaultValue={editingExpense?.amount ?? ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" required /></div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Sector</label>
+                    <select name="category" defaultValue={editingExpense?.category || 'Other'} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest outline-none">
+                      {['Inventory Restock', 'Utilities', 'Salaries', 'Maintenance', 'Rent', 'Wastage/Loss', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div className="flex gap-6 pt-10"><button type="button" onClick={() => setIsExpenseModalOpen(false)} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-[4px] text-gray-300">Cancel</button><button type="submit" disabled={isSaving} className="flex-[2] py-6 bg-red-500 text-white rounded-[28px] font-black text-[10px] uppercase tracking-[4px] shadow-2xl hover:scale-105 active:scale-95 transition-all">Record Ledger</button></div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Source (where bought)</label>
+                  <select name="supplierSource" defaultValue={editingExpense?.supplierSource || ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-widest outline-none">
+                    <option value="">— Not specified —</option>
+                    {['Supermarket', 'Town', 'Butchery', 'Market'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                  <div className="col-span-2 sm:col-span-1"><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Item Name</label><input name="itemName" defaultValue={editingExpense?.itemName || ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" /></div>
+                  <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Quantity</label><input name="quantity" type="number" min="0" step="any" defaultValue={editingExpense?.quantity ?? ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" /></div>
+                  <div><label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Unit Cost (KES)</label><input name="unitCost" type="number" min="0" step="any" defaultValue={editingExpense?.unitCost ?? ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-black text-lg outline-none" /></div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-300 uppercase tracking-[4px] mb-4 block">Note</label>
+                  <input name="note" defaultValue={editingExpense?.note || ''} className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-[28px] font-bold text-base outline-none" />
+                </div>
+                <div className="flex gap-6">
+                  <button type="button" onClick={() => { setIsExpenseModalOpen(false); setEditingExpense(null); }} className="flex-1 py-6 border-2 border-gray-100 rounded-[28px] font-black text-[10px] uppercase tracking-[4px] text-gray-300">Cancel</button>
+                  <button type="submit" disabled={isSaving} className="flex-[2] py-6 bg-red-500 text-white rounded-[28px] font-black text-[10px] uppercase tracking-[4px] shadow-2xl hover:scale-105 active:scale-95 transition-all">{editingExpense ? 'Save Correction' : 'Record Ledger'}</button>
+                </div>
               </form>
             </div>
           </div>
