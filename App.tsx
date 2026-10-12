@@ -309,7 +309,6 @@ const App: React.FC = () => {
       // Staff who open the recipe/stock-count URL directly should land there
       // after PIN login rather than being pushed to the POS.
       navigate(location.pathname);
-      navigate(location.pathname);
     } else {
       navigate('/');
     }
@@ -609,9 +608,13 @@ const App: React.FC = () => {
   if (!posUser) {
   const isAdminPath = location.pathname === '/admin' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe';
   const isSupplierPath = location.pathname === '/supplier';
+  const isStockCountPath = location.pathname === '/stock-count';
   const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
   const MOCK_USER_IDS = new Set(['u1', 'u2', 'u3', 'u4', 'u5']);
-  const visibleUsers = (isAdminPath
+  // The stock-count page wants staff PINs, not admin/supplier ones.
+  const visibleUsers = (isStockCountPath
+    ? users.filter(u => ['CHEF', 'BARISTA', 'WAITER', 'STEWARD'].includes(normalizeRole(u.role)))
+    : isAdminPath
     ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
     : isSupplierPath
       ? users.filter(u => normalizeRole(u.role) === 'SUPPLIER')
