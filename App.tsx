@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem, StockCount, CountItem } from './types';
 import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, cartIsTestOnly, menuItemIsTest } from './constants';
-import { SEED_COUNT_ITEMS } from './constants/stockCounts';
+import { SEED_COUNT_ITEMS, COUNT_SEED_VERSION } from './constants/stockCounts';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -148,6 +148,9 @@ const App: React.FC = () => {
         // One-time-per-deploy: push code-defined menu changes (new items, price
         // edits, removals) to Supabase before reading the menu back.
         await DB.syncMenuCatalog(APP_BUILD_ID);
+        // One-time-per-seed-version: push the stock-count checklists (latest
+        // chef list + supplier Home Inventory) before reading them back.
+        await DB.syncCountItemsSeed(COUNT_SEED_VERSION);
 
         const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs, cloudCounts, cloudCountItems] = await Promise.all([
           DB.getUsers(),
@@ -301,7 +304,12 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setPosUser(user);
     logActivity('LOGIN', `User ${user.name} logged in`, 'low');
-    if (isSupplier(user)) {
+    if (location.pathname === '/stock-count') {
+      // The stock page is the single entry point for every counting role —
+      // chef, barista, waiter, steward AND the supplier — so PIN entry keeps
+      // you here instead of bouncing to the POS or the purchases screen.
+      navigate('/stock-count');
+    } else if (isSupplier(user)) {
       navigate('/supplier');
     } else if ((location.pathname === '/admin' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') && isAdmin(user)) {
       // stay on admin
@@ -319,7 +327,11 @@ const App: React.FC = () => {
       logActivity('LOGOUT', `User ${posUser.name} logged out`, 'low');
     }
     setPosUser(null);
-    navigate(isSupplier(posUser) ? '/supplier' : '/');
+    if (location.pathname === '/stock-count') {
+      navigate('/stock-count'); // back to the shared stock-count PIN screen
+    } else {
+      navigate(isSupplier(posUser) ? '/supplier' : '/');
+    }
   };
 
   const handleSaveExpense = async (expense: Expense) => {
@@ -611,9 +623,10 @@ const App: React.FC = () => {
   const isStockCountPath = location.pathname === '/stock-count';
   const normalizeRole = (role?: string) => (role || '').trim().toUpperCase();
   const MOCK_USER_IDS = new Set(['u1', 'u2', 'u3', 'u4', 'u5']);
-  // The stock-count page wants staff PINs, not admin/supplier ones.
+  // The stock-count page wants the counting staff PINs — including the
+  // supplier (Silas), whose Home Inventory lives there too — not admin ones.
   const visibleUsers = (isStockCountPath
-    ? users.filter(u => ['CHEF', 'BARISTA', 'WAITER', 'STEWARD'].includes(normalizeRole(u.role)))
+    ? users.filter(u => ['CHEF', 'BARISTA', 'WAITER', 'STEWARD', 'SUPPLIER'].includes(normalizeRole(u.role)))
     : isAdminPath
     ? users.filter(u => normalizeRole(u.role) === 'ADMIN')
     : isSupplierPath
@@ -623,22 +636,11 @@ const App: React.FC = () => {
   return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
 }
 
-  if (isSupplier(posUser)) {
-    return (
-      <SupplierPage
-        currentUser={posUser}
-        expenses={expenses}
-        onSaveExpense={handleSaveExpense}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
-  // Counting staff (Chef/Barista/Waiter/Steward) live ONLY on the stock count
-  // page — no POS, no transactions, no recipes — rendered full-screen outside
-  // the POS shell (whose overflow wrapper clips phone scrolling). Every user
-  // who directly opens /stock-count also gets the standalone page; cashiers
-  // and admins otherwise keep the normal app.
+  // Counting staff (Chef/Barista/Waiter/Steward) and the supplier live ONLY
+  // on the stock count page — no POS, no transactions, no recipes — rendered
+  // full-screen outside the POS shell (whose overflow wrapper clips phone
+  // scrolling). Every user who directly opens /stock-count also gets the
+  // standalone page; cashiers and admins otherwise keep the normal app.
   const isCountingStaff = ['CHEF', 'BARISTA', 'WAITER', 'STEWARD'].includes((posUser.role || '').trim().toUpperCase());
   if (isCountingStaff || location.pathname === '/stock-count') {
     return (
@@ -649,6 +651,21 @@ const App: React.FC = () => {
         stockCounts={stockCounts}
         onSubmit={handleSaveStockCount}
         onLogout={handleLogout}
+        onOpenPurchases={isSupplier(posUser) ? () => navigate('/supplier') : undefined}
+      />
+    );
+  }
+
+  // The supplier's purchase recorder remains its own screen — reachable from
+  // /supplier or via the Purchases button on the stock page.
+  if (isSupplier(posUser)) {
+    return (
+      <SupplierPage
+        currentUser={posUser}
+        expenses={expenses}
+        onSaveExpense={handleSaveExpense}
+        onLogout={handleLogout}
+        onOpenStock={() => navigate('/stock-count')}
       />
     );
   }

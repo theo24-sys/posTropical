@@ -1118,7 +1118,7 @@ const CountItemModal: React.FC<{
   const [active, setActive] = useState(editing?.active !== false);
   const [saving, setSaving] = useState(false);
 
-  const ALL_ROLES = ['Chef', 'Waiter', 'Steward', 'Barista', 'Cashier'];
+  const ALL_ROLES = ['Chef', 'Waiter', 'Steward', 'Barista', 'Cashier', 'Supplier'];
 
   const toggleRole = (r: string) => {
     setRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
@@ -1182,6 +1182,7 @@ const CountItemModal: React.FC<{
                 <option value="Kitchen">Kitchen</option>
                 <option value="Bar">Bar</option>
                 <option value="Front of House">Front of House</option>
+                <option value="Home Inventory">Home Inventory</option>
               </select>
             </div>
           </div>

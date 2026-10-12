@@ -57,7 +57,7 @@ export interface CountItem {
   name: string;
   unit: string;
   roles: string[]; // which staff roles count this item, e.g. ['Chef'] or ['Waiter','Steward']
-  section: 'Kitchen' | 'Bar' | 'Front of House';
+  section: 'Kitchen' | 'Bar' | 'Front of House' | 'Home Inventory';
   active: boolean;
 }
 

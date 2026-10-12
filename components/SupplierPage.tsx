@@ -12,6 +12,7 @@ import {
   X,
   History,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 
 interface SupplierPageProps {
@@ -19,6 +20,8 @@ interface SupplierPageProps {
   expenses: Expense[];
   onSaveExpense: (expense: Expense) => Promise<void>;
   onLogout: () => void;
+  /** Opens the stock-count page (Home Inventory) — the single stock entry point. */
+  onOpenStock?: () => void;
 }
 
 type SupplierSource = 'Supermarket' | 'Town' | 'Butchery' | 'Market';
@@ -226,6 +229,7 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({
   expenses,
   onSaveExpense,
   onLogout,
+  onOpenStock,
 }) => {
   const today = new Date().toISOString().slice(0, 10);
   const [expenseDate, setExpenseDate] = useState(today);
@@ -368,6 +372,16 @@ export const SupplierPage: React.FC<SupplierPageProps> = ({
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {onOpenStock && (
+              <button
+                onClick={onOpenStock}
+                className="flex h-11 items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 text-xs font-black text-gray-500 active:bg-amber-50 sm:px-4"
+                title="Home Inventory"
+              >
+                <ClipboardList size={15} />
+                <span className="hidden xs:inline">Stock</span>
+              </button>
+            )}
             <button
               onClick={() => setShowHistory(true)}
               className="flex h-11 items-center gap-1.5 rounded-full border border-gray-100 bg-gray-50 px-3 text-xs font-black text-gray-500 active:bg-amber-50 sm:px-4"

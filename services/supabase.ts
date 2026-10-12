@@ -1,6 +1,7 @@
 import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem, StockCount, CountItem, StockCountEntry } from '../types';
 import { KITCHEN_RECIPES, MENU_ITEMS, REMOVED_MENU_ITEM_IDS } from '../constants';
+import { SEED_COUNT_ITEMS, RETIRED_COUNT_ITEM_IDS } from '../constants/stockCounts';
 
 // ────────────────────────────────────────────────
 // Supabase Configuration
@@ -189,6 +190,45 @@ export const DB = {
     } catch (err: any) {
       // Never block startup over a sync failure; it will retry next launch.
       console.warn('[menu-catalog] sync failed, will retry next launch:', err?.message || err);
+    }
+  },
+
+  // One-time-per-seed-version push of the stock-count checklists (count_items)
+  // to Supabase, so a revised document list (e.g. the latest Chefs Inventory
+  // and the new Home Inventory for the supplier) reaches devices whose cloud
+  // table was already populated. Seed rows are upserted as-is; ids in
+  // RETIRED_COUNT_ITEM_IDS are removed once. Rows the admin added with their
+  // own ids are never touched. Flagged in localStorage so admin edits made
+  // afterwards stick until the seed version is bumped in constants/stockCounts.
+  async syncCountItemsSeed(seedVersion: string): Promise<void> {
+    const flagKey = `count-items-seed:${seedVersion}`;
+    if (typeof window !== 'undefined' && window.localStorage.getItem(flagKey)) return;
+
+    try {
+      const payload = SEED_COUNT_ITEMS.map(item => ({
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+        roles: item.roles,
+        section: item.section,
+        active: item.active,
+      }));
+
+      for (let i = 0; i < payload.length; i += 50) {
+        const { error } = await supabase.from('count_items').upsert(payload.slice(i, i + 50));
+        if (error) throw new Error(error.message);
+      }
+
+      for (const id of RETIRED_COUNT_ITEM_IDS) {
+        const { error } = await supabase.from('count_items').delete().eq('id', id);
+        if (error) console.error(`syncCountItemsSeed: failed to remove ${id}:`, error.message);
+      }
+
+      if (typeof window !== 'undefined') window.localStorage.setItem(flagKey, 'done');
+      console.log(`[count-items] seeded ${payload.length} items (seed ${seedVersion})`);
+    } catch (err: any) {
+      // Never block startup over a sync failure; it will retry next launch.
+      console.warn('[count-items] seed sync failed, will retry next launch:', err?.message || err);
     }
   },
 
@@ -492,7 +532,9 @@ export const DB = {
       name: r.name,
       unit: r.unit || 'pcs',
       roles: Array.isArray(r.roles) ? r.roles : [],
-      section: (r.section === 'Front of House' ? 'Front of House' : 'Kitchen') as CountItem['section'],
+      section: (['Kitchen', 'Bar', 'Front of House', 'Home Inventory'].includes(r.section)
+        ? r.section
+        : 'Kitchen') as CountItem['section'],
       active: r.active !== false,
     }));
   },

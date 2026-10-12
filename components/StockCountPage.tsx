@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CountItem, InventoryItem, StockCount, StockCountEntry, User } from '../types';
-import { ArrowLeft, Check, ClipboardList, Clock, Package, Plus, Save, Search } from 'lucide-react';
+import { ArrowLeft, Check, ClipboardList, Clock, Package, Plus, Save, Search, Store } from 'lucide-react';
 
 interface StockCountPageProps {
   currentUser: User;
@@ -9,11 +9,13 @@ interface StockCountPageProps {
   stockCounts: StockCount[];
   onSubmit: (count: StockCount) => Promise<void>;
   onLogout: () => void;
+  /** Supplier only: opens the purchases screen (SupplierPage). */
+  onOpenPurchases?: () => void;
 }
 
 const nairobiToday = (): string => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
 
-export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, countItems, inventory, stockCounts, onSubmit, onLogout }) => {
+export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, countItems, inventory, stockCounts, onSubmit, onLogout, onOpenPurchases }) => {
   const role = (currentUser.role || '').trim().toLowerCase();
   const [showLog, setShowLog] = useState(false);
   const [search, setSearch] = useState('');
@@ -26,6 +28,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
   const isChefSide = role === 'chef';
   const isBaristaSide = role === 'barista';
   const isFrontSide = role === 'waiter' || role === 'steward';
+  const isSupplierSide = role === 'supplier';
 
   const myItems = useMemo(() => {
     return countItems
@@ -106,7 +109,9 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
 
   const fieldLabel = isChefSide
     ? { opening: 'Opening', purchased: 'Purchased', sold: 'Sold', closing: 'Closing' }
-    : { opening: 'Opening', purchased: 'Received', sold: 'Used', closing: 'Remaining' };
+    : isSupplierSide
+      ? { opening: 'Opening', purchased: 'Received', sold: 'Sent', closing: 'Closing' }
+      : { opening: 'Opening', purchased: 'Received', sold: 'Used', closing: 'Remaining' };
 
   const roleTitle = isChefSide
     ? 'Kitchen Count'
@@ -114,7 +119,9 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
       ? 'Bar Count'
       : isFrontSide
         ? 'Front of House Count'
-        : 'Stock Count';
+        : isSupplierSide
+          ? 'Home Inventory'
+          : 'Stock Count';
 
   return (
     <div className="min-h-screen bg-[#F5F4EF] font-sans text-[#4B3621] pb-28">
@@ -137,6 +144,15 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {onOpenPurchases && (
+              <button
+                onClick={onOpenPurchases}
+                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 hover:text-amber-800 transition-colors flex items-center gap-1.5"
+                title="Record purchases"
+              >
+                <Store size={14} /> Purchases
+              </button>
+            )}
             <button
               onClick={() => setShowLog(s => !s)}
               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 ${showLog ? 'bg-[#4B3621] text-white' : 'bg-gray-50 text-gray-400 hover:text-[#4B3621]'}`}
