@@ -15,6 +15,85 @@ interface StockCountPageProps {
 
 const nairobiToday = (): string => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
 
+export type CountValues = Record<
+  string,
+  { opening: string; purchased: string; sold: string; closing: string }
+>;
+export type PrevClosing = { byId: Map<string, number>; byName: Map<string, number> };
+
+/**
+ * Carry-forward source: for a role, each item's most recent Remaining
+ * (closing) recorded on a day before `today`. Newest submission wins; ids
+ * first with a name fallback so a re-created checklist row still finds its
+ * previous remaining. Today's own sheet never seeds the opening.
+ */
+export function collectPreviousClosings(
+  stockCounts: StockCount[],
+  role: string,
+  today: string
+): PrevClosing {
+  const wanted = (role || '').trim().toLowerCase();
+  const byId = new Map<string, number>();
+  const byName = new Map<string, number>();
+  stockCounts
+    .filter(c => (c.role || '').trim().toLowerCase() === wanted)
+    .map(c => ({ c, d: c.countDate || c.date.slice(0, 10) }))
+    .filter(x => x.d < today)
+    .sort((a, b) => new Date(b.c.date).getTime() - new Date(a.c.date).getTime())
+    .forEach(({ c }) => {
+      for (const e of c.entries) {
+        const closing = Number(e.closing);
+        if (!Number.isFinite(closing) || closing < 0) continue;
+        if (e.itemId && !byId.has(e.itemId)) byId.set(e.itemId, closing);
+        const name = (e.itemName || '').trim().toLowerCase();
+        if (name && !byName.has(name)) byName.set(name, closing);
+      }
+    });
+  return { byId, byName };
+}
+
+/** Opening = whatever the staff typed, otherwise the carried-over remaining. */
+export function resolveOpening(
+  typed: string | undefined,
+  item: { id: string; name: string },
+  prev: PrevClosing
+): string {
+  if (typed) return typed;
+  const carried =
+    prev.byId.get(item.id) ??
+    prev.byName.get((item.name || '').trim().toLowerCase());
+  return carried === undefined ? '' : String(carried);
+}
+
+/**
+ * Rows submitted for one sheet. Untouched items are skipped (their carried
+ * remaining simply stays the latest one on record); for touched items the
+ * opening comes from the carry-forward and a blank Remaining is finished with
+ * the standard equation (opening + received − sales) instead of recording a
+ * zero that would wipe the item's master stock row.
+ */
+export function buildCountEntries(
+  items: CountItem[],
+  values: CountValues,
+  prev: PrevClosing
+): StockCountEntry[] {
+  const entries: StockCountEntry[] = [];
+  for (const item of items) {
+    const v = values[item.id];
+    if (!v) continue;
+    const opening = Number(resolveOpening(v.opening, item, prev) || 0);
+    const purchased = Number(v.purchased || 0);
+    const sold = Number(v.sold || 0);
+    const closing =
+      v.closing === ''
+        ? Math.max(0, opening + purchased - sold)
+        : Number(v.closing || 0);
+    if (!opening && !purchased && !sold && !closing) continue;
+    entries.push({ itemId: item.id, itemName: item.name, unit: item.unit, opening, purchased, sold, closing });
+  }
+  return entries;
+}
+
 export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, countItems, inventory, stockCounts, onSubmit, onLogout, onOpenPurchases }) => {
   const role = (currentUser.role || '').trim().toLowerCase();
   const [showLog, setShowLog] = useState(false);
@@ -63,18 +142,18 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
   [stockCounts, role]);
   const submittedToday = myLogs.some(c => c.countDate === myCountDate || c.date.slice(0, 10) === myCountDate);
 
+  // Carry-forward source: every item's most recent Remaining from an earlier
+  // day is the Opening of the next day's sheet — all roles, all items.
+  const prevClosing = useMemo(
+    () => collectPreviousClosings(stockCounts, role, myCountDate),
+    [stockCounts, role, myCountDate]
+  );
+
+  const openingFor = (item: CountItem): string =>
+    resolveOpening(values[item.id]?.opening, item, prevClosing);
+
   const handleSubmit = async () => {
-    const entries: StockCountEntry[] = [];
-    for (const item of myItems) {
-      const v = values[item.id];
-      if (!v) continue;
-      const opening = Number(v.opening || 0);
-      const purchased = Number(v.purchased || 0);
-      const sold = Number(v.sold || 0);
-      const closing = Number(v.closing || 0);
-      if (!opening && !purchased && !sold && !closing) continue;
-      entries.push({ itemId: item.id, itemName: item.name, unit: item.unit, opening, purchased, sold, closing });
-    }
+    const entries = buildCountEntries(myItems, values, prevClosing);
 
     if (entries.length === 0) {
       setError('Enter at least one item before submitting.');
@@ -111,7 +190,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
     ? { opening: 'Opening', purchased: 'Purchased', sold: 'Sold', closing: 'Closing' }
     : isSupplierSide
       ? { opening: 'Opening', purchased: 'Received', sold: 'Sent', closing: 'Closing' }
-      : { opening: 'Opening', purchased: 'Received', sold: 'Used', closing: 'Remaining' };
+      : { opening: 'Opening', purchased: 'Received', sold: 'Sales', closing: 'Remaining' };
 
   const roleTitle = isChefSide
     ? 'Kitchen Count'
@@ -251,7 +330,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
                         type="number"
                         inputMode="decimal"
                         min="0"
-                        value={v[field]}
+                        value={field === 'opening' ? openingFor(item) : v[field]}
                         onChange={e => setValue(item.id, field, e.target.value)}
                         className="w-full bg-gray-50 rounded-xl px-2 py-2 text-sm font-black text-center outline-none focus:bg-white border border-transparent focus:border-[#4B3621] transition-colors"
                         placeholder="0"
