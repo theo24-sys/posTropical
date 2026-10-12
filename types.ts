@@ -27,6 +27,40 @@ export type PaymentMethod = 'Cash' | 'M-Pesa' | 'Card' | 'Co-Op' | 'KCB' | 'Pay 
 export const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'M-Pesa', 'Card', 'Co-Op', 'KCB'];
 export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista' | 'Supplier';
 
+// --- STAFF STOCK COUNTS ---
+// Staff (Chef / Waiter / Steward) key in daily counts on a phone. A submitted
+// count immediately applies to master inventory and is kept as a row in
+// stock_counts for history + admin review.
+export interface StockCountEntry {
+  itemId: string;
+  itemName: string;
+  unit: string;
+  opening: number;
+  purchased: number;
+  sold: number;
+  closing: number;
+}
+
+export interface StockCount {
+  id: string;
+  date: string; // ISO
+  countDate: string; // YYYY-MM-DD the count is for
+  role: string; // submitting staff role: Chef / Waiter / Steward
+  staffId: string;
+  staffName: string;
+  entries: StockCountEntry[];
+  note?: string;
+}
+
+export interface CountItem {
+  id: string;
+  name: string;
+  unit: string;
+  roles: string[]; // which staff roles count this item, e.g. ['Chef'] or ['Waiter','Steward']
+  section: 'Kitchen' | 'Bar' | 'Front of House';
+  active: boolean;
+}
+
 export interface User {
   id: string;
   name: string;

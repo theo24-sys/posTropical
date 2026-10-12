@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MenuItem, User, Category, UserRole, SaleTransaction, PaymentMethod, Expense, AuditLog, InventoryItem, InventoryCategory } from '../types.ts';
+import { MenuItem, User, Category, UserRole, SaleTransaction, PaymentMethod, Expense, AuditLog, InventoryItem, InventoryCategory, StockCount, CountItem } from '../types.ts';
 import { CURRENCY, LOGO_URL, MENU_ITEMS } from '../constants.ts';
 import {
   Plus, Trash2, Package, Users, BarChart3, PieChart, RefreshCw, Menu,
   DollarSign, ArrowLeft, Search, TrendingUp, TrendingDown,
   Activity, ShieldAlert, Edit3, Beef, Egg, Cake, GlassWater,
-  Layers, Minus, Save, X, Sparkles, UserPlus, LogOut,
+  Layers, Minus, Save, X, Sparkles, UserPlus, LogOut, Check,
   Leaf, Fish, Coffee, Wheat,
-  Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy, Download, BookOpen
+  Clock, ShieldCheck, DatabaseBackup, Wand2, Trophy, Download, BookOpen,
+  ClipboardList, ClipboardCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DB } from '../services/supabase';
@@ -32,6 +33,11 @@ interface AdminDashboardProps {
   onSaveExpense: (expense: Expense) => Promise<void>;
   onUpdateExpense: (expense: Expense) => Promise<void>;
   onDeleteExpense: (id: string) => Promise<void>;
+  stockCounts: StockCount[];
+  countItems: CountItem[];
+  onSaveCountItem: (item: CountItem) => Promise<void>;
+  onDeleteCountItem: (id: string) => Promise<void>;
+  onDeleteStockCount: (id: string) => Promise<void>;
   onClose: () => void;
   onRefresh: () => Promise<void>;
   currentUserRole: UserRole;
@@ -86,10 +92,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   menuItems, users, salesHistory, expenses, auditLogs, inventory,
   onUpdateStock, onSaveInventoryItem, onDeleteInventoryItem,
   onSaveItem, onDeleteItem, onSaveUser, onDeleteUser,
-  onSaveExpense, onUpdateExpense, onDeleteExpense, onClose, onRefresh,
+  onSaveExpense, onUpdateExpense, onDeleteExpense,
+  stockCounts, countItems, onSaveCountItem, onDeleteCountItem, onDeleteStockCount,
+  onClose, onRefresh,
   currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'finances' | 'security' | 'inventory' | 'menu' | 'analytics' | 'reports_export'>('reports');
+  const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'finances' | 'security' | 'inventory' | 'menu' | 'analytics' | 'reports_export' | 'counts'>('reports');
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
@@ -115,6 +123,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isNavOpen, setIsNavOpen] = useState(false);
   // Expense being corrected (edit mode) — null means a brand-new entry.
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  // Staff count item being edited — null means brand-new.
+  const [editingCountItem, setEditingCountItem] = useState<CountItem | null>(null);
+  const [isCountItemModalOpen, setIsCountItemModalOpen] = useState(false);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   // Recovery tool states
@@ -164,6 +175,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const filteredInventory = useMemo(() => inventory.filter(i => i.name.toLowerCase().includes(invSearchTerm.toLowerCase())), [inventory, invSearchTerm]);
   const filteredMenuItems = useMemo(() => menuItems.filter(i => i.name.toLowerCase().includes(menuSearchTerm.toLowerCase())), [menuItems, menuSearchTerm]);
   const filteredUsers = useMemo(() => users.filter(u => u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || u.role.toLowerCase().includes(userSearchTerm.toLowerCase())), [users, userSearchTerm]);
+  const filteredStockCounts = useMemo(() => stockCounts.filter(c => isDateInFilter(c.date)), [stockCounts, dateRange, customStart, customEnd]);
 
   const fastSellingItems = useMemo(() => {
     const counts: Record<string, { name: string; quantity: number; total: number }> = {};
@@ -316,6 +328,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setExpenseDate('');
   };
 
+  const startNewCountItem = () => { setEditingCountItem(null); setIsCountItemModalOpen(true); };
+
   const NavLink = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (
     <button onClick={() => { setActiveTab(id); setIsNavOpen(false); }} className={`w-full flex items-center justify-between px-6 py-5 rounded-[22px] transition-all ${activeTab === id ? 'bg-[#4B3621] text-white shadow-xl translate-x-1' : 'text-gray-400 hover:bg-gray-50'}`}>
       <div className="flex items-center gap-4"><Icon size={22} /> <span className="text-sm font-black uppercase tracking-widest">{label}</span></div>
@@ -342,6 +356,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <NavLink id="inventory" label="Inventory" icon={Package} />
           <NavLink id="menu" label="Catalogue" icon={Layers} />
           <NavLink id="finances" label="Financials" icon={DollarSign} />
+          <NavLink id="counts" label="Stock Counts" icon={ClipboardList} />
           <div className="py-6"><div className="h-px bg-gray-100 w-full mb-6"></div><p className="px-6 text-[10px] font-black text-gray-300 uppercase tracking-widest">Team Identity</p></div>
           <NavLink id="users" label="Personnel" icon={Users} />
           <NavLink id="security" label="Cyber Core" icon={ShieldAlert} />
@@ -384,6 +399,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </button>}
             {activeTab === 'finances' && <button onClick={() => { setEditingExpense(null); setExpenseDate(new Date().toISOString().slice(0, 10)); setIsExpenseModalOpen(true); }} className="bg-red-500 text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
               <DollarSign size={22} /> Record Outflow
+            </button>}
+            {activeTab === 'counts' && <button onClick={() => startNewCountItem()} className="bg-[#4B3621] text-white px-10 py-5 rounded-[22px] text-xs font-black shadow-2xl flex items-center gap-3 hover:scale-105 transition-all tracking-widest uppercase">
+              <Plus size={22} /> New Count Item
             </button>}
           </div>
         </header>
@@ -808,10 +826,128 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               />
             )}
 
+            {activeTab === 'counts' && (
+              <div className="space-y-10">
+                {/* Submission history */}
+                <div className="bg-white rounded-[56px] border border-gray-50 shadow-sm overflow-hidden">
+                  <div className="p-10 pb-6 flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h3 className="text-2xl font-black tracking-tighter flex items-center gap-4"><ClipboardCheck size={26} /> Staff Submissions</h3>
+                      <p className="text-sm text-gray-400 font-bold mt-2">Closing counts from staff have already been applied to master inventory.</p>
+                    </div>
+                    <span className="px-6 py-3 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">{filteredStockCounts.length} sheets</span>
+                  </div>
+                  {/* Desktop table */}
+                  <table className="hidden md:table w-full text-left">
+                    <thead className="bg-gray-50 text-[10px] font-black uppercase tracking-[3px] text-gray-300 border-b border-gray-50">
+                      <tr>
+                        <th className="px-10 py-6">Date</th>
+                        <th className="px-10 py-6">Staff</th>
+                        <th className="px-10 py-6">Role</th>
+                        <th className="px-10 py-6">Items Counted</th>
+                        <th className="px-10 py-6">Note</th>
+                        <th className="px-10 py-6 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredStockCounts.map(c => (
+                        <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-10 py-8 font-bold text-gray-500 whitespace-nowrap">{new Date(c.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="px-10 py-8 font-black text-[#4B3621]">{c.staffName}</td>
+                          <td className="px-10 py-8 text-sm font-black text-amber-600">{c.role}</td>
+                          <td className="px-10 py-8">
+                            <div className="flex flex-wrap gap-2">{c.entries.slice(0, 4).map(e => (
+                              <span key={e.itemId} className="rounded-full bg-white border border-gray-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{e.itemName}: {e.closing}</span>
+                            ))}
+                              {c.entries.length > 4 && <span className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1 text-[10px] font-black text-gray-400">+{c.entries.length - 4} more</span>}
+                            </div>
+                          </td>
+                          <td className="px-10 py-8 text-sm font-bold text-gray-400">{c.note || '—'}</td>
+                          <td className="px-10 py-8 text-right">
+                            <button onClick={() => { if (confirm('Delete this count sheet? Master inventory is NOT reversed.')) onDeleteStockCount(c.id); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors" title="Delete sheet">
+                              <Trash2 size={18}/>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredStockCounts.length === 0 && <tr><td colSpan={6} className="text-center py-24 text-gray-300 italic font-bold">No staff counts submitted in this window.</td></tr>}
+                    </tbody>
+                  </table>
+                  {/* Phone cards */}
+                  <div className="md:hidden divide-y divide-gray-50">
+                    {filteredStockCounts.map(c => (
+                      <div key={c.id} className="px-5 py-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-black text-lg text-[#4B3621]">{c.staffName}</div>
+                            <div className="text-xs font-bold text-gray-400 mt-1">{new Date(c.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} · {c.role}</div>
+                          </div>
+                          <button onClick={() => { if (confirm('Delete this count sheet? Master inventory is NOT reversed.')) onDeleteStockCount(c.id); }} className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-500 active:bg-red-500 active:text-white transition-colors shrink-0" title="Delete sheet">
+                            <Trash2 size={18}/>
+                          </button>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {c.entries.map(e => (
+                            <span key={e.itemId} className="rounded-full bg-gray-50 border border-gray-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{e.itemName}: {e.closing}</span>
+                          ))}
+                        </div>
+                        {c.note && <p className="mt-2 text-xs font-bold text-gray-400">“{c.note}”</p>}
+                      </div>
+                    ))}
+                    {filteredStockCounts.length === 0 && (
+                      <div className="py-16 text-center text-gray-300 italic font-bold">No staff counts submitted in this window.</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Count item list editor */}
+                <div className="bg-white rounded-[56px] border border-gray-50 shadow-sm overflow-hidden">
+                  <div className="p-10 pb-6 flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h3 className="text-2xl font-black tracking-tighter flex items-center gap-4"><ClipboardList size={26} /> Count Item Lists</h3>
+                      <p className="text-sm text-gray-400 font-bold mt-2">What each role keys in on their phone. Chef sees Kitchen, Barista sees Bar, Waiter/Steward see Front of House.</p>
+                    </div>
+                    <button onClick={startNewCountItem} className="bg-[#4B3621] text-white px-8 py-4 rounded-[22px] text-[10px] font-black shadow-xl tracking-widest uppercase flex items-center gap-3 hover:scale-105 transition-all"><Plus size={18}/> Add Item</button>
+                  </div>
+                  <div className="px-6 md:px-10 pb-10 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {countItems.map(item => (
+                      <div key={item.id} className={`rounded-[28px] border p-5 flex items-center justify-between gap-4 transition-all ${item.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                        <div className="min-w-0">
+                          <div className="font-black text-[#4B3621] truncate">{item.name}</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-300 mt-1">{item.section} · {item.unit} · {item.roles.join(' + ')}</div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => onSaveCountItem({ ...item, active: !item.active })} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${item.active ? 'bg-green-50 text-green-500' : 'bg-gray-100 text-gray-300'}`} title={item.active ? 'Item is active' : 'Item is disabled'}>
+                            <Check size={16}/>
+                          </button>
+                          <button onClick={() => { setEditingCountItem(item); setIsCountItemModalOpen(true); }} className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-50 text-gray-300 hover:bg-[#4B3621] hover:text-white transition-colors" title="Edit item">
+                            <Edit3 size={16}/>
+                          </button>
+                          <button onClick={() => { if (confirm(`Remove "${item.name}" from the count list?`)) onDeleteCountItem(item.id); }} className="w-10 h-10 rounded-full flex items-center justify-center bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors" title="Delete item">
+                            <Trash2 size={16}/>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {countItems.length === 0 && (
+                      <div className="col-span-full py-16 text-center text-gray-300 italic font-bold">No count items defined yet. Add one to get started.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
             
         {/* MODALS */}
+        {isCountItemModalOpen && (
+          <CountItemModal
+            editing={editingCountItem}
+            onSave={async (item) => { await onSaveCountItem(item); setIsCountItemModalOpen(false); setEditingCountItem(null); }}
+            onClose={() => { setIsCountItemModalOpen(false); setEditingCountItem(null); }}
+          />
+        )}
         {isInvModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-6">
             <div className="bg-white w-full max-w-2xl rounded-[64px] p-16 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] relative animate-in zoom-in-95 duration-300">
@@ -963,6 +1099,126 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
       </main>
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────────
+// Count item editor modal (admin “Stock Counts” tab)
+// ────────────────────────────────────────────────
+const CountItemModal: React.FC<{
+  editing: CountItem | null;
+  onSave: (item: CountItem) => Promise<void>;
+  onClose: () => void;
+}> = ({ editing, onSave, onClose }) => {
+  const [name, setName] = useState(editing?.name || '');
+  const [unit, setUnit] = useState(editing?.unit || 'pcs');
+  const [section, setSection] = useState<CountItem['section']>(editing?.section || 'Kitchen');
+  const [roles, setRoles] = useState<string[]>(editing?.roles || ['Chef']);
+  const [active, setActive] = useState(editing?.active !== false);
+  const [saving, setSaving] = useState(false);
+
+  const ALL_ROLES = ['Chef', 'Waiter', 'Steward', 'Barista', 'Cashier'];
+
+  const toggleRole = (r: string) => {
+    setRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    if (roles.length === 0) return;
+    setSaving(true);
+    try {
+      await onSave({
+        id: editing?.id || `ci-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        name: name.trim(),
+        unit: unit.trim() || 'pcs',
+        section,
+        roles,
+        active,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#4B3621]/80 backdrop-blur-xl p-4 md:p-6">
+      <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] relative animate-in zoom-in-95 duration-300 p-8 md:p-14">
+        <button onClick={onClose} className="absolute top-6 right-6 text-gray-300 hover:text-[#4B3621] transition-all p-3 hover:bg-gray-50 rounded-full"><X size={28}/></button>
+        <h3 className="font-serif text-3xl md:text-4xl font-black mb-10 text-[#4B3621] tracking-tighter">{editing ? 'Edit Count Item' : 'New Count Item'}</h3>
+
+        <div className="space-y-8">
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-300 mb-2">Item name</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Chicken Wings"
+              className="w-full bg-gray-50 border-2 border-transparent focus:border-[#4B3621] rounded-[22px] px-6 py-5 text-lg font-black outline-none transition-all"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-300 mb-2">Unit</label>
+              <select
+                value={unit}
+                onChange={e => setUnit(e.target.value)}
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-[#4B3621] rounded-[22px] px-6 py-5 text-sm font-black outline-none transition-all"
+              >
+                {['pcs', 'kgs', 'litres', 'packs', 'boxes', 'bottles', 'dozens', 'sacks'].map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-300 mb-2">Section</label>
+              <select
+                value={section}
+                onChange={e => setSection(e.target.value as CountItem['section'])}
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-[#4B3621] rounded-[22px] px-6 py-5 text-sm font-black outline-none transition-all"
+              >
+                <option value="Kitchen">Kitchen</option>
+                <option value="Bar">Bar</option>
+                <option value="Front of House">Front of House</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-300 mb-3">Counted by (roles)</label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_ROLES.map(r => (
+                <button
+                  key={r}
+                  onClick={() => toggleRole(r)}
+                  className={`px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${roles.includes(r) ? 'bg-[#4B3621] text-white border-[#4B3621] shadow-lg' : 'bg-white text-gray-300 border-gray-100 hover:border-gray-300'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-4 cursor-pointer">
+            <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} className="w-6 h-6 accent-[#4B3621]" />
+            <span className="text-sm font-black text-[#4B3621] uppercase tracking-widest">Active (visible to staff)</span>
+          </label>
+        </div>
+
+        <div className="mt-12 flex gap-4">
+          <button onClick={onClose} className="flex-1 py-5 rounded-[22px] bg-gray-50 text-gray-400 font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all">Cancel</button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !name.trim() || roles.length === 0}
+            className={`flex-[2] py-5 rounded-[22px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${saving || !name.trim() || roles.length === 0 ? 'bg-gray-100 text-gray-300' : 'bg-[#4B3621] text-white shadow-2xl hover:scale-[1.02]'}`}
+          >
+            {saving ? <RefreshCw size={18} className="animate-spin"/> : <Save size={18} />}
+            {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Item'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

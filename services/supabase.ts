@@ -1,5 +1,5 @@
 import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem } from '../types';
+import { MenuItem, SaleTransaction, User, Expense, AuditLog, InventoryItem, StockCount, CountItem, StockCountEntry } from '../types';
 import { KITCHEN_RECIPES, MENU_ITEMS, REMOVED_MENU_ITEM_IDS } from '../constants';
 
 // ────────────────────────────────────────────────
@@ -479,4 +479,88 @@ export const DB = {
     });
     if (error) console.error('saveAuditLog failed:', error.message);
   },
+
+  // --- STAFF STOCK COUNTS ---
+  // count_items = the admin-editable checklist of items each role keys in.
+  // stock_counts = one submitted count sheet (entries JSON) per submission.
+  async getCountItems(): Promise<CountItem[]> {
+    const data = await safeFetch<any>(
+      supabase.from('count_items').select('*').order('section', { ascending: true }).order('name', { ascending: true })
+    );
+    return data.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      unit: r.unit || 'pcs',
+      roles: Array.isArray(r.roles) ? r.roles : [],
+      section: (r.section === 'Front of House' ? 'Front of House' : 'Kitchen') as CountItem['section'],
+      active: r.active !== false,
+    }));
+  },
+
+  async saveCountItem(item: CountItem): Promise<void> {
+    const { error } = await supabase.from('count_items').upsert({
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      roles: item.roles,
+      section: item.section,
+      active: item.active,
+    });
+    if (error) console.error('saveCountItem failed:', error.message);
+  },
+
+  async deleteCountItem(id: string): Promise<void> {
+    const { error } = await supabase.from('count_items').delete().eq('id', id);
+    if (error) console.error('deleteCountItem failed:', error.message);
+  },
+
+  async getStockCounts(): Promise<StockCount[]> {
+    const data = await safeFetch<any>(
+      supabase.from('stock_counts').select('*').order('date', { ascending: false }).limit(2000)
+    );
+    return data.map(mapStockCount);
+  },
+
+  async saveStockCount(count: StockCount): Promise<void> {
+    const { error } = await supabase.from('stock_counts').upsert({
+      id: count.id,
+      date: count.date,
+      count_date: count.countDate,
+      role: count.role,
+      staff_id: count.staffId,
+      staff_name: count.staffName,
+      entries: count.entries,
+      note: count.note ?? null,
+    });
+    if (error) console.error('saveStockCount failed:', error.message);
+  },
+
+  async deleteStockCount(id: string): Promise<void> {
+    const { error } = await supabase.from('stock_counts').delete().eq('id', id);
+    if (error) console.error('deleteStockCount failed:', error.message);
+  },
 };
+
+function mapStockCount(r: any): StockCount {
+  const entries: StockCountEntry[] = Array.isArray(r.entries)
+    ? r.entries.map((e: any) => ({
+        itemId: e.itemId ?? e.item_id ?? '',
+        itemName: e.itemName ?? e.item_name ?? '',
+        unit: e.unit ?? 'pcs',
+        opening: Number(e.opening ?? 0),
+        purchased: Number(e.purchased ?? 0),
+        sold: Number(e.sold ?? 0),
+        closing: Number(e.closing ?? 0),
+      }))
+    : [];
+  return {
+    id: r.id,
+    date: r.date,
+    countDate: r.count_date ?? r.countDate ?? r.date,
+    role: r.role,
+    staffId: r.staff_id ?? r.staffId ?? '',
+    staffName: r.staff_name ?? r.staffName ?? '',
+    entries,
+    note: r.note ?? undefined,
+  };
+}

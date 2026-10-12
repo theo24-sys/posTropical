@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem } from './types';
+import { Category, MenuItem, CartItem, ReceiptData, PaymentMethod, User, SaleTransaction, Expense, AuditLog, InventoryItem, StockCount, CountItem } from './types';
 import { LOGO_URL, KITCHEN_RECIPES, INITIAL_USERS, MENU_ITEMS, cartIsTestOnly, menuItemIsTest } from './constants';
+import { SEED_COUNT_ITEMS } from './constants/stockCounts';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartSidebar } from './components/CartSidebar';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -14,8 +15,9 @@ import RecipePage from './components/RecipePage';
 import { generateReceiptMessage } from './services/geminiService';
 import { DB, APP_BUILD_ID } from './services/supabase';
 import { LocalDB } from './services/db';
+import StockCountPage from './components/StockCountPage';
 import {
-  Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History, BookOpen
+  Search, LayoutGrid, LogOut, Loader2, BarChart3, LayoutList, History, BookOpen, ClipboardList
 } from 'lucide-react';
 
 interface Promotion {
@@ -60,6 +62,8 @@ const App: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [salesHistory, setSalesHistory] = useState<SaleTransaction[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [stockCounts, setStockCounts] = useState<StockCount[]>([]);
+  const [countItems, setCountItems] = useState<CountItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [posUser, setPosUser] = useState<User | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
@@ -145,13 +149,15 @@ const App: React.FC = () => {
         // edits, removals) to Supabase before reading the menu back.
         await DB.syncMenuCatalog(APP_BUILD_ID);
 
-        const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs] = await Promise.all([
+        const [cloudUsers, cloudMenu, cloudInv, cloudSales, cloudExpenses, cloudLogs, cloudCounts, cloudCountItems] = await Promise.all([
           DB.getUsers(),
           DB.getMenuItems(),
           DB.getInventory(),
           DB.getTransactions(),
           DB.getExpenses(),
-          DB.getAuditLogs()
+          DB.getAuditLogs(),
+          DB.getStockCounts(),
+          DB.getCountItems(),
         ]);
 
        const usersToUse = cloudUsers; // trust Supabase; no fallback to mock data
@@ -165,6 +171,8 @@ const App: React.FC = () => {
        setSalesHistory(cloudSales);
        setExpenses(cloudExpenses);
        setAuditLogs(cloudLogs);
+       setStockCounts(cloudCounts);
+       setCountItems(cloudCountItems.length > 0 ? cloudCountItems : SEED_COUNT_ITEMS);
 
 
 
@@ -297,8 +305,10 @@ const App: React.FC = () => {
       navigate('/supplier');
     } else if ((location.pathname === '/admin' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') && isAdmin(user)) {
       // stay on admin
-    } else if (location.pathname === '/recipe' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') {
-      // Staff who open the recipe URL directly should return to it after PIN login.
+    } else if (location.pathname === '/recipe' || location.pathname === '/stock-count' || location.pathname === '/admin/recipe' || location.pathname === '/admn/recipe') {
+      // Staff who open the recipe/stock-count URL directly should land there
+      // after PIN login rather than being pushed to the POS.
+      navigate(location.pathname);
       navigate(location.pathname);
     } else {
       navigate('/');
@@ -322,6 +332,52 @@ const App: React.FC = () => {
     setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e));
     await DB.updateExpense(expense);
   };
+
+  // Staff submits a stock count → save it for history, then apply closing
+  // quantities directly to master inventory (matched by item name).
+  const handleSaveStockCount = useCallback(async (count: StockCount) => {
+    setStockCounts(prev => [count, ...prev]);
+
+    setInventory(prev => {
+      const byName = new Map(prev.map(i => [(i.name || '').trim().toLowerCase(), i]));
+      const applied = count.entries.map(entry => {
+        const master = byName.get((entry.itemName || '').trim().toLowerCase());
+        if (!master) return null;
+        const closing = Number(entry.closing);
+        if (!Number.isFinite(closing) || closing < 0) return null;
+        return { ...master, quantity: closing };
+      }).filter(Boolean) as InventoryItem[];
+
+      if (applied.length > 0) {
+        const patchedIds = new Set(applied.map(a => a.id));
+        return prev.map(i => {
+          const patch = applied.find(a => a.id === i.id);
+          return patch ? { ...i, ...patch } : i;
+        });
+      }
+      return prev;
+    });
+
+    try {
+      await DB.saveStockCount(count);
+
+      if (navigator.onLine) {
+        const nameToEntry = new Map(count.entries.map(e => [(e.itemName || '').trim().toLowerCase(), e]));
+        const cloudInventory = await DB.getInventory();
+        for (const master of cloudInventory) {
+          const entry = nameToEntry.get((master.name || '').trim().toLowerCase());
+          if (!entry) continue;
+          const closing = Number(entry.closing);
+          if (!Number.isFinite(closing) || closing < 0) continue;
+          const updated = { ...master, quantity: closing };
+          await DB.saveInventoryItem(updated);
+          await LocalDB.saveInventoryItem(updated);
+        }
+      }
+    } catch (err) {
+      console.error('handleSaveStockCount failed:', err);
+    }
+  }, []);
 
   const addToCart = useCallback((item: MenuItem) => {
     setCart(prev => {
@@ -707,6 +763,13 @@ const App: React.FC = () => {
               >
                 <BookOpen size={18} />
               </button>
+              <button
+                onClick={() => navigate('/stock-count')}
+                className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-[#4B3621] shadow-sm"
+                title="Stock Count"
+              >
+                <ClipboardList size={18} />
+              </button>
               {isAdmin(posUser) && (
                 <button
                   onClick={() => navigate('/admin')}
@@ -806,6 +869,22 @@ const App: React.FC = () => {
             }
           />
           <Route path="/recipe" element={<RecipePage />} />
+          <Route
+            path="/stock-count"
+            element={
+              posUser ? (
+                <StockCountPage
+                  currentUser={posUser}
+                  countItems={countItems}
+                  inventory={inventory}
+                  onSubmit={handleSaveStockCount}
+                  onLogout={handleLogout}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
           <Route path="/admin/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/admin" replace />} />
           <Route path="/admn/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/recipe" replace />} />
           <Route
@@ -871,7 +950,23 @@ const App: React.FC = () => {
                     await handleSaveExpense(e);
                   }}
                   onUpdateExpense={handleUpdateExpense}
-                  onDeleteExpense={async (id: string) => {
+                  stockCounts={stockCounts}
+                  countItems={countItems}
+                  onSaveCountItem={async (item: CountItem) => {
+                    setCountItems(prev => {
+                      const exists = prev.find(c => c.id === item.id);
+                      return exists ? prev.map(c => c.id === item.id ? item : c) : [...prev, item];
+                    });
+                    await DB.saveCountItem(item);
+                  }}
+                  onDeleteCountItem={async (id: string) => {
+                    setCountItems(prev => prev.filter(c => c.id !== id));
+                    await DB.deleteCountItem(id);
+                  }}
+                  onDeleteStockCount={async (id: string) => {
+                    setStockCounts(prev => prev.filter(c => c.id !== id));
+                    await DB.deleteStockCount(id);
+                  }}                  onDeleteExpense={async (id: string) => {
                     setExpenses(prev => prev.filter(e => e.id !== id));
                     await DB.deleteExpense(id);
                   }}
