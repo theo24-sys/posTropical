@@ -634,15 +634,19 @@ const App: React.FC = () => {
     );
   }
 
-  // The stock-count page is a standalone phone screen — render it OUTSIDE the
-  // POS shell (whose h-screen/overflow-hidden wrapper clips long pages so
-  // phones can't scroll). Same full-screen pattern as SupplierPage above.
-  if (location.pathname === '/stock-count') {
+  // Counting staff (Chef/Barista/Waiter/Steward) live ONLY on the stock count
+  // page — no POS, no transactions, no recipes — rendered full-screen outside
+  // the POS shell (whose overflow wrapper clips phone scrolling). Every user
+  // who directly opens /stock-count also gets the standalone page; cashiers
+  // and admins otherwise keep the normal app.
+  const isCountingStaff = ['CHEF', 'BARISTA', 'WAITER', 'STEWARD'].includes((posUser.role || '').trim().toUpperCase());
+  if (isCountingStaff || location.pathname === '/stock-count') {
     return (
       <StockCountPage
         currentUser={posUser}
         countItems={countItems}
         inventory={inventory}
+        stockCounts={stockCounts}
         onSubmit={handleSaveStockCount}
         onLogout={handleLogout}
       />

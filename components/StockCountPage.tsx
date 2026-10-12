@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { CountItem, InventoryItem, StockCount, StockCountEntry, User } from '../types';
-import { ArrowLeft, Check, ClipboardList, Package, Plus, Save, Search } from 'lucide-react';
+import { ArrowLeft, Check, ClipboardList, Clock, Package, Plus, Save, Search } from 'lucide-react';
 
 interface StockCountPageProps {
   currentUser: User;
   countItems: CountItem[];
   inventory: InventoryItem[];
+  stockCounts: StockCount[];
   onSubmit: (count: StockCount) => Promise<void>;
   onLogout: () => void;
 }
 
 const nairobiToday = (): string => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
 
-export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, countItems, inventory, onSubmit, onLogout }) => {
+export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, countItems, inventory, stockCounts, onSubmit, onLogout }) => {
   const role = (currentUser.role || '').trim().toLowerCase();
+  const [showLog, setShowLog] = useState(false);
   const [search, setSearch] = useState('');
   const [values, setValues] = useState<Record<string, { opening: string; purchased: string; sold: string; closing: string }>>({});
   const [note, setNote] = useState('');
@@ -47,6 +49,16 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
   };
 
   const filledCount = myItems.filter(i => values[i.id] && Object.values(values[i.id]).some(v => v !== '')).length;
+
+  // Daily log: this role's submissions, newest first (deduped by date).
+  const myCountDate = nairobiToday();
+  const myLogs = useMemo(() =>
+    stockCounts
+      .filter(c => (c.role || '').trim().toLowerCase() === role)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 30),
+  [stockCounts, role]);
+  const submittedToday = myLogs.some(c => c.countDate === myCountDate || c.date.slice(0, 10) === myCountDate);
 
   const handleSubmit = async () => {
     const entries: StockCountEntry[] = [];
@@ -113,17 +125,63 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
               <ClipboardList size={20} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-black tracking-tight leading-tight truncate">{roleTitle}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black tracking-tight leading-tight truncate">{roleTitle}</h1>
+                {submittedToday && (
+                  <span className="shrink-0 bg-green-50 text-green-600 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-green-200">Logged today</span>
+                )}
+              </div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 truncate">
                 {currentUser.name} · {currentUser.role}
               </p>
             </div>
           </div>
-          <button onClick={onLogout} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#4B3621] shrink-0">
-            Sign Out
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowLog(s => !s)}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 ${showLog ? 'bg-[#4B3621] text-white' : 'bg-gray-50 text-gray-400 hover:text-[#4B3621]'}`}
+              title="Daily log"
+            >
+              <Clock size={14} /> Log
+            </button>
+            <button onClick={onLogout} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#4B3621]">
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
+
+      {showLog && (
+        <div className="max-w-3xl mx-auto px-4 pt-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Daily Log · last 30 sheets</span>
+              <button onClick={() => setShowLog(false)} className="text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-[#4B3621]">Close</button>
+            </div>
+            {myLogs.length === 0 && (
+              <div className="px-4 py-8 text-center text-sm font-bold text-gray-300">No counts submitted yet.</div>
+            )}
+            {myLogs.map(c => (
+              <div key={c.id} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${c.countDate === myCountDate || c.date.slice(0, 10) === myCountDate ? 'text-green-600' : 'text-gray-400'}`}>
+                    {new Date(c.date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })} · {new Date(c.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-[10px] font-black text-gray-300">{c.staffName}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {c.entries.map(e => (
+                    <span key={e.itemId} className="rounded-full bg-gray-50 border border-gray-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      {e.itemName}: {e.closing}
+                    </span>
+                  ))}
+                </div>
+                {c.note && <p className="mt-1.5 text-xs font-bold text-gray-400">“{c.note}”</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-3xl mx-auto px-4 pt-5 space-y-4">
         {savedId && (
