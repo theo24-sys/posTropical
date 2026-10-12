@@ -633,6 +633,21 @@ const App: React.FC = () => {
       />
     );
   }
+
+  // The stock-count page is a standalone phone screen — render it OUTSIDE the
+  // POS shell (whose h-screen/overflow-hidden wrapper clips long pages so
+  // phones can't scroll). Same full-screen pattern as SupplierPage above.
+  if (location.pathname === '/stock-count') {
+    return (
+      <StockCountPage
+        currentUser={posUser}
+        countItems={countItems}
+        inventory={inventory}
+        onSubmit={handleSaveStockCount}
+        onLogout={handleLogout}
+      />
+    );
+  }
   
   return (
     <div className="flex min-h-screen lg:h-screen flex-col lg:flex-row bg-[#F5F4EF] overflow-hidden font-sans text-[#4B3621]">
@@ -872,22 +887,6 @@ const App: React.FC = () => {
             }
           />
           <Route path="/recipe" element={<RecipePage />} />
-          <Route
-            path="/stock-count"
-            element={
-              posUser ? (
-                <StockCountPage
-                  currentUser={posUser}
-                  countItems={countItems}
-                  inventory={inventory}
-                  onSubmit={handleSaveStockCount}
-                  onLogout={handleLogout}
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
           <Route path="/admin/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/admin" replace />} />
           <Route path="/admn/recipe" element={isAdmin(posUser) ? <RecipePage /> : <Navigate to="/recipe" replace />} />
           <Route
