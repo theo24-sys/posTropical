@@ -636,13 +636,12 @@ const App: React.FC = () => {
   return <LoginScreen users={visibleUsers} onLogin={handleLogin} />;
 }
 
-  // Counting staff (Chef/Barista/Waiter/Steward) and the supplier live ONLY
-  // on the stock count page — no POS, no transactions, no recipes — rendered
-  // full-screen outside the POS shell (whose overflow wrapper clips phone
-  // scrolling). Every user who directly opens /stock-count also gets the
-  // standalone page; cashiers and admins otherwise keep the normal app.
-  const isCountingStaff = ['CHEF', 'BARISTA', 'WAITER', 'STEWARD'].includes((posUser.role || '').trim().toUpperCase());
-  if (isCountingStaff || location.pathname === '/stock-count') {
+  // Two routes, two jobs: / is the POS (anyone who logs in there makes
+  // sales), /stock-count is the inventory screen — rendered full-screen
+  // outside the POS shell (whose overflow wrapper clips phone scrolling).
+  // Logging in on the stock-count PIN screen keeps you on the stock-count
+  // route; logging in at the root lands on the POS for every role.
+  if (location.pathname === '/stock-count') {
     return (
       <StockCountPage
         currentUser={posUser}

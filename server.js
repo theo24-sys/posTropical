@@ -140,8 +140,10 @@ async function getKraPayload(order) {
 
 const kra = new KraEtimsClient();
 
+// The site root is the POS app itself (index.html), not a JSON status
+// payload — https://<host>/ must open the POS login. Status lives at /health.
 app.get("/", (_req, res) => {
-  res.json({ success: true, service: "posTropical", status: "running" });
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 app.get("/health", (_req, res) => {
