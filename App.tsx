@@ -344,51 +344,20 @@ const App: React.FC = () => {
     await DB.updateExpense(expense);
   };
 
-  // Staff submits a stock count → save it for history, then apply closing
-  // quantities directly to master inventory (matched by item name).
+  // The database RPC records the count and updates linked inventory atomically.
   const handleSaveStockCount = useCallback(async (count: StockCount) => {
-    setStockCounts(prev => [count, ...prev]);
-
-    setInventory(prev => {
-      const byName = new Map(prev.map(i => [(i.name || '').trim().toLowerCase(), i]));
-      const applied = count.entries.map(entry => {
-        const master = byName.get((entry.itemName || '').trim().toLowerCase());
-        if (!master) return null;
-        const closing = Number(entry.closing);
-        if (!Number.isFinite(closing) || closing < 0) return null;
-        return { ...master, quantity: closing };
-      }).filter(Boolean) as InventoryItem[];
-
-      if (applied.length > 0) {
-        const patchedIds = new Set(applied.map(a => a.id));
-        return prev.map(i => {
-          const patch = applied.find(a => a.id === i.id);
-          return patch ? { ...i, ...patch } : i;
-        });
-      }
-      return prev;
-    });
-
     try {
+      if (!navigator.onLine) throw new Error('You must be online to submit a stock count.');
       await DB.saveStockCount(count);
-
-      if (navigator.onLine) {
-        const nameToEntry = new Map(count.entries.map(e => [(e.itemName || '').trim().toLowerCase(), e]));
-        const cloudInventory = await DB.getInventory();
-        for (const master of cloudInventory) {
-          const entry = nameToEntry.get((master.name || '').trim().toLowerCase());
-          if (!entry) continue;
-          const closing = Number(entry.closing);
-          if (!Number.isFinite(closing) || closing < 0) continue;
-          const updated = { ...master, quantity: closing };
-          await DB.saveInventoryItem(updated);
-          await LocalDB.saveInventoryItem(updated);
-        }
-      }
+      setStockCounts(prev => [count, ...prev]);
+      const changes = new Map(count.entries.filter(e => e.inventoryId).map(e => [e.inventoryId!, e.closing]));
+      setInventory(prev => prev.map(item => changes.has(item.id) ? { ...item, quantity: changes.get(item.id)! } : item));
+      await fetchData(false);
     } catch (err) {
       console.error('handleSaveStockCount failed:', err);
+      throw err;
     }
-  }, []);
+  }, [fetchData]);
 
   const addToCart = useCallback((item: MenuItem) => {
     setCart(prev => {
@@ -975,20 +944,17 @@ const App: React.FC = () => {
                   stockCounts={stockCounts}
                   countItems={countItems}
                   onSaveCountItem={async (item: CountItem) => {
+                    await DB.saveCountItem(item);
                     setCountItems(prev => {
                       const exists = prev.find(c => c.id === item.id);
                       return exists ? prev.map(c => c.id === item.id ? item : c) : [...prev, item];
                     });
-                    await DB.saveCountItem(item);
                   }}
                   onDeleteCountItem={async (id: string) => {
-                    setCountItems(prev => prev.filter(c => c.id !== id));
                     await DB.deleteCountItem(id);
+                    setCountItems(prev => prev.filter(c => c.id !== id));
                   }}
-                  onDeleteStockCount={async (id: string) => {
-                    setStockCounts(prev => prev.filter(c => c.id !== id));
-                    await DB.deleteStockCount(id);
-                  }}                  onDeleteExpense={async (id: string) => {
+                  onDeleteExpense={async (id: string) => {
                     setExpenses(prev => prev.filter(e => e.id !== id));
                     await DB.deleteExpense(id);
                   }}

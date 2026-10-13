@@ -33,6 +33,7 @@ export type UserRole = 'Admin' | 'Cashier' | 'Waiter' | 'Chef' | 'Barista' | 'Su
 // stock_counts for history + admin review.
 export interface StockCountEntry {
   itemId: string;
+  inventoryId?: string;
   itemName: string;
   unit: string;
   opening: number;
@@ -54,6 +55,7 @@ export interface StockCount {
 
 export interface CountItem {
   id: string;
+  inventoryId?: string;
   name: string;
   unit: string;
   roles: string[]; // which staff roles count this item, e.g. ['Chef'] or ['Waiter','Steward']

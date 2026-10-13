@@ -529,6 +529,7 @@ export const DB = {
     );
     return data.map((r: any) => ({
       id: r.id,
+      inventoryId: r.inventory_id ?? r.inventoryId ?? undefined,
       name: r.name,
       unit: r.unit || 'pcs',
       roles: Array.isArray(r.roles) ? r.roles : [],
@@ -542,18 +543,19 @@ export const DB = {
   async saveCountItem(item: CountItem): Promise<void> {
     const { error } = await supabase.from('count_items').upsert({
       id: item.id,
+      inventory_id: item.inventoryId ?? null,
       name: item.name,
       unit: item.unit,
       roles: item.roles,
       section: item.section,
       active: item.active,
     });
-    if (error) console.error('saveCountItem failed:', error.message);
+    if (error) throw new Error(`saveCountItem failed: ${error.message}`);
   },
 
   async deleteCountItem(id: string): Promise<void> {
     const { error } = await supabase.from('count_items').delete().eq('id', id);
-    if (error) console.error('deleteCountItem failed:', error.message);
+    if (error) throw new Error(`deleteCountItem failed: ${error.message}`);
   },
 
   async getStockCounts(): Promise<StockCount[]> {
@@ -564,17 +566,16 @@ export const DB = {
   },
 
   async saveStockCount(count: StockCount): Promise<void> {
-    const { error } = await supabase.from('stock_counts').upsert({
-      id: count.id,
-      date: count.date,
-      count_date: count.countDate,
-      role: count.role,
-      staff_id: count.staffId,
-      staff_name: count.staffName,
-      entries: count.entries,
-      note: count.note ?? null,
+    const { error } = await supabase.rpc('submit_stock_count', {
+      p_count: {
+        id: count.id,
+        countDate: count.countDate,
+        staffId: count.staffId,
+        entries: count.entries,
+        note: count.note ?? null,
+      },
     });
-    if (error) console.error('saveStockCount failed:', error.message);
+    if (error) throw new Error(`saveStockCount failed: ${error.message}`);
   },
 
   async deleteStockCount(id: string): Promise<void> {
@@ -587,6 +588,7 @@ function mapStockCount(r: any): StockCount {
   const entries: StockCountEntry[] = Array.isArray(r.entries)
     ? r.entries.map((e: any) => ({
         itemId: e.itemId ?? e.item_id ?? '',
+        inventoryId: e.inventoryId ?? e.inventory_id ?? undefined,
         itemName: e.itemName ?? e.item_name ?? '',
         unit: e.unit ?? 'pcs',
         opening: Number(e.opening ?? 0),

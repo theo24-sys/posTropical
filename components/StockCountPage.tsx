@@ -88,8 +88,14 @@ export function buildCountEntries(
       v.closing === ''
         ? Math.max(0, opening + purchased - sold)
         : Number(v.closing || 0);
+    if (![opening, purchased, sold, closing].every(Number.isFinite)) {
+      throw new Error(`Enter valid numbers for ${item.name}.`);
+    }
+    if ([opening, purchased, sold, closing].some(value => value < 0)) {
+      throw new Error(`Stock values cannot be negative for ${item.name}.`);
+    }
     if (!opening && !purchased && !sold && !closing) continue;
-    entries.push({ itemId: item.id, itemName: item.name, unit: item.unit, opening, purchased, sold, closing });
+    entries.push({ itemId: item.id, inventoryId: item.inventoryId, itemName: item.name, unit: item.unit, opening, purchased, sold, closing });
   }
   return entries;
 }
@@ -115,13 +121,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
       .filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
   }, [countItems, role, search]);
 
-  const invByName = useMemo(() => {
-    // Master inventory uses lowercase names — match count items to master rows
-    // loosely so a submitted count adjusts the right master stock row.
-    const map = new Map<string, InventoryItem>();
-    inventory.forEach(i => map.set((i.name || '').trim().toLowerCase(), i));
-    return map;
-  }, [inventory]);
+  const invById = useMemo(() => new Map(inventory.map(item => [item.id, item])), [inventory]);
 
   const setValue = (itemId: string, field: 'opening' | 'purchased' | 'sold' | 'closing', value: string) => {
     setValues(prev => {
@@ -311,7 +311,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
           )}
           {myItems.map(item => {
             const v = values[item.id] || { opening: '', purchased: '', sold: '', closing: '' };
-            const master = invByName.get(item.name.trim().toLowerCase());
+            const master = item.inventoryId ? invById.get(item.inventoryId) : undefined;
             return (
               <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -344,6 +344,7 @@ export const StockCountPage: React.FC<StockCountPageProps> = ({ currentUser, cou
                     Master stock: {master.quantity} {master.unit}
                   </p>
                 )}
+                {!master && <p className="mt-2 text-[10px] font-bold text-amber-600">Not linked to master inventory</p>}
               </div>
             );
           })}

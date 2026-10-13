@@ -37,7 +37,6 @@ interface AdminDashboardProps {
   countItems: CountItem[];
   onSaveCountItem: (item: CountItem) => Promise<void>;
   onDeleteCountItem: (id: string) => Promise<void>;
-  onDeleteStockCount: (id: string) => Promise<void>;
   onClose: () => void;
   onRefresh: () => Promise<void>;
   currentUserRole: UserRole;
@@ -93,7 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateStock, onSaveInventoryItem, onDeleteInventoryItem,
   onSaveItem, onDeleteItem, onSaveUser, onDeleteUser,
   onSaveExpense, onUpdateExpense, onDeleteExpense,
-  stockCounts, countItems, onSaveCountItem, onDeleteCountItem, onDeleteStockCount,
+  stockCounts, countItems, onSaveCountItem, onDeleteCountItem,
   onClose, onRefresh,
   currentUser
 }) => {
@@ -864,9 +863,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </td>
                           <td className="px-10 py-8 text-sm font-bold text-gray-400">{c.note || '—'}</td>
                           <td className="px-10 py-8 text-right">
-                            <button onClick={() => { if (confirm('Delete this count sheet? Master inventory is NOT reversed.')) onDeleteStockCount(c.id); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-red-50 text-red-300 hover:bg-red-500 hover:text-white transition-colors" title="Delete sheet">
-                              <Trash2 size={18}/>
-                            </button>
                           </td>
                         </tr>
                       ))}
@@ -882,9 +878,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="font-black text-lg text-[#4B3621]">{c.staffName}</div>
                             <div className="text-xs font-bold text-gray-400 mt-1">{new Date(c.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} · {c.role}</div>
                           </div>
-                          <button onClick={() => { if (confirm('Delete this count sheet? Master inventory is NOT reversed.')) onDeleteStockCount(c.id); }} className="w-11 h-11 flex items-center justify-center rounded-full bg-red-100 text-red-500 active:bg-red-500 active:text-white transition-colors shrink-0" title="Delete sheet">
-                            <Trash2 size={18}/>
-                          </button>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {c.entries.map(e => (
@@ -944,6 +937,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {isCountItemModalOpen && (
           <CountItemModal
             editing={editingCountItem}
+            inventory={inventory}
             onSave={async (item) => { await onSaveCountItem(item); setIsCountItemModalOpen(false); setEditingCountItem(null); }}
             onClose={() => { setIsCountItemModalOpen(false); setEditingCountItem(null); }}
           />
@@ -1108,14 +1102,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 // ────────────────────────────────────────────────
 const CountItemModal: React.FC<{
   editing: CountItem | null;
+  inventory: InventoryItem[];
   onSave: (item: CountItem) => Promise<void>;
   onClose: () => void;
-}> = ({ editing, onSave, onClose }) => {
+}> = ({ editing, inventory, onSave, onClose }) => {
   const [name, setName] = useState(editing?.name || '');
   const [unit, setUnit] = useState(editing?.unit || 'pcs');
   const [section, setSection] = useState<CountItem['section']>(editing?.section || 'Kitchen');
   const [roles, setRoles] = useState<string[]>(editing?.roles || ['Chef']);
   const [active, setActive] = useState(editing?.active !== false);
+  const [inventoryId, setInventoryId] = useState(editing?.inventoryId || '');
   const [saving, setSaving] = useState(false);
 
   const ALL_ROLES = ['Chef', 'Waiter', 'Steward', 'Barista', 'Cashier', 'Supplier'];
@@ -1131,6 +1127,7 @@ const CountItemModal: React.FC<{
     try {
       await onSave({
         id: editing?.id || `ci-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        inventoryId: inventoryId || undefined,
         name: name.trim(),
         unit: unit.trim() || 'pcs',
         section,
@@ -1157,6 +1154,18 @@ const CountItemModal: React.FC<{
               placeholder="e.g. Chicken Wings"
               className="w-full bg-gray-50 border-2 border-transparent focus:border-[#4B3621] rounded-[22px] px-6 py-5 text-lg font-black outline-none transition-all"
             />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-300 mb-2">Master inventory link</label>
+            <select
+              value={inventoryId}
+              onChange={e => setInventoryId(e.target.value)}
+              className="w-full bg-gray-50 border-2 border-transparent focus:border-[#4B3621] rounded-[22px] px-6 py-5 text-sm font-black outline-none transition-all"
+            >
+              <option value="">Not linked</option>
+              {inventory.map(item => <option key={item.id} value={item.id}>{item.name} · {item.unit}</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
